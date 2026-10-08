@@ -6,6 +6,8 @@ Display bytes follow SPEC §7: each channel is ``min((int)sum / passes, 255)``. 
 
 import json
 import re
+import struct
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +16,13 @@ import numpy as np
 # One PPM header token: skips whitespace and '#' comments, then captures the token.
 _PPM_TOKEN = re.compile(rb"\s*(?:#[^\r\n]*\s*)*([^\s#]+)")
 _PPM_COMMENT = re.compile(rb"#[^\r\n]*")
+
+# PNG format constants (PNG specification, ISO/IEC 15948): the file signature, bit depth 8 for the
+# uint8 display bytes, colour type 2 for truecolour RGB, and scanline filter type 0 (None).
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_PNG_BIT_DEPTH = 8
+_PNG_COLOR_TYPE_RGB = 2
+_PNG_FILTER_NONE = 0
 
 
 def _ppm_token(data: bytes, pos: int) -> tuple[bytes, int]:
@@ -63,6 +72,36 @@ def write_ppm(path: str | Path, img8: np.ndarray) -> None:
     height, width = img.shape[:2]
     header = f"P6\n{width} {height}\n255\n".encode("ascii")
     Path(path).write_bytes(header + img.tobytes(order="C"))
+
+
+def _png_chunk(kind: bytes, data: bytes) -> bytes:
+    """One PNG chunk: big-endian length, type, data, then the CRC-32 of type and data."""
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+
+def write_png(path: str | Path, img8: np.ndarray) -> None:
+    """Write uint8 display bytes of shape (H, W, 3) as an 8-bit RGB PNG (standard library only).
+
+    Every scanline gets filter type 0 (None). The raster is one zlib-compressed IDAT chunk.
+    """
+    img = np.asarray(img8)
+    if img.dtype != np.uint8 or img.ndim != 3 or img.shape[2] != 3:
+        raise ValueError("img8 must be uint8 with shape (H, W, 3)")
+    height, width = img.shape[:2]
+    if height < 1 or width < 1:
+        raise ValueError("img8 must not be empty")
+    # IHDR: width, height, bit depth, colour type, then compression method 0, filter method 0 and
+    # interlace method 0, the only values the PNG specification defines for those fields.
+    ihdr = struct.pack(">IIBBBBB", width, height, _PNG_BIT_DEPTH, _PNG_COLOR_TYPE_RGB, 0, 0, 0)
+    scanlines = np.empty((height, 1 + 3 * width), dtype=np.uint8)
+    scanlines[:, 0] = _PNG_FILTER_NONE
+    scanlines[:, 1:] = img.reshape(height, 3 * width)
+    Path(path).write_bytes(
+        _PNG_SIGNATURE
+        + _png_chunk(b"IHDR", ihdr)
+        + _png_chunk(b"IDAT", zlib.compress(scanlines.tobytes()))
+        + _png_chunk(b"IEND", b"")
+    )
 
 
 def smallpaint_display(sum_: np.ndarray, passes: int) -> np.ndarray:
