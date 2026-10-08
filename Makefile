@@ -2,7 +2,7 @@ BUILD_DIR ?= build/dev
 export PAINTERLY_BUILD_DIR = $(BUILD_DIR)
 export PATH := $(abspath .venv/bin):$(PATH)
 
-.PHONY: env env-blender build test-cpp test-py test test-slow lint format check clean
+.PHONY: env env-blender build test-cpp test-py test test-slow lint format audit check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -34,7 +34,10 @@ format:
 	.venv/bin/ruff format .
 	git ls-files 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format -i
 
-check: lint build test
+audit: build
+	.venv/bin/python tools/symbol_audit.py $(BUILD_DIR)/src/blender/_painterly*
+
+check: lint build test audit
 
 clean:
 	rm -rf build
