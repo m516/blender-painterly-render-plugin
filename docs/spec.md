@@ -38,10 +38,13 @@ The spiral frame F maps spiral-local coordinates to world coordinates. It is cho
 ## §2 Sequence counter and random numbers
 
 **Painterly value.** `vdc(K) = bitrev23(K mod 2^23) · 2^-23`, where `bitrev23` reverses the low 23 bits.
-- 2^23 is not a tuning constant. It is the period of smallpaint's incremental `Halton::next()` in IEEE double:
-  next() is exact for K < 2^23 and wraps afterwards. The research replay showed |error| ≤ 7.5e-8.
-- The oracle may keep the original incremental generator (`--halton incremental`, the default) or use `vdc` (`--halton exact`).
-  The two agree bit for bit for K < 2^23.
+- 2^23 is not a tuning constant. It is the period of smallpaint's incremental `Halton::next()` in IEEE double.
+  - next() equals vdc(K) bit for bit for K < 2^23.
+  - From K = 2^23 on it differs at *every* draw: |error| < 1e-7 (max 9.31e-8 over 200 periods), and values can be slightly
+    negative (min −7.45e-8). This is the "1e-7" guard in `Halton::next()` misfiring once the step is smaller than the guard.
+- The oracle keeps the original incremental generator by default (`--halton incremental`) or uses `vdc` (`--halton exact`).
+  - Reference-mode image chains run almost entirely past 2^23.
+  - **Bit-parity tests therefore always run the oracle with `--halton exact`.** Statistical tests may use either.
 
 **Draw.** A diffuse event does `K ← K + 1; u = vdc(K)`, so the increment comes *before* use (`painterly.cpp:203-205`).
 - Both spiral dimensions use u: `u1 = u2 = u`, because both Halton objects are base 2 and advance in lockstep (`painterly.cpp:276-278`).
@@ -51,9 +54,10 @@ The spiral frame F maps spiral-local coordinates to world coordinates. It is cho
 (Blender v5.2.2 `intern/cycles/util/hash.h`, vendored verbatim):
 ```
 rng_u32(seed, purpose, depth, a, b, c) = hash_uint4(hash_uint3(seed, purpose, depth), a, b, c)
-rng_unit(...)   = rng_u32(...) · 2^-32            ∈ [0, 1)
-rng_signed(...) = 2 · rng_unit(...) − 1           ∈ [−1, 1)
+rng_unit(...)   = (double)rng_u32(...) * 0x1p-32  ∈ [0, 1)      # evaluated in double, always
+rng_signed(...) = 2 * rng_unit(...) - 1            ∈ [−1, 1)
 ```
+Both are evaluated in **double**: in float32, `u32 · 2^-32` rounds to 1.0 for the top 128 values.
 Purposes:
 - `PURPOSE_JITTER_X = 0`, `PURPOSE_JITTER_Y = 1`: (a,b,c) = (row, col, pass), depth 0.
 - `PURPOSE_U2 = 2`: only when `u2_mode = independent`. (a,b,c) = (row, col, pass), depth = bounce depth.
@@ -76,7 +80,11 @@ The knob `chain` selects how K is carried between samples:
   - T virtual threads; row i belongs to thread `i mod T`.
   - Each thread walks its rows in increasing order with its own K.
   - Every thread resets K to 0 at the start of each pass.
-- **`pixel-major`** (oracle only). The standalone 2016 program's order: `for row, for col, for pass`, as one chain from K = 0.
+- **`pixel-major`** (oracle only). The standalone 2016 program's loop order (`for row, for col, for pass`) as one chain from K = 0.
+  This is the non-OpenMP semantics.
+- **`pixel-major-omp:T`** (oracle only). The standalone as distributed: it was built with `-fopenmp`.
+  - T virtual threads; row i belongs to thread `i mod T`.
+  - Each thread walks its rows in increasing order (`for col, for pass`) with one K that starts at 0 and is never reset.
 
 Notes:
 - 2^22 bounds K0 so that a chain consuming fewer than 2^22 draws never reaches the 2^23 wrap. That keeps every value in
@@ -123,10 +131,13 @@ hit iff t_sphere > eps                       # Scene::intersect, painterly.cpp:1
   - `none`: every sphere uses the exact quadratic.
 - **Exact quadratic** (non-ghost spheres):
   ```
-  a = dot(d,d);  b = 2·dot(o−c, d);  c' = |o−c|² − r²;  disc = b² − 4ac'
-  sol1 = (−b + sqrt(disc))/(2a);  sol2 = (−b − sqrt(disc))/(2a)
+  a = dot(d,d);  b = dot((o − c)·2, d);  c' = dot(o − c, o − c) − r²;  disc = b² − 4·a·c'
+  if disc < 0: miss;  q = sqrt(disc);  sol1 = −b + q;  sol2 = −b − q
+  t = (sol2 > eps) ? sol2/(2a) : ((sol1 > eps) ? sol1/(2a) : 0)
+  hit iff t > eps
   ```
-  Apply the same eps rule to sol2, then sol1.
+  - The eps comparison acts on the *undivided* roots, exactly as in the ghost branch.
+  - With a == 1 the expression equals the original bit for bit, apart from `/(2a)` vs `/2`, which agree when a = 1.
 - **Blender.**
   - Point and spot lights are ghost spheres with `r = shadow_soft_size`; r = 0 is allowed and still produces the cone.
   - Spot lights multiply their emission by Blender's spot cone falloff, evaluated at the direction from the centre to the
@@ -167,11 +178,14 @@ with the oracle, record the per-depth terms and evaluate them backward with the 
 
 **smallpaint camera** (camera type `smallpaint`, reference scenes only; `painterly.cpp:171-179, 289-293`):
 ```
-fovx = float(π/4);  fovy = (h/w)·fovx
-cam  = ( ((2·row − w)/w)·tan(fovx) + jx,  ((2·col − h)/h)·tan(fovy) + jy,  −1 )
+fovx = float(PI/4);  fovy = float((h/w)·fovx)          # PI = 3.1415926536, smallpaint's macro (painterly.cpp:33)
+cam  = ( ((2·row − w)/w)·tan((double)fovx) + jx,  ((2·col − h)/h)·tan((double)fovy) + jy,  −1 )
 ray  = (origin 0, normalize(cam))
 jx = rng_signed(seed, PURPOSE_JITTER_X, 0, row, col, pass) · jitter;  jy likewise with PURPOSE_JITTER_Y
 ```
+- `tan` is evaluated in **double** on the float-rounded angle, as in the shipped GCC 5.4 binary that rendered the reference.
+  Current libstdc++ would resolve `tan(float)` to the float overload and fold it to exactly 1.0f. The oracle and the core
+  both write `tan((double)fovx)` explicitly.
 - Reference `jitter = 1/700` image-plane units (`painterly.cpp:291-292`).
 - Note the GUI quirk: `w` (width) scales the *row* term. The reference image is square, so this is harmless.
 

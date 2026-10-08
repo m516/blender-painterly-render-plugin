@@ -33,7 +33,7 @@ Read before working:
    - Format C++ with the repo `.clang-format`.
    - Python is PEP 8 and must be `ruff`-clean. Use type hints on public functions and docstrings that state units and conventions.
    - Choose names carefully and keep them consistent across C++, Python and docs. The same concept gets the same word everywhere:
-     `chain`, `lane`, `pass`, `K`, `ghost sphere`, `spiral frame`.
+     `chain`, `lane`, `pass`/`passes` (never "spp" in our code), `K`, `k_consumed`, `object_id`, `ghost sphere`, `spiral frame`.
 4. **Environment.**
    - Use the project virtual environment only (`make env`: uv, `.venv`, Python 3.13). Never `pip install` globally.
    - Downloads go to `.cache/` (git-ignored), never into tracked paths.
@@ -53,9 +53,10 @@ Read before working:
 
      <2-4 line summary>
 
-     Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+     Co-Authored-By: Claude <model you run as, e.g. Haiku 5.5> <noreply@anthropic.com>
      Claude-Session: https://claude.ai/code/session_01KwaH7xfx7RfCCpSs6BC91G
      ```
+     Name the model you actually run as. Use the marketing name only, never an API model id.
    - Do not push.
    - Final report: files changed, acceptance results (pass/fail with the key output lines), any deviation from the card.
 
