@@ -1,0 +1,44 @@
+[build-system]
+requires = ["scikit-build-core>=1.1", "nanobind>=3.1"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "painterly-core"
+version = "0.1.0"
+description = "Native core (_painterly) of the Painterly render engine for Blender"
+requires-python = ">=3.12"
+license = "GPL-3.0-or-later"
+
+[tool.scikit-build]
+wheel.py-api = "cp312"            # stable ABI: one wheel serves Blender's Python 3.13
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"
+[tool.scikit-build.cmake.define]
+PAINTERLY_BUILD_TESTS = "OFF"
+PAINTERLY_BUILD_ORACLE = "OFF"
+
+[tool.uv]
+package = false                   # `uv sync` installs deps only; the C++ module is built by `make build`
+environments = ["python_version == '3.13'"]   # bpy==5.2.2 (group blender) supports only Python 3.13
+
+[tool.uv.workspace]
+members = ["analysis"]
+
+[tool.uv.sources]
+painterly-analysis = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff", "clang-format==18.1.8", "numpy==2.3.4",
+       "nanobind>=3.1", "scikit-build-core>=1.1", "cmake>=3.28", "ninja"]
+analysis = ["painterly-analysis"]
+blender = ["bpy==5.2.2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "analysis/tests"]
+markers = ["slow: takes more than ~10 s"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
