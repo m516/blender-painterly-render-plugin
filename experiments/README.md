@@ -7,8 +7,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 
 | # | Date | Slug | Question | Status | Conclusion |
 |---|------|------|----------|--------|------------|
-
-No experiments yet.
+| 001 | 2026-10-08 | oracle-reproduction | Does the compiled oracle reproduce the reference, and what doesn't matter? | draft | DRAFT (Haiku), pending Opus review: H1 supported, H2 refuted, H3 supported, H4 supported (P_ref 15244, extrapolated), H5 supported |
 
 ## How to run
 

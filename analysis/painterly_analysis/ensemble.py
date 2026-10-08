@@ -18,25 +18,20 @@ from jax import Array
 from jax.scipy.special import betainc
 
 _ALTERNATIVES = ("two-sided", "greater", "less")
-# Ties are counted within 64 eps of the largest |statistic|: float64 summation round-off, as in
-# SciPy's permutation tests.
-_TIE_ULPS = 64
 _EPS = float(np.finfo(np.float64).eps)
 # Sign-flip tests enumerate all 2**n patterns exactly up to this n (2**20 float64 values: 8 MiB).
 SIGN_FLIP_EXACT_MAX_N = 20
 # Patterns evaluated per block in the exact sign-flip enumeration, to bound memory.
 _SIGN_FLIP_BLOCK = 2**16
+# permutation_pvalue enumerates every split when there are at most PERMUTATION_MAX_EXACT of them.
+# Otherwise it draws PERMUTATION_RESAMPLES random permutations.
+PERMUTATION_MAX_EXACT = 100_000
+PERMUTATION_RESAMPLES = 100_000
 
 
 def _check_alternative(alternative: str) -> None:
     if alternative not in _ALTERNATIVES:
         raise ValueError(f"alternative must be one of {_ALTERNATIVES}, got {alternative!r}")
-
-
-def _tie_tolerance(stats: np.ndarray) -> float:
-    # Mirror-image splits can differ by a few ulps of the largest statistic through float64
-    # summation round-off.
-    return _TIE_ULPS * _EPS * float(np.max(np.abs(stats)))
 
 
 def _check_finite(*samples: np.ndarray) -> None:
@@ -45,9 +40,12 @@ def _check_finite(*samples: np.ndarray) -> None:
         raise ValueError("samples must be finite (got NaN or inf)")
 
 
-def _count_as_extreme(stats: np.ndarray, observed: float, alternative: str) -> int:
-    """Count the statistics at least as extreme as ``observed`` in the direction of the test."""
-    tol = _tie_tolerance(np.append(stats, observed))
+def _count_as_extreme(stats: np.ndarray, observed: float, alternative: str, tol: float) -> int:
+    """Count the statistics at least as extreme as ``observed`` in the direction of the test.
+
+    A statistic within ``tol`` of the boundary counts as a tie. Each caller passes the float64
+    round-off bound of its statistic.
+    """
     if alternative == "two-sided":
         return int(np.count_nonzero(np.abs(stats) >= abs(observed) - tol))
     if alternative == "greater":
@@ -60,14 +58,19 @@ def permutation_pvalue(
     y,
     alternative: str = "two-sided",
     *,
-    max_exact: int = 100_000,
-    n_resamples: int = 100_000,
+    max_exact: int = PERMUTATION_MAX_EXACT,
+    n_resamples: int = PERMUTATION_RESAMPLES,
 ) -> float:
     """Two-sample permutation p-value for the statistic ``mean(x) - mean(y)``.
 
     The test is exact when ``C(n + m, n) <= max_exact``: every split of the pooled sample into
     groups of sizes n and m is enumerated. Otherwise it uses ``n_resamples`` random permutations
     drawn with ``jax.random.PRNGKey(0)``, and the p-value is ``(k + 1) / (N + 1)``.
+
+    Ties: a split counts as at least as extreme when its statistic is within
+    ``tol = (n + m) * eps * max|pooled|`` of the observed one. ``(n + m) * eps`` is the float64
+    summation round-off bound gamma_{n+m} for means of n + m values (CLAUDE.md rule 2), scaled by
+    the data, not by the statistic. Mirror splits differ only by round-off, so both are counted.
 
     Raises ValueError if any sample is NaN or inf.
     """
@@ -78,7 +81,9 @@ def permutation_pvalue(
     if n < 1 or m < 1:
         raise ValueError("both groups need at least one value")
     _check_finite(xs, ys)
-    pooled = jnp.asarray(np.concatenate([xs, ys]))
+    pooled_np = np.concatenate([xs, ys])
+    tol = (n + m) * _EPS * float(np.max(np.abs(pooled_np)))
+    pooled = jnp.asarray(pooled_np)
     total = jnp.sum(pooled)
 
     def stat_from_sum(sum_x):
@@ -94,7 +99,7 @@ def permutation_pvalue(
         ).reshape(comb, n)
         stats = np.asarray(stat_from_sum(jnp.sum(pooled[jnp.asarray(idx)], axis=1)))
         # itertools.combinations yields (0, ..., n-1) first: that is the observed split.
-        return _count_as_extreme(stats, float(stats[0]), alternative) / comb
+        return _count_as_extreme(stats, float(stats[0]), alternative, tol) / comb
 
     keys = jax.random.split(jax.random.PRNGKey(0), n_resamples)
 
@@ -104,7 +109,7 @@ def permutation_pvalue(
 
     stats = np.asarray(stat_from_sum(jax.lax.map(one_permutation, keys)))
     observed = float(stat_from_sum(jnp.sum(pooled[:n])))
-    count = _count_as_extreme(stats, observed, alternative)
+    count = _count_as_extreme(stats, observed, alternative, tol)
     return (count + 1) / (n_resamples + 1)
 
 
@@ -116,6 +121,10 @@ def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> floa
     ``n_resamples`` Rademacher patterns with ``jax.random.PRNGKey(0)``, and the p-value is
     ``(k + 1) / (N + 1)``.
 
+    Ties: a pattern counts as at least as extreme when its statistic is within
+    ``tol = n * eps * max|x|`` of the observed one. ``n * eps`` is the float64 summation round-off
+    bound gamma_n for a mean of n values (CLAUDE.md rule 2), scaled by the data.
+
     Raises ValueError if any sample is NaN or inf.
     """
     _check_alternative(alternative)
@@ -124,6 +133,7 @@ def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> floa
     if n < 1:
         raise ValueError("need at least one value")
     _check_finite(xs)
+    tol = n * _EPS * float(np.max(np.abs(xs)))
     values = jnp.asarray(xs)
     observed = float(jnp.mean(values))
 
@@ -137,7 +147,7 @@ def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> floa
             blocks.append(signs @ values)
         stats = np.asarray(jnp.concatenate(blocks)) / n
         # Pattern code 0 (all signs +) is the observed sample.
-        return _count_as_extreme(stats, observed, alternative) / total
+        return _count_as_extreme(stats, observed, alternative, tol) / total
 
     keys = jax.random.split(jax.random.PRNGKey(0), n_resamples)
 
@@ -146,7 +156,7 @@ def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> floa
         return jnp.dot(signs, values) / n
 
     stats = np.asarray(jax.lax.map(one_flip, keys))
-    count = _count_as_extreme(stats, observed, alternative)
+    count = _count_as_extreme(stats, observed, alternative, tol)
     return (count + 1) / (n_resamples + 1)
 
 
@@ -218,12 +228,31 @@ def prediction_interval(samples, alpha: float) -> tuple[float, float]:
     return mean - half, mean + half
 
 
+def _min_attainable_pvalue(n: int, m: int) -> float:
+    """Smallest two-sided p-value that ``permutation_pvalue`` can return for sizes n and m.
+
+    Exact branch: the observed split is the most extreme one. When n == m its mirror split is
+    equally extreme, so the minimum is ``(2 if n == m else 1) / C(n + m, n)``. Monte Carlo branch:
+    the minimum is ``1 / (n_resamples + 1)``, reached when no resampled statistic is as extreme as
+    the observed one.
+    """
+    splits = math.comb(n + m, n)
+    if splits <= PERMUTATION_MAX_EXACT:
+        return (2 if n == m else 1) / splits
+    return 1 / (PERMUTATION_RESAMPLES + 1)
+
+
 @dataclass
 class Comparison:
-    """Result of ``compare_ensembles``: per-key p-values and Holm decisions."""
+    """Result of ``compare_ensembles``: per-key p-values, Holm decisions and the power limit.
+
+    ``min_attainable_p`` is the smallest p-value any key can reach with these ensemble sizes. It is
+    the same for every key, because every key compares the same two ensembles.
+    """
 
     pvalues: dict
     rejected: dict
+    min_attainable_p: float
 
     @property
     def indistinguishable(self) -> bool:
@@ -239,9 +268,18 @@ def compare_ensembles(
     For each key, a two-sided permutation test is run between the values in ``a`` and in ``b``.
     The p-values are then Holm-corrected at family-wise level ``alpha``.
 
+    Power guard: Holm tests the smallest p-value against ``alpha / len(keys)``, the first
+    threshold. If even the smallest attainable p-value exceeds that threshold, no key can be
+    rejected, so the call raises ValueError.
+
     A ValueError from any key is re-raised with the key name prefixed, e.g. ``"key: samples must
     be finite (got NaN or inf)"``.
     """
+    keys = list(keys)
+    if not keys:
+        raise ValueError("need at least one key")
+    if not a or not b:
+        raise ValueError("both ensembles need at least one run")
     pvalues: dict[str, float] = {}
     for key in keys:
         xs = [run[key] for run in a]
@@ -250,7 +288,63 @@ def compare_ensembles(
             pvalues[key] = permutation_pvalue(xs, ys, "two-sided")
         except ValueError as e:
             raise ValueError(f"{key}: {e}") from e
-    return Comparison(pvalues=pvalues, rejected=holm(pvalues, alpha))
+    # Checked after the samples, so bad data is reported before the power of the design.
+    min_attainable = _min_attainable_pvalue(len(a), len(b))
+    threshold = alpha / len(keys)
+    if min_attainable > threshold:
+        raise ValueError(
+            f"{len(keys)} keys at alpha={alpha}: the smallest attainable p {min_attainable:.3g} "
+            f"exceeds the first Holm threshold {threshold:.3g}, so no key can be rejected"
+        )
+    return Comparison(
+        pvalues=pvalues,
+        rejected=holm(pvalues, alpha),
+        min_attainable_p=min_attainable,
+    )
+
+
+def effect_summary(a: list[dict], b: list[dict], keys: Iterable[str]) -> dict[str, dict]:
+    """Descriptive effect sizes of ensemble ``a`` against ensemble ``b``, key by key.
+
+    For each key, ``sd`` is the sample standard deviation (ddof 1), and ``n_a``, ``n_b`` are the
+    ensemble sizes. The entries are:
+    - ``mean_a``, ``sd_a``, ``mean_b``, ``sd_b``;
+    - ``diff = mean_a - mean_b``;
+    - ``rel_diff = diff / |mean_b|``, or None when ``mean_b`` is 0;
+    - ``cohen_d = diff / s_p`` with Cohen's pooled sd
+      ``s_p = sqrt(((n_a - 1) sd_a**2 + (n_b - 1) sd_b**2) / (n_a + n_b - 2))``, or None when
+      ``s_p`` is 0. A key that is constant in both ensembles, such as a light region fixed at 240,
+      has ``cohen_d`` None.
+
+    None stands in for an undefined value, so the result never holds NaN. Each ensemble needs at
+    least two runs. Raises ValueError on NaN or inf.
+    """
+    if len(a) < 2 or len(b) < 2:
+        raise ValueError("need at least two runs in each ensemble")
+    summary: dict[str, dict] = {}
+    for key in keys:
+        xs = np.array([run[key] for run in a], dtype=np.float64)
+        ys = np.array([run[key] for run in b], dtype=np.float64)
+        try:
+            _check_finite(xs, ys)
+        except ValueError as e:
+            raise ValueError(f"{key}: {e}") from e
+        mean_a, mean_b = float(np.mean(xs)), float(np.mean(ys))
+        sd_a, sd_b = float(np.std(xs, ddof=1)), float(np.std(ys, ddof=1))
+        diff = mean_a - mean_b
+        pooled = math.sqrt(
+            ((xs.size - 1) * sd_a**2 + (ys.size - 1) * sd_b**2) / (xs.size + ys.size - 2)
+        )
+        summary[key] = {
+            "mean_a": mean_a,
+            "sd_a": sd_a,
+            "mean_b": mean_b,
+            "sd_b": sd_b,
+            "diff": diff,
+            "rel_diff": diff / abs(mean_b) if mean_b != 0.0 else None,
+            "cohen_d": diff / pooled if pooled != 0.0 else None,
+        }
+    return summary
 
 
 def separated(pos: list[float], neg: list[float], alternative: str, alpha: float = 0.01) -> bool:

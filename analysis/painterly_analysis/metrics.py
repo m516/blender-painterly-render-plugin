@@ -5,6 +5,9 @@ otherwise. Masks are boolean (H, W) arrays selecting pixels. Coordinates are (ro
 Every function casts its inputs to float64 first, so uint8 display images can be passed directly.
 """
 
+import re
+from collections.abc import Iterable
+
 import jax.numpy as jnp
 import numpy as np
 from jax import Array
@@ -16,6 +19,8 @@ LUMA_REC709 = (0.2126, 0.7152, 0.0722)  # ITU-R BT.709 luma coefficients (defini
 # SPEC §9 object ids of type diffuse, excluding the light (id 9). The scene-list order is the
 # object id (painterly.cpp:252-262).
 DIFFUSE_REGION_IDS = (2, 3, 4, 5, 6, 7, 8)
+# Metric keys of one region start with "r{id}." (see ``measure``).
+_REGION_KEY = re.compile(r"r(\d+)\.")
 
 
 def _f64(x) -> Array:
@@ -299,3 +304,22 @@ def measure(
     out["all.clip_fraction"] = float(clip_fraction(ab8))
     out["all.spectral_slope"] = float(radial_spectral_slope(hp_ab, union))
     return out
+
+
+def DIFFUSE_KEY_FAMILY(keys: Iterable[str]) -> list[str]:
+    """Keys of the diffuse family: every ``r{id}.*`` key with id in ``DIFFUSE_REGION_IDS``, plus
+    every ``all.*`` key. Order is that of ``keys``.
+
+    This is the standard family for ``compare_ensembles``. The light (id 9) and any other
+    non-diffuse region are left out. For the GUI scene the family has 46 keys: 6 measured diffuse
+    regions with 7 keys each, plus 4 ``all.*`` keys.
+    """
+    family = []
+    for key in keys:
+        if key.startswith("all."):
+            family.append(key)
+            continue
+        match = _REGION_KEY.match(key)
+        if match is not None and int(match.group(1)) in DIFFUSE_REGION_IDS:
+            family.append(key)
+    return family
