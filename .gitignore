@@ -1,0 +1,14 @@
+.venv/
+build/
+dist/
+wheelhouse/
+.cache/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+experiments/**/out/
+*.blend1
+.DS_Store
