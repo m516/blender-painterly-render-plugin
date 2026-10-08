@@ -80,10 +80,10 @@ The core is new C++20 that mirrors Cycles' layout and names: `util/ kernel/ bvh/
 - **Escape hatch.** The Python sync emits Cycles node names and socket names, so a later fork would reuse the whole Python side.
 
 **Isolation from Blender's own libraries:**
-- Embree 4.4.1 is built **static**, with `EMBREE_API_NAMESPACE=pnt_embree` and INTERNAL tasking (no TBB).
+- Embree 4.4.1 is built **static**, with `EMBREE_API_NAMESPACE=painterly_embree` and INTERNAL tasking (no TBB).
 - There is no OIIO, OCIO or TBB.
 - Everything compiles with `CCL_NAMESPACE_BEGIN`→`namespace painterly {`, `-fvisibility=hidden` and a version script; only `PyInit__painterly` is exported.
-- Builds target manylinux_2_28 with GCC 11, and MSVC v143 14.44, matching Blender's C runtime (CRT).
+- Builds target manylinux_2_28 (its devtoolset GCC) with a static libstdc++/libgcc, and MSVC with the static CRT (`/MT`), so the module never binds to Blender's C++ runtime.
 
 **Distribution.**
 - extensions.blender.org ToS §3.6 (Aug 2026) requires pure-Python source, so the extension is **self-hosted**: one cp312-abi3 wheel per platform, built with `--split-platforms`.

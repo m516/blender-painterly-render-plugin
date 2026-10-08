@@ -80,7 +80,8 @@ If a download is blocked, report the host. Do not work around the proxy.
 | `make test` | C++ unit tests + `pytest -m "not slow"` |
 | `make test-slow` | all pytest tests including slow ones |
 | `make lint` | `ruff check`, `ruff format --check`, `clang-format --dry-run` |
-| `make check` | lint + build + test |
+| `make audit` | `tools/symbol_audit.py` on the built `_painterly` (exports, dependencies, imports) |
+| `make check` | lint + build + test + audit |
 
 ## Experiments
 
