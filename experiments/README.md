@@ -9,6 +9,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 |---|------|------|----------|--------|------------|
 | 001 | 2026-10-08 | oracle-reproduction | Does the compiled oracle reproduce the reference, and what doesn't matter? | final | Oracle reproduces the reference (means 18/18, texture ρ≈0.99); reference is effectively converged; loop order matters; per-thread restarts change texture slightly |
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | draft | not yet (pre-registration only; renders not run) |
+| 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | draft | H1 and H2 supported (exact selftest in Blender, 20/20 renders equal). H3 refuted: 4 violating bindings, all allocator symbols (`malloc`, `free`, `realloc`, `posix_memalign`) bound to Blender's bundled `libtbbmalloc_proxy.so.2`; coverage 249/249; controls 5 and 122 violations |
 
 ## How to run
 

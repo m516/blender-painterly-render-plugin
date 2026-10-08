@@ -1,14 +1,23 @@
 BUILD_DIR ?= build/dev
+BLENDER_VERSION ?= 5.2.2
 export PAINTERLY_BUILD_DIR = $(BUILD_DIR)
 export PATH := $(abspath .venv/bin):$(PATH)
+# Where `make blender` installs the executable. Nothing touches the network at parse time.
+BLENDER ?= $(abspath .cache/blender/blender-$(BLENDER_VERSION)-linux-x64/blender)
+export BLENDER
 
-.PHONY: env env-blender build test-cpp test-py test test-slow lint format audit check clean
+.PHONY: env env-blender blender build test-cpp test-py test test-slow lint format audit check clean
 
 env:
 	uv sync --locked --group dev --group analysis
 
 env-blender:
 	uv sync --locked --group dev --group analysis --group blender
+
+# Fetches and verifies Blender BLENDER_VERSION (5.2.2 by default) under .cache/blender/ and prints the executable's path.
+# A second run only verifies.
+blender:
+	.venv/bin/python tools/fetch_blender.py --version $(BLENDER_VERSION)
 
 build:
 	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython_EXECUTABLE=$(abspath .venv/bin/python)
