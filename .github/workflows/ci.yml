@@ -1,0 +1,41 @@
+# Continuous integration (T0.4): lint, build and test on Linux.
+# The venv's ninja (dev group) is used by `make build`, so no apt packages are installed.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v4
+        with:
+          path: build/dev/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Create the project environment
+        run: make env
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
