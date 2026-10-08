@@ -8,6 +8,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
+# static CRT: never bind to Blender's MSVC runtime
+cmake_policy(SET CMP0091 NEW)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 option(PAINTERLY_BUILD_MODULE "Build the _painterly Python module" ON)
 option(PAINTERLY_BUILD_TESTS "Build the doctest unit tests" ON)
 option(PAINTERLY_BUILD_ORACLE "Build the smallpaint_oracle reference CLI" ON)
@@ -20,4 +24,8 @@ else()
 endif()
 
 enable_testing()
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(painterly_embree)
+
 add_subdirectory(src)

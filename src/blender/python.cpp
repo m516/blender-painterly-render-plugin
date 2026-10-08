@@ -2,6 +2,11 @@
 // Native core of the Painterly render engine: the nanobind module _painterly.
 
 #include <nanobind/nanobind.h>
+// std::string <-> Python str. Without this caster nanobind raises std::bad_cast
+// when the dict is filled.
+#include <nanobind/stl/string.h>
+
+#include "selftest.h"
 
 namespace nb = nanobind;
 
@@ -39,8 +44,23 @@ static nb::dict version_info()
   return info;
 }
 
+static nb::dict selftest()
+{
+  const painterly::SelftestResult result = painterly::selftest_embree();
+  nb::dict info;
+  info["embree_version"] = result.embree_version;
+  info["hit"] = result.hit;
+  info["t"] = result.t;
+  info["prim_id"] = result.prim_id;
+  return info;
+}
+
 NB_MODULE(_painterly, m)
 {
   m.doc() = "Native core of the Painterly render engine (mirrors Cycles' _cycles).";
   m.def("version_info", &version_info, "Return version and build information as a dict.");
+  m.def("selftest",
+        &selftest,
+        "Trace one triangle with the statically linked Embree. Return a dict with embree_version, "
+        "hit, t and prim_id.");
 }
