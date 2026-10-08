@@ -130,6 +130,17 @@ def _column(runs: list[dict], key: str) -> list[float]:
     return [run[key] for run in runs]
 
 
+def _diffuse_only(object_id: np.ndarray) -> np.ndarray:
+    """``object_id`` with every non-diffuse id set to -1, so that ``metrics.measure`` skips it.
+
+    Only the diffuse regions are measured (README, deviation D5). A region mask is
+    ``erode(object_id == r)`` and the ``all.*`` keys use the union of the diffuse masks, so the
+    pixels set to -1 change no diffuse or ``all.*`` value. Without this, the light (id 9) has one
+    eroded pixel at 64 px, no lag-1 pairs, and ``metrics.measure`` raises.
+    """
+    return np.where(np.isin(object_id, DIFFUSE_REGION_IDS), object_id, -1)
+
+
 def _with_luma(run: dict) -> dict:
     """``run`` plus ``r4.luma``: the mean luminance of the back wall, Rec.709 of its mean RGB."""
     red, green, blue = (run[f"r{BACK_WALL_ID}.mean.{c}"] for c in "RGB")
@@ -405,7 +416,10 @@ def main(argv: list[str] | None = None) -> None:
     measured = [r for r in DIFFUSE_REGION_IDS if r in masks]
     absent = [r for r in DIFFUSE_REGION_IDS if r not in masks]
 
-    raw = {name: measure_ensemble(jobs, reference8, object_id) for name, jobs in ensembles.items()}
+    measure_map = _diffuse_only(object_id)
+    raw = {
+        name: measure_ensemble(jobs, reference8, measure_map) for name, jobs in ensembles.items()
+    }
     keys = sorted(raw[POSITIVE][0])
     for name, metric_runs in raw.items():
         if any(sorted(run) != keys for run in metric_runs):
@@ -455,7 +469,7 @@ def main(argv: list[str] | None = None) -> None:
             "absent": absent,
         },
         "object_id_values": sorted(int(v) for v in np.unique(object_id)),
-        "metric_keys": {"all": len(keys), "diffuse_family": len(family), "family": family},
+        "metric_keys": {"measured": len(keys), "diffuse_family": len(family), "family": family},
         "configurations": {
             name: {"options": dict(jobs[0].options), "seeds": [job.seed for job in jobs]}
             for name, jobs in ensembles.items()
@@ -481,7 +495,7 @@ def main(argv: list[str] | None = None) -> None:
         raise RuntimeError("NaN in results.json")
     (out_dir / "results.json").write_text(text, encoding="utf-8")
 
-    print(f"keys all={len(keys)} diffuse family={len(family)}; passes={passes}")
+    print(f"keys measured={len(keys)} diffuse family={len(family)}; passes={passes}")
     print(f"measured regions {measured}, absent {absent}")
     _print_tests("H1 r4.luma, separated less", h1)
     _print_tests("H2 all.pattern_corr, Holm over three", h2)

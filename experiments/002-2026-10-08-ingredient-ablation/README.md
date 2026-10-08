@@ -30,7 +30,8 @@
 ### Common definitions
 
 - A configuration is an ensemble of 8 pairs. A pair is two independent half renders (seeds 2k and 2k+1 of one
-  configuration), each with P = 64 passes at 400 px. Metric keys are those of `metrics.measure`.
+  configuration), each with P = 64 passes at 400 px. Metric keys are those of `metrics.measure`, over the diffuse
+  regions only (deviation D5).
 - Back-wall luminance `r4.luma` is the Rec.709 luminance of the region-4 mean RGB, `0.2126 R + 0.7152 G + 0.0722 B`,
   over the eroded back-plane mask. It is a derived key, added in `analyze.py`.
 - The significance level is alpha = 0.01 (written SIGNIFICANCE in the code). It is not the oracle option `alpha`.
@@ -147,8 +148,8 @@ blocks 10-18, the first free blocks after 001's block 9. New renders: 144 (9 con
 ### Analysis
 
 - Metrics: `experiment.measure_ensemble` per configuration, which calls `metrics.measure` on each pair against the
-  400 px GUI reference `tests/data/reference/smallpaint_painterly.ppm`. The object-id map of the first render of each
-  configuration is asserted to be identical across configurations.
+  400 px GUI reference `tests/data/reference/smallpaint_painterly.ppm`, with the diffuse-only id map of D5. The
+  object-id map of the first render of each configuration is asserted to be identical across configurations.
 - Tests, decision rules and effect sizes are as in Hypothesis, over the keys named there.
 - K draws: `k_consumed` of each render, averaged over pixels and divided by P.
 - Figures (`io.write_png`):
@@ -161,9 +162,10 @@ blocks 10-18, the first free blocks after 001's block 9. New renders: 144 (9 con
 ### Deviations from the card, decided before the analysis
 
 - **D1 (H5 keys).** The card's H5 says "compare_ensembles on all keys". The card's design rule says the diffuse family
-  for every comparison, and this experiment follows the design rule. With all 67 keys the smallest attainable p-value,
-  2 / C(16, 8) = 1.55e-4, exceeds the first Holm threshold 0.01 / 67 = 1.49e-4, so `compare_ensembles` would raise and no
-  key could be rejected.
+  for every comparison, and this experiment follows the design rule. With all 67 keys that `metrics.measure` returns
+  at 400 px (46 diffuse, plus 21 of regions 0, 1 and 9; counted from one pair of experiment 001's `img64`), the
+  smallest attainable p-value, 2 / C(16, 8) = 1.55e-4, exceeds the first Holm threshold 0.01 / 67 = 1.49e-4, so
+  `compare_ensembles` would raise and no key could be rejected.
 - **D2 (positive control options).** The card writes the positive control as `chain=image, ghost=all` on `scene=gui`.
   Both are oracle defaults, and the explicit options would change the cache key. The option set is therefore left as in
   experiment 001 (`chain=image`, `size=400`, `passes=64`). Behaviour is identical, and the 16 renders are reused.
@@ -173,3 +175,10 @@ blocks 10-18, the first free blocks after 001's block 9. New renders: 144 (9 con
 - **D4 (H4 and H5 wording).** The card does not define "changes both region means and texture" or "keeps most of the
   look" as decisions. H4 uses the key classes defined above. H5 has no numeric threshold, so its verdict is the
   comparison outcome, and the gap is reported through the ratios and effect sizes.
+- **D5 (measured regions).** `analyze.py` measures the diffuse regions only. Before `metrics.measure`, every non-diffuse
+  id (0 mirror sphere, 1 glass sphere and 9 light, SPEC §9) is set to -1 (`_diffuse_only`), so `region_masks` skips it.
+  Without this, the light has one eroded pixel at 64 px, so it has no lag-1 pairs, and `metrics.measure` raises. The
+  non-diffuse keys (21 at 400 px) enter no test, table or decision here. A diffuse mask is `erode(object_id == r)`, and
+  the `all.*` keys use the union of the diffuse masks, so the pixels set to -1 change no value that is used. Checked on
+  the 2-pair smoke at 128 px: the figures are byte-identical, and `results.json` differs from the unrestricted version
+  only in `metric_keys` (67 measured keys before, 46 now).
