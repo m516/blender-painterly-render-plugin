@@ -59,6 +59,17 @@ Read before working:
    - Do not push.
    - Final report: files changed, acceptance results (pass/fail with the key output lines), any deviation from the card.
 
+## Network notes (this container's egress proxy)
+
+| Source | Status | Use instead |
+|---|---|---|
+| `projects.blender.org` raw files | blocked (403) | the GitHub mirror, `https://raw.githubusercontent.com/blender/blender/<tag>/<path>` (e.g. tag `v5.2.2`) |
+| `github.com/.../archive/*.tar.gz`, `codeload.github.com`, `api.github.com` | blocked | `git` over HTTPS, e.g. CMake `FetchContent_Declare(... GIT_REPOSITORY https://github.com/<o>/<r>.git GIT_TAG <tag> GIT_SHALLOW TRUE)` or `git ls-remote` |
+| `raw.githubusercontent.com`, PyPI, `download.blender.org`, `users.cg.tuwien.ac.at`, `apache.org` | allowed | — |
+| `www.gnu.org` | allowed but flaky | retry `curl --retry 5 --retry-all-errors` |
+
+If a download is blocked, report the host. Do not work around the proxy.
+
 ## Commands (see `Makefile`)
 
 | Command | Does |
