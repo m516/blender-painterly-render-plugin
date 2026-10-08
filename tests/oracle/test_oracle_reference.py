@@ -25,8 +25,9 @@ REPORT_PATH = REPO_ROOT / ".cache" / "test_reports" / "oracle_reference.json"
 # 8 pairs give exact permutation p-values down to 1.6e-4 (= 2 / C(16, 8)). With alpha = 0.01 and
 # Holm over at most 4 comparisons this is enough.
 ENSEMBLE_PAIRS = 8
-# Passes per half render. Provisional: the X-oracle experiment estimates the reference's pass
-# count, and this constant then cites it.
+# Passes per half render: a cost/power knob. Experiment 001 found the reference effectively
+# converged (P_ref >~ 9e3 passes, unreachable here); 32 passes already separate every negative
+# control at the smallest attainable p (experiments/001-2026-10-08-oracle-reproduction).
 ENSEMBLE_PASSES = 32
 # Significance level of the decisions, Holm-corrected across the negative controls. This is the
 # test's own level, not the oracle's ``alpha`` knob (the ``normalized`` control's exponent).

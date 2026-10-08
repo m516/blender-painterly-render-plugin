@@ -277,14 +277,43 @@ Bootstrap resamples with q <= 0 (P_ref = inf): 3 of 1000. Resamples with sigma_n
 
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-08). The Haiku draft is superseded. The numbers are those in Results.
 
-- H1 (reference match): supported. 18/18 reference region means lie inside their 1 - 0.01/18 prediction intervals of the 16 `img256` single renders.
-- H2 (threads are irrelevant): refuted. img64 vs omp4_64 rejects 4 of 46 keys (smallest p 1.55e-4, largest |d| 9.09 on `r7.structure_std`). img64 vs omp16_64 rejects 9 of 46 keys (largest |d| 24.6 on `r7.structure_std`).
-- H3 (generator wrap is irrelevant): supported. img64 vs exact64 rejects 0 of 46 keys; the smallest p is 0.0320, above the first Holm threshold 0.01/46 = 2.17e-4.
-- H4 (converged texture): supported. All five adjacent steps of `all.pattern_corr` increase (one-sided p = 7.77e-5 each, Holm at 0.01 rejects all five, no step is rejected in the "less" direction). P_ref = 15244 passes (95% bootstrap [8865, 69266]; WLS 10912; OLS over P >= 32 14882). This is outside the tested range [16, 512], so the recommended passes of 15244 is an extrapolation.
-- H5 (loop order matters): supported. pm64 has a lower `all.pattern_corr` than img64 (0.2947 vs 0.5889), with p_less = 7.77e-5 <= 0.01.
+**The compiled oracle reproduces the reference, in level and in pattern.**
+- All 18 region/channel means of the reference lie inside the 1−0.01/18 prediction intervals of single 256-pass renders (H1).
+  The largest gap is 0.19 grey levels, on the blue sphere.
+- The texture matches as well. Remove the render's own noise with the identical-structure model, and the oracle's converged
+  back-wall texture correlates **ρ ≈ 0.99** with the reference's. ρ rises from 0.988 to 0.993 between P = 64 and 512.
+- The painterly pattern is therefore a deterministic function of scene, chain and loop order, not a lucky noise realization.
+  smallpaint_oracle is a sound ground truth.
 
-Notes for Opus review:
-- H4: var_ref - sigma_s^2 = 0.37 (sigma_s^2 = 33.07, var_ref = 33.44), so P_ref rests on a small margin over the variance floor. Three bootstrap resamples have q <= 0.
-- H2: omp-restart chains change the chain as well as the thread count. No configuration in this experiment isolates the thread count alone, so the refutation concerns the omp-restart chains.
+**Hypothesis by hypothesis**
+- **H1 supported**, as above.
+- **H2 refuted, and the reason is instructive.**
+  - The research claim "thread count is irrelevant" came from block-mean metrics. The fine-texture metrics see a real but small effect
+    of OpenMP-style per-thread restarts:
+    - `all.pattern_corr` −1.4% (T=4) and −2.2% (T=16);
+    - the ceiling's structure amplitude +18% and +51% (Cohen's d 9 and 25).
+  - Mechanism, a hypothesis for later work: every thread restarts at K = 0 at the start of each pass, so the first rows a thread takes
+    begin with the same short van der Corput prefix. In this scene those rows are the ceiling, at the top of the image.
+  - This is a property of the omp-restart *chain*, not of thread scheduling as such. The core's chains are thread-invariant by
+    construction (SPEC §3).
+  - The reference matches the continuous `image` chain best, so the shipped GUI binary (no OpenMP) is the right model.
+- **H3 supported.** The generator's 2^23 wrap does not matter: no key is rejected and the largest |d| is 1.18. That "no rejection" has
+  a smallest attainable p of 1.55e-4 against a first Holm threshold of 2.17e-4, so the family was powered.
+  Parity tests still use `--halton exact` (SPEC §2) because they are bitwise.
+- **H4 supported.** Pattern correlation with the reference rises at every doubling of P, from 0.35 at 16 to 0.87 at 512, so more passes
+  give cleaner strokes rather than less style.
+  - The reference is *effectively converged*. Its high-pass variance exceeds the fitted structure floor by only 1.1%, so P_ref is
+    bounded below at about 9×10³ passes (bootstrap 2.5th percentile) and is not identified above that. The ~1% structural mismatch
+    (ρ ≈ 0.99) is of the same size as the excess.
+  - The pre-registered rule "use round(P_ref) passes" is therefore withdrawn as unidentified and impractical.
+- **H5 supported.** Loop order is part of the look: pixel-major order (the 2016 standalone) correlates only 0.29 with the reference,
+  against 0.59 for pass-major at 64 passes.
+
+**Decisions for the project**
+- `tests/oracle/test_oracle_reference.py`: `ENSEMBLE_PASSES` stays 32. It is a cost/power knob: 32 already separates every negative
+  control at the smallest attainable p.
+- The "Smallpaint Reference" preset uses **1024 passes**. The back-wall noise/structure variance ratio is 168.5/P, so 0.16 at
+  1024 passes (it is 3.4 at the GUI default of 50). Users trade time for stroke clarity with `passes`.
+- The reference-mode chain stays `image`, the continuous chain (SPEC §3).
