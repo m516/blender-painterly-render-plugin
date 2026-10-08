@@ -36,7 +36,8 @@ DESIGN: dict[str, tuple[int, dict[str, object], int]] = {
     "s800_j1400": (800, {"jitter": JITTER_TUNED}, 30),
     # Amendment before rendering (Opus, M1 review 3): the artist-mode chain at the same sizes (H1d).
     "row_s200": (200, {"chain": "row"}, 31),
-    "row_s400": (400, {"chain": "row"}, 27),  # experiment 003's row (same option set): reused from the cache
+    # experiment 003's row (same option set): reused from the cache
+    "row_s400": (400, {"chain": "row"}, 27),
     "row_s800": (800, {"chain": "row"}, 32),
 }
 

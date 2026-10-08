@@ -9,8 +9,10 @@ Each configuration owns a disjoint block of 16 seeds (base seed = 16 * block ind
 control ``image`` is block 0 (seeds 0-15) with the option set of experiment 001's ``img64``, so its
 16 renders come from the cache. The card's first free block, 10, is taken by experiment 002 (blocks
 10-18). The nine other configurations therefore take blocks 19-27, the first free blocks after 002's
-last block, so every seed is globally unique. Amendment before rendering (Opus, M1 review 3): ``lane_1`` has exactly
-the option set of experiment 002's ``per_path_start`` and reuses its block 17; block 19 is left unused.
+last block, so every seed is globally unique.
+
+Amendment before rendering (Opus, M1 review 3): ``lane_1`` has exactly the option set of experiment
+002's ``per_path_start`` and reuses its block 17; block 19 is left unused.
 """
 
 from painterly_analysis.experiment import Job, ensemble_jobs
