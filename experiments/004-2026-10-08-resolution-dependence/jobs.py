@@ -16,8 +16,9 @@ shared with experiment 001 on purpose. The three new configurations take blocks 
 free blocks after experiment 003's last block (27), so every seed is globally unique.
 
 ``build_ensembles(pairs, scale)`` divides every size by ``scale``. The experiment uses
-``scale=1``. ``analyze.py`` uses ``pairs=2, scale=2`` (sizes 100, 200 and 400) only to validate
-itself on a smoke subset in a scratch cache.
+``scale=1``. ``analyze.py`` uses ``pairs=2, scale=4`` (sizes 50, 100 and 200, the smoke run) and
+``pairs=2, scale=2`` (sizes 100, 200 and 400) only to validate itself on a smoke subset in a scratch
+cache (README D6).
 """
 
 from painterly_analysis.experiment import Job, ensemble_jobs

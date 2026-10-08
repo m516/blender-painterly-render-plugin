@@ -5,14 +5,16 @@ Re-runs from the render cache, so every render must already exist (``jobs.py``).
 every test is an exact permutation test, and no random number is drawn.
 
 ``--pairs``, ``--scale``, ``--reference`` and ``--out-dir`` exist to validate this script on a
-smaller subset in a scratch cache (``--pairs 2 --scale 2`` gives sizes 100, 200 and 400). The
-defaults are the experiment.
+smaller subset in a scratch cache. ``--pairs 2 --scale 4`` gives sizes 50, 100 and 200 (the smoke
+run; region 2 erodes at 50 px, see README D6). ``--pairs 2 --scale 2`` gives sizes 100, 200 and 400,
+where all six diffuse regions are measured at every size. The defaults are the experiment.
 """
 
 import argparse
 import importlib.util
 import json
 import math
+from collections.abc import Iterable
 from pathlib import Path
 from types import ModuleType
 
@@ -102,7 +104,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--scale",
         type=int,
         default=1,
-        help="divide every native size by this (default: 1, the experiment; smoke runs use 4)",
+        help=(
+            "divide every native size by this (default: 1, the experiment; smoke runs use 4, "
+            "or 2 for sizes 100, 200 and 400)"
+        ),
     )
     return parser.parse_args(argv)
 
@@ -161,13 +166,13 @@ def _check_design(
         raise RuntimeError("seeds are not unique across configurations")
 
 
-def _diffuse_only(object_id: np.ndarray) -> np.ndarray:
-    """``object_id`` with every non-diffuse id set to -1, so that ``metrics.measure`` skips it.
+def _diffuse_only(object_id: np.ndarray, regions: Iterable[int]) -> np.ndarray:
+    """``object_id`` with every id outside ``regions`` set to -1, so that the metrics skip it.
 
-    Only the diffuse regions are measured, as in experiments 002 and 003. The light (id 9) is
-    excluded from every family.
+    ``regions`` are the measured diffuse regions. The light (id 9) is never one of them, as in
+    experiments 002 and 003, so it is excluded from every family.
     """
-    return np.where(np.isin(object_id, DIFFUSE_REGION_IDS), object_id, -1)
+    return np.where(np.isin(object_id, list(regions)), object_id, -1)
 
 
 def _min_attainable_p(n: int, m: int) -> float:
@@ -215,13 +220,16 @@ def _noise_corrected_lag1(hp_a, hp_b, mask, axis: int) -> float:
     return _masked_cov(x, y, pair) / _masked_cov(a, b, m)
 
 
-def _reference_free(sum_a, sum_b, passes: int, object_id: np.ndarray) -> dict[str, float]:
+def _reference_free(
+    sum_a, sum_b, passes: int, object_id: np.ndarray, regions: Iterable[int]
+) -> dict[str, float]:
     """Reference-free look metrics of one pair of half renders, at the render's own size.
 
     The definitions are those of ``metrics.measure`` (display, high-pass, erosion, diffuse regions),
     without the reference, plus the noise-corrected lag-1 of the structure (``slag1``). Keys are
     ``r{id}.mean.{R,G,B}``, ``r{id}.structure_std``, ``r{id}.lag1.{x,y}``, ``r{id}.slag1.{x,y}``,
-    ``r{id}.spectral_slope``, ``all.clip_fraction`` and ``all.spectral_slope``.
+    ``r{id}.spectral_slope``, ``all.clip_fraction`` and ``all.spectral_slope``. ``object_id`` is the
+    map whose ids select the masks, and ``regions`` are the ids measured.
     """
     a8 = smallpaint_display(sum_a, passes)
     b8 = smallpaint_display(sum_b, passes)
@@ -229,7 +237,7 @@ def _reference_free(sum_a, sum_b, passes: int, object_id: np.ndarray) -> dict[st
     hp_a = metrics.highpass(metrics.luminance(a8), HIGHPASS_SIZE)
     hp_b = metrics.highpass(metrics.luminance(b8), HIGHPASS_SIZE)
     hp_ab = metrics.highpass(metrics.luminance(ab8), HIGHPASS_SIZE)
-    masks = metrics.region_masks(_diffuse_only(object_id), ERODE_RADIUS)
+    masks = metrics.region_masks(_diffuse_only(object_id, regions), ERODE_RADIUS)
     if not masks:
         raise ValueError("no diffuse region survives erosion")
     out: dict[str, float] = {}
@@ -250,9 +258,11 @@ def _reference_free(sum_a, sum_b, passes: int, object_id: np.ndarray) -> dict[st
     return out
 
 
-def _reference_free_ensemble(jobs: list[Job], object_id: np.ndarray) -> list[dict[str, float]]:
+def _reference_free_ensemble(
+    jobs: list[Job], object_id: np.ndarray, regions: Iterable[int]
+) -> list[dict[str, float]]:
     """``_reference_free`` for each consecutive pair of jobs, in order. Every render must share the
-    configuration's object id map."""
+    configuration's object id map, which is checked here."""
     results: list[dict[str, float]] = []
     for first, second in zip(jobs[0::2], jobs[1::2], strict=True):
         a = load(first)
@@ -262,7 +272,7 @@ def _reference_free_ensemble(jobs: list[Job], object_id: np.ndarray) -> list[dic
                 raise ValueError(f"{first.name!r}: passes must be {PASSES}, got {render.passes}")
             if not np.array_equal(render.object_id, object_id):
                 raise ValueError(f"{first.name!r}: object id differs from its configuration's")
-        results.append(_reference_free(a.sum, b.sum, PASSES, object_id))
+        results.append(_reference_free(a.sum, b.sum, PASSES, object_id, regions))
     return results
 
 
@@ -294,6 +304,26 @@ def _downsampled_ensemble(
             raise ValueError(f"pair {first.name!r}: passes differ")
         results.append(
             metrics.measure(_box_down(a.sum), _box_down(b.sum), a.passes, ref8, object_id)
+        )
+    return results
+
+
+def _reference_free_downsampled(
+    jobs: list[Job], object_id: np.ndarray, regions: Iterable[int]
+) -> list[dict[str, float]]:
+    """``_reference_free`` for each pair after 2 x 2 box downsampling of the sums (README, H1b).
+
+    The masks come from ``object_id``, the native 400 px map, so both sides of H1b use the same
+    regions. The object id of the 800 px renders was checked by ``_reference_free_ensemble``.
+    """
+    results: list[dict[str, float]] = []
+    for first, second in zip(jobs[0::2], jobs[1::2], strict=True):
+        a = load(first)
+        b = load(second)
+        if a.passes != PASSES or b.passes != PASSES:
+            raise ValueError(f"pair {first.name!r}: passes must be {PASSES}")
+        results.append(
+            _reference_free(_box_down(a.sum), _box_down(b.sum), PASSES, object_id, regions)
         )
     return results
 
@@ -391,7 +421,8 @@ def _h1a(runs: dict[str, list[dict]], family: list[str]) -> dict:
 
 
 def _h1b(down: list[dict], native: list[dict], family: list[str]) -> dict:
-    """H1b: the 800 px ensemble, box-downsampled to 400 px, is distinguishable from native 400."""
+    """H1b: the 800 px ensemble, box-downsampled to 400 px, is distinguishable from native 400 on
+    the keys of ``family`` (the noise-corrected lag-1 keys, README D7)."""
     test = _family_test(down, native, family, SIGNIFICANCE, "downsampled 800 vs native 400")
     if not test["powered"]:
         decision = "inconclusive"
@@ -512,17 +543,29 @@ def main(argv: list[str] | None = None) -> None:
             if not np.array_equal(object_ids[name], object_ids[names[0]]):
                 raise RuntimeError(f"object id of {name} differs from {names[0]}")
     measured_by = {
-        name: sorted(metrics.region_masks(_diffuse_only(oid), ERODE_RADIUS))
+        name: sorted(metrics.region_masks(_diffuse_only(oid, DIFFUSE_REGION_IDS), ERODE_RADIUS))
         for name, oid in object_ids.items()
     }
-    measured = measured_by[POSITIVE]
-    if any(regions != measured for regions in measured_by.values()):
-        raise RuntimeError(f"measured diffuse regions differ between configurations: {measured_by}")
-    absent = sorted(set(DIFFUSE_REGION_IDS) - set(measured))
-    measure_map = _diffuse_only(object_ids[POSITIVE])
+    if args.scale == 1:
+        # The experiment: every configuration must measure the same regions, or the keys differ.
+        measured = measured_by[POSITIVE]
+        if any(regions != measured for regions in measured_by.values()):
+            raise RuntimeError(
+                f"measured diffuse regions differ between configurations: {measured_by}"
+            )
+    else:
+        # Smoke scale only (README D6): erosion can remove a region at a small size, so the
+        # comparisons use the regions measured in every configuration.
+        measured = sorted(set.intersection(*(set(regions) for regions in measured_by.values())))
+        if not measured:
+            raise RuntimeError("no diffuse region is measured in every configuration")
+    absent = sorted(set(DIFFUSE_REGION_IDS) - set().union(*measured_by.values()))
+    dropped = sorted(set().union(*measured_by.values()) - set(measured))
+    measure_map = _diffuse_only(object_ids[POSITIVE], measured)
 
     runs = {
-        name: _reference_free_ensemble(ensembles[name], object_ids[name]) for name in NATIVE_SIZE
+        name: _reference_free_ensemble(ensembles[name], object_ids[name], measured)
+        for name in NATIVE_SIZE
     }
     keys = sorted(runs[POSITIVE][0])
     for name, metric_runs in runs.items():
@@ -535,15 +578,21 @@ def main(argv: list[str] | None = None) -> None:
     if len(lag1_corr) != 2 * len(measured):
         raise RuntimeError(f"expected {2 * len(measured)} noise-corrected lag-1 keys")
 
+    # H1b: the noise-corrected keys of the downsampled ensemble, against those of native 400 px.
+    down_runs = _reference_free_downsampled(ensembles[DOWNSAMPLED], object_ids[POSITIVE], measured)
+    if sorted(down_runs[0]) != keys:
+        raise RuntimeError("reference-free keys of the downsampled ensemble differ")
+    # Descriptive only (README D7): metrics.measure keys, noise-confounded, never tested.
     native = measure_ensemble(ensembles[POSITIVE], reference8, measure_map)
     down = _downsampled_ensemble(ensembles[DOWNSAMPLED], reference8, measure_map)
     ds_keys = sorted(native[0])
     if sorted(down[0]) != ds_keys:
         raise RuntimeError("keys of the downsampled and native ensembles differ")
     ds_family = [key for key in metrics.DIFFUSE_KEY_FAMILY(ds_keys) if key != "all.block_rmse"]
+    ds_effects = ensemble.effect_summary(down, native, ds_family)
 
     h1a = _h1a(runs, lag1_corr)
-    h1b = _h1b(down, native, ds_family)
+    h1b = _h1b(down_runs, runs[POSITIVE], lag1_corr)
     h1 = {"decision": _h1(h1a, h1b), "H1a": h1a, "H1b": h1b}
     h2 = _h2(runs, lag1_raw + lag1_corr + structure)
     raw_lag1_effects = {
@@ -571,6 +620,7 @@ def main(argv: list[str] | None = None) -> None:
             "diffuse_ids": list(DIFFUSE_REGION_IDS),
             "measured": measured,
             "absent": absent,
+            "dropped_at_this_scale": dropped,
         },
         "object_id_values": {
             name: sorted(int(v) for v in np.unique(oid)) for name, oid in object_ids.items()
@@ -585,13 +635,15 @@ def main(argv: list[str] | None = None) -> None:
         },
         "key_families": {
             "reference_free": family,
-            "downsample": ds_family,
+            "downsample_verdict": lag1_corr,
+            "downsample_descriptive": ds_family,
             "lag1_noise_corrected": lag1_corr,
             "lag1_raw": lag1_raw,
             "structure_std": structure,
         },
         "hypotheses": {"H1": h1, "H2": h2},
         "raw_lag1_effects": raw_lag1_effects,
+        "downsample_effects": ds_effects,
         "summary": _summary_table(runs, family),
         "grid": {
             "file": grid_name,
@@ -608,15 +660,21 @@ def main(argv: list[str] | None = None) -> None:
         f"keys: reference-free={len(family)} downsample={len(ds_family)}; "
         f"pairs={args.pairs}; scale={args.scale}"
     )
-    print(f"measured regions {measured}, absent {absent}")
+    print(f"measured regions {measured}, absent {absent}, dropped at this scale {dropped}")
     print(
         "H1a noise-corrected lag-1 across sizes, "
         f"level {h1a['level_per_pair']:.4g} per pair: {h1a['decision']}"
     )
     for test in h1a["tests"].values():
         _print_test(test)
-    print(f"H1b downsampled 800 vs native 400: {h1b['decision']}")
+    print(f"H1b downsampled 800 vs native 400 on noise-corrected lag-1: {h1b['decision']}")
     _print_test(h1b["test"])
+    largest = _largest_rel(ds_effects)
+    print(
+        "  descriptive, untested (noise-confounded, README D7): "
+        f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
+        f"({None if largest is None else largest['key']})"
+    )
     print(f"H1 {h1['decision']}")
     print(f"H2 jitter 1/700 vs 1/1400 at 800 px: {h2['decision']}")
     _print_test(h2["test"])

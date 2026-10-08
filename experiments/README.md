@@ -8,6 +8,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | # | Date | Slug | Question | Status | Conclusion |
 |---|------|------|----------|--------|------------|
 | 001 | 2026-10-08 | oracle-reproduction | Does the compiled oracle reproduce the reference, and what doesn't matter? | draft | DRAFT (Haiku), pending Opus review: H1 supported, H2 refuted, H3 supported, H4 supported (P_ref 15244, extrapolated), H5 supported |
+| 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | draft | not yet (pre-registration only; renders not run) |
 
 ## How to run
 
