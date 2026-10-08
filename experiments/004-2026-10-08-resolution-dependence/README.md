@@ -102,6 +102,18 @@
   Holm-rejected ("distinguishable"). Refuted (jitter units do not matter for the look at 800 px) iff it is powered and no
   key is rejected. Otherwise inconclusive.
 
+### Amendments before rendering (Opus, M1 review 3)
+- **H1b becomes one-sided.** For each slag1 key compute `p_less = permutation_pvalue(down800, native400, "less")` and `p_greater` likewise, with Holm over the keys at α = 0.01 in each direction.
+  - **Supported (pixel-locked)** iff at least one key is rejected "less" (finer texture in world units after downsampling) and none "greater".
+  - **Refuted (world-locked)** iff any key is rejected "greater" and none "less".
+  - Otherwise inconclusive.
+  - Reason: the box downsampling changes slag1 under either reading, so only the sign separates them.
+- **H2 heading.** "Jitter units matter" (jitter 1/700 vs 1/1400 at 800 px is distinguishable). The decision rule is unchanged: supported = distinguishable.
+- **H1d (new): artist-mode chain.**
+  - Configurations `row_s200`, `row_s800` (blocks 31 and 32) and `row_s400`, which is experiment 003's `row` (block 27) reused from the cache.
+  - Repeat H1a's analysis on the slag1 keys for the row chain, because the deliverable concerns artist mode.
+  - In image mode the rows are coupled by a K offset of about W × 16.3 draws. Row chains have no row coupling, so the image-mode result may not transfer.
+
 ## Method
 
 ### Configurations

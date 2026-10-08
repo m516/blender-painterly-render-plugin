@@ -34,6 +34,10 @@ DESIGN: dict[str, tuple[int, dict[str, object], int]] = {
     "s400": (400, {}, 0),  # the positive control, experiment 001's img64 (reused from the cache)
     "s800": (800, {}, 29),
     "s800_j1400": (800, {"jitter": JITTER_TUNED}, 30),
+    # Amendment before rendering (Opus, M1 review 3): the artist-mode chain at the same sizes (H1d).
+    "row_s200": (200, {"chain": "row"}, 31),
+    "row_s400": (400, {"chain": "row"}, 27),  # experiment 003's row (same option set): reused from the cache
+    "row_s800": (800, {"chain": "row"}, 32),
 }
 
 
@@ -52,8 +56,7 @@ def build_ensembles(pairs: int = PAIRS, scale: int = 1) -> dict[str, list[Job]]:
             base_seed=BLOCK * block,
             size=size // scale,
             passes=PASSES,
-            chain="image",
-            **extra,
+            **{"chain": "image", **extra},
         )
         for name, (size, extra, block) in DESIGN.items()
     }
