@@ -246,4 +246,5 @@ Objects in list order; the order is the object id used by masks (`painterly.cpp:
 - right sphere r 0.45 at (2.05, 0.8, −3.7);
 - light radius `eps` (1e-4);
 - sphere normal `(P − c)/r` (unnormalized);
+- film `pix += c·(1/spp)` and `byte = min((int)pix, 255)` (standalone lines 264-266, 275). For a power-of-two pass count (the default 8) this equals the §7 mapping bit for bit;
 - loop order `pixel-major`.
