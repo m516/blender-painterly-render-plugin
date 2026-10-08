@@ -1,0 +1,7 @@
+# Hash-pinned bytes must never undergo end-of-line conversion: the sha256 values in
+# tests/data/MANIFEST.sha256 are computed over the exact bytes stored in git.
+third_party/** -text
+
+# Hash-pinned bytes must never undergo end-of-line conversion: the sha256 values in
+# tests/data/MANIFEST.sha256 are computed over the exact bytes stored in git.
+tests/data/** -text

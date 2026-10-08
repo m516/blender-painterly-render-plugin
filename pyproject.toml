@@ -35,6 +35,7 @@ blender = ["bpy==5.2.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "analysis/tests"]
+addopts = "--import-mode=importlib"
 markers = ["slow: takes more than ~10 s"]
 
 [tool.ruff]

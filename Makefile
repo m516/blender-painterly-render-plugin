@@ -5,10 +5,10 @@ export PATH := $(abspath .venv/bin):$(PATH)
 .PHONY: env env-blender build test-cpp test-py test test-slow lint format check clean
 
 env:
-	uv sync --group dev --group analysis
+	uv sync --locked --group dev --group analysis
 
 env-blender:
-	uv sync --group dev --group analysis --group blender
+	uv sync --locked --group dev --group analysis --group blender
 
 build:
 	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython_EXECUTABLE=$(abspath .venv/bin/python)

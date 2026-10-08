@@ -8,7 +8,7 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE)
 # doctest v2.4.11 declares cmake_minimum_required(VERSION 3.0), which CMake >= 4.0 rejects unless this policy minimum
 # is set. It only affects how doctest's own CMake file is interpreted; doctest is consumed as a header-only library.
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
 FetchContent_MakeAvailable(doctest)
 
 add_executable(painterly_tests test_main.cpp)
