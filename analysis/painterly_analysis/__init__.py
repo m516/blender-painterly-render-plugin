@@ -1,1 +1,78 @@
 """Measurement and statistics for the painterly look (JAX)."""
+
+import jax
+
+# analysis only; never imported inside Blender. Enabled before the submodules are imported.
+jax.config.update("jax_enable_x64", True)
+
+from .ensemble import (  # noqa: E402
+    Comparison,
+    compare_ensembles,
+    holm,
+    permutation_pvalue,
+    prediction_interval,
+    separated,
+    sign_flip_pvalue,
+    student_t_cdf,
+    student_t_ppf,
+)
+from .io import (  # noqa: E402
+    OracleRender,
+    read_oracle,
+    read_ppm,
+    smallpaint_display,
+    write_ppm,
+)
+from .metrics import (  # noqa: E402
+    DIFFUSE_REGION_IDS,
+    LUMA_REC709,
+    block_rmse,
+    box_blur,
+    clip_fraction,
+    erode,
+    highpass,
+    lag1_autocorrelation,
+    luminance,
+    measure,
+    pearson,
+    radial_spectral_slope,
+    region_masks,
+    region_mean_rgb,
+    structure_std,
+)
+from .oracle import oracle_binary, run_many, run_oracle  # noqa: E402
+
+__all__ = [
+    "DIFFUSE_REGION_IDS",
+    "LUMA_REC709",
+    "Comparison",
+    "OracleRender",
+    "block_rmse",
+    "box_blur",
+    "clip_fraction",
+    "compare_ensembles",
+    "erode",
+    "highpass",
+    "holm",
+    "lag1_autocorrelation",
+    "luminance",
+    "measure",
+    "oracle_binary",
+    "pearson",
+    "permutation_pvalue",
+    "prediction_interval",
+    "radial_spectral_slope",
+    "read_oracle",
+    "read_ppm",
+    "region_masks",
+    "region_mean_rgb",
+    "run_many",
+    "run_oracle",
+    "separated",
+    "sign_flip_pvalue",
+    "smallpaint_display",
+    "structure_std",
+    "student_t_cdf",
+    "student_t_ppf",
+    "write_ppm",
+]
