@@ -1,6 +1,7 @@
 """Look metrics on synthetic images (T1.2)."""
 
 import numpy as np
+import pytest
 from painterly_analysis import (
     block_rmse,
     erode,
@@ -72,12 +73,11 @@ def _power_law_field(size: int, seed: int) -> np.ndarray:
     return np.fft.ifft2(amp * np.exp(1j * phase)).real
 
 
-def _radial_fit_residual_rms(x: np.ndarray, f_min: int = 2) -> float:
-    """RMS residual of the least-squares log-log fit to the windowed radial power profile.
+def _radial_profile(x: np.ndarray, f_min: int = 2) -> tuple[np.ndarray, np.ndarray]:
+    """(log_r, log_p) of the windowed radial power profile, as radial_spectral_slope defines it.
 
-    The profile follows the definition in radial_spectral_slope: Hann window, |FFT|^2, integer
-    radii rint(r) averaged over [f_min, min(H, W) // 4]. The residuals are the scatter that the
-    power law does not explain.
+    The profile uses a Hann window, |FFT|^2 and integer radii rint(r) averaged over
+    [f_min, min(H, W) // 4].
     """
     h, w = x.shape
     f_max = min(h, w) // 4
@@ -92,17 +92,35 @@ def _radial_fit_residual_rms(x: np.ndarray, f_min: int = 2) -> float:
     radii = np.arange(f_min, f_max + 1)
     log_r = np.log(radii)
     log_p = np.log(sums[radii] / counts[radii])
+    return log_r, log_p
+
+
+def _radial_fit_residual_rms(x: np.ndarray, f_min: int = 2) -> float:
+    """RMS residual of the least-squares log-log fit to the radial power profile.
+
+    The residuals are the scatter that the power law does not explain.
+    """
+    log_r, log_p = _radial_profile(x, f_min)
     slope, intercept = np.polyfit(log_r, log_p, 1)
     residual = log_p - (intercept + slope * log_r)
     return float(np.sqrt(np.mean(residual**2)))
 
 
+def test_radial_spectral_slope_equals_polyfit_of_radial_profile() -> None:
+    x = _power_law_field(256, seed=0)
+    log_r, log_p = _radial_profile(x)
+    # The same least-squares formula, computed two ways. The tolerance covers float64 round-off
+    # only.
+    expected = np.polyfit(log_r, log_p, 1)[0]
+    assert float(radial_spectral_slope(x)) == pytest.approx(expected, rel=1e-12)
+
+
 def test_radial_spectral_slope_of_power_law_is_minus_two() -> None:
     x = _power_law_field(256, seed=0)
     slope = float(radial_spectral_slope(x))
-    # The tolerance is the RMS residual of the least-squares log-log fit to this field's own
-    # radial spectrum, as the card specifies. The Hann window and the finite number of bins per
-    # radius make the fit imperfect. The residual is computed from the data, so it is not a
-    # hand-picked number.
+    # Sanity bound, not a tolerance on the implementation: a slope within the fit scatter of -2 is
+    # what the power law predicts. The scatter is the RMS residual of the least-squares log-log
+    # fit to this field's own radial profile, left by the Hann window and the finite number of
+    # bins per radius. It is computed from the data, so it is not a hand-picked number.
     tolerance = _radial_fit_residual_rms(x)
     assert abs(slope - (-2.0)) <= tolerance

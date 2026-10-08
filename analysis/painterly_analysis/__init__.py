@@ -21,6 +21,7 @@ from .io import (  # noqa: E402
     read_oracle,
     read_ppm,
     smallpaint_display,
+    write_png,
     write_ppm,
 )
 from .metrics import (  # noqa: E402
@@ -74,5 +75,6 @@ __all__ = [
     "structure_std",
     "student_t_cdf",
     "student_t_ppf",
+    "write_png",
     "write_ppm",
 ]

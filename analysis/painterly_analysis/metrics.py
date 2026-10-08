@@ -258,7 +258,9 @@ def measure(
       ``DIFFUSE_REGION_IDS``);
     - ``all.block_rmse``: ``block_rmse(ab8, ref8, block)``;
     - ``all.clip_fraction``: ``clip_fraction(ab8)``;
-    - ``all.spectral_slope``: ``radial_spectral_slope`` of the high-passed luminance of ``ab8``.
+    - ``all.spectral_slope``: ``radial_spectral_slope`` of the high-passed luminance of ``ab8``,
+      masked to the same union of eroded diffuse masks as ``all.pattern_corr``. The slope is
+      masked on purpose (Opus decision): unmasked, geometry edges dominate the slope.
 
     ``erosion_radius=None`` means ``highpass_size // 2``. This value is derived, not tuned. It is
     the half-width of the box filter, so no high-pass window of a kept pixel reaches a
@@ -295,5 +297,5 @@ def measure(
     out["all.pattern_corr"] = float(pearson(hp_ab, hp_ref, union))
     out["all.block_rmse"] = float(block_rmse(ab8, ref8, block))
     out["all.clip_fraction"] = float(clip_fraction(ab8))
-    out["all.spectral_slope"] = float(radial_spectral_slope(hp_ab))
+    out["all.spectral_slope"] = float(radial_spectral_slope(hp_ab, union))
     return out

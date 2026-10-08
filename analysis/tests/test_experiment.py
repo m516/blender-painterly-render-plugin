@@ -49,32 +49,43 @@ def test_job_key_is_stable_and_order_independent() -> None:
 def test_run_jobs_renders_a_64_square_job_once(
     cache: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls: list[int] = []
-    real_run_many = experiment.run_many
+    calls: list[str] = []
+    real_render = experiment._render
 
-    def counting_run_many(jobs, workers=None):
-        calls.append(len(jobs))
-        return real_run_many(jobs, workers=workers)
+    def counting_render(job, directory):
+        calls.append(job.name)
+        return real_render(job, directory)
 
-    monkeypatch.setattr(experiment, "run_many", counting_run_many)
+    monkeypatch.setattr(experiment, "_render", counting_render)
     job = Job.make("t64", 0, size=64, passes=1)
     first = run_jobs([job])
     assert (first.completed, first.remaining) == (1, 0)
-    assert calls == [1]
+    assert calls == ["t64"]
     second = run_jobs([job])
     assert (second.completed, second.remaining) == (1, 0)
-    assert calls == [1]  # the second call renders nothing
+    assert calls == ["t64"]  # the second call renders nothing
     assert load(job).sum.shape == (64, 64, 3)
 
 
 def test_budget_zero_starts_nothing(cache: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def must_not_run(jobs, workers=None):
+    def must_not_run(job, directory):
         raise AssertionError("no job may start when budget_seconds=0")
 
-    monkeypatch.setattr(experiment, "run_many", must_not_run)
+    monkeypatch.setattr(experiment, "_render", must_not_run)
     jobs = [Job.make("t32", seed, size=32, passes=1) for seed in (0, 1)]
     status = run_jobs(jobs, budget_seconds=0)
     assert (status.completed, status.remaining) == (0, 2)
+
+
+def test_failing_job_does_not_prevent_successful_siblings_from_done_markers(cache: Path) -> None:
+    # The invalid job goes first, so the run must carry on after its failure.
+    bad = Job.make("bad", 0, size=32, passes=1, chain="no-such-chain")
+    good = Job.make("good", 1, size=32, passes=1)
+    with pytest.raises(RuntimeError, match="'bad'"):
+        run_jobs([bad, good], workers=1)
+    assert load(good).sum.shape == (32, 32, 3)
+    with pytest.raises(FileNotFoundError):
+        load(bad)
 
 
 def _png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:

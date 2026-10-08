@@ -39,6 +39,12 @@ def _tie_tolerance(stats: np.ndarray) -> float:
     return _TIE_ULPS * _EPS * float(np.max(np.abs(stats)))
 
 
+def _check_finite(*samples: np.ndarray) -> None:
+    # A NaN or inf sample would make every statistic NaN and every p-value meaningless.
+    if not all(bool(np.all(np.isfinite(sample))) for sample in samples):
+        raise ValueError("samples must be finite (got NaN or inf)")
+
+
 def _count_as_extreme(stats: np.ndarray, observed: float, alternative: str) -> int:
     """Count the statistics at least as extreme as ``observed`` in the direction of the test."""
     tol = _tie_tolerance(np.append(stats, observed))
@@ -62,6 +68,8 @@ def permutation_pvalue(
     The test is exact when ``C(n + m, n) <= max_exact``: every split of the pooled sample into
     groups of sizes n and m is enumerated. Otherwise it uses ``n_resamples`` random permutations
     drawn with ``jax.random.PRNGKey(0)``, and the p-value is ``(k + 1) / (N + 1)``.
+
+    Raises ValueError if any sample is NaN or inf.
     """
     _check_alternative(alternative)
     xs = np.asarray(x, dtype=np.float64).ravel()
@@ -69,6 +77,7 @@ def permutation_pvalue(
     n, m = xs.size, ys.size
     if n < 1 or m < 1:
         raise ValueError("both groups need at least one value")
+    _check_finite(xs, ys)
     pooled = jnp.asarray(np.concatenate([xs, ys]))
     total = jnp.sum(pooled)
 
@@ -106,12 +115,15 @@ def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> floa
     ``2**n`` sign patterns when ``n <= SIGN_FLIP_EXACT_MAX_N``. Otherwise it draws
     ``n_resamples`` Rademacher patterns with ``jax.random.PRNGKey(0)``, and the p-value is
     ``(k + 1) / (N + 1)``.
+
+    Raises ValueError if any sample is NaN or inf.
     """
     _check_alternative(alternative)
     xs = np.asarray(x, dtype=np.float64).ravel()
     n = xs.size
     if n < 1:
         raise ValueError("need at least one value")
+    _check_finite(xs)
     values = jnp.asarray(xs)
     observed = float(jnp.mean(values))
 
@@ -226,12 +238,18 @@ def compare_ensembles(
 
     For each key, a two-sided permutation test is run between the values in ``a`` and in ``b``.
     The p-values are then Holm-corrected at family-wise level ``alpha``.
+
+    A ValueError from any key is re-raised with the key name prefixed, e.g. ``"key: samples must
+    be finite (got NaN or inf)"``.
     """
     pvalues: dict[str, float] = {}
     for key in keys:
         xs = [run[key] for run in a]
         ys = [run[key] for run in b]
-        pvalues[key] = permutation_pvalue(xs, ys, "two-sided")
+        try:
+            pvalues[key] = permutation_pvalue(xs, ys, "two-sided")
+        except ValueError as e:
+            raise ValueError(f"{key}: {e}") from e
     return Comparison(pvalues=pvalues, rejected=holm(pvalues, alpha))
 
 

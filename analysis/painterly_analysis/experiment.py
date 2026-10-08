@@ -17,8 +17,10 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import time
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,9 +29,9 @@ import numpy as np
 
 from . import metrics
 from .io import OracleRender, read_oracle
-from .oracle import REPO_ROOT, oracle_binary, run_many
+from .oracle import REPO_ROOT, _option_flags, oracle_binary
 
-# meta.json "oracle_version" written by smallpaint_oracle (src/app/smallpaint_oracle.cpp:557).
+# meta.json "oracle_version" is written by write_meta() in src/app/smallpaint_oracle.cpp.
 ORACLE_VERSION = "1"
 # Hex digits of the sha256 that name a job's cache directory (T1.4 card).
 _KEY_HEX_DIGITS = 16
@@ -127,16 +129,42 @@ def _mark_done(directory: Path, job: Job) -> None:
     (directory / _DONE).write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _render(job: Job, directory: Path) -> None:
+    """Run ``smallpaint_oracle`` for ``job`` into ``directory``, with one oracle thread.
+
+    Unlike ``oracle.run_oracle``, the outputs are not read back. ``load`` reads them when they are
+    needed, so a run never holds render arrays in memory. A non-zero exit raises RuntimeError.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    options = {**dict(job.options), "seed": job.seed, "threads": 1}
+    cmd = [str(oracle_binary()), *_option_flags(options), "--out", str(directory.resolve())]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"smallpaint_oracle exited with status {proc.returncode} for job {job.name!r}: "
+            f"{' '.join(cmd)}\n{proc.stderr}"
+        )
+
+
+def _on_render_done(key: str, job: Job, future: Future) -> None:
+    """Completion handler of one job: write its ``done`` marker after a successful render."""
+    if future.exception() is None:
+        _mark_done(_job_dir(key), job)
+
+
 def run_jobs(
     jobs: list[Job], *, budget_seconds: float | None = None, workers: int | None = None
 ) -> RunStatus:
-    """Render every job whose cache directory lacks a ``done`` marker.
+    """Render every job whose cache directory lacks a ``done`` marker, resumably.
 
-    Jobs render in parallel through ``oracle.run_many`` with one thread per job. They are
-    dispatched in batches of ``workers`` (default ``os.cpu_count()``). The budget is checked
-    before each batch, so no job starts once ``budget_seconds`` has elapsed. A batch already
-    running finishes. Identical jobs render once. ``done`` is written only after a successful
-    render.
+    One ``ThreadPoolExecutor`` with ``workers`` threads (default ``os.cpu_count()``) runs one job
+    per future, and at most ``workers`` jobs are in flight. The budget is checked before each
+    submit, so no job starts once ``budget_seconds`` has elapsed. A job already running finishes.
+    Each job's completion handler writes its ``done`` marker, and only after a successful render.
+    Identical jobs render once.
+
+    A failing job does not stop its siblings: they still render and get their markers. After every
+    started job has finished, RuntimeError names the failed jobs.
     """
     start = time.monotonic()
     width = workers if workers is not None else (os.cpu_count() or 1)
@@ -148,19 +176,30 @@ def run_jobs(
         if not _is_done(_job_dir(key)):
             todo.setdefault(key, job)
     pending = list(todo.items())
-    for first in range(0, len(pending), width):
-        if budget_seconds is not None and time.monotonic() - start >= budget_seconds:
-            break
-        batch = pending[first : first + width]
-        run_many(
-            [
-                (_job_dir(key), {**dict(job.options), "seed": job.seed, "threads": 1})
-                for key, job in batch
-            ],
-            workers=width,
-        )
-        for key, job in batch:
-            _mark_done(_job_dir(key), job)
+    next_index = 0
+    in_flight: dict[Future, Job] = {}
+    failures: list[tuple[Job, BaseException]] = []
+    with ThreadPoolExecutor(max_workers=width) as pool:
+        while True:
+            while next_index < len(pending) and len(in_flight) < width:
+                if budget_seconds is not None and time.monotonic() - start >= budget_seconds:
+                    break
+                key, job = pending[next_index]
+                next_index += 1
+                future = pool.submit(_render, job, _job_dir(key))
+                future.add_done_callback(functools.partial(_on_render_done, key, job))
+                in_flight[future] = job
+            if not in_flight:
+                break
+            finished, _ = wait(list(in_flight), return_when=FIRST_COMPLETED)
+            for future in finished:
+                job = in_flight.pop(future)
+                error = future.exception()
+                if error is not None:
+                    failures.append((job, error))
+    if failures:
+        names = ", ".join(repr(job.name) for job, _ in failures)
+        raise RuntimeError(f"{len(failures)} job(s) failed: {names}") from failures[0][1]
     completed = sum(_is_done(_job_dir(key)) for key in keys)
     return RunStatus(
         completed=completed,
@@ -177,7 +216,7 @@ def load(job: Job) -> OracleRender:
     return read_oracle(directory)
 
 
-def ensemble(name: str, pairs: int, base_seed: int = 0, **options: Any) -> list[Job]:
+def ensemble_jobs(name: str, pairs: int, base_seed: int = 0, **options: Any) -> list[Job]:
     """``2 * pairs`` jobs named ``name`` with seeds ``base_seed … base_seed + 2 * pairs - 1``.
 
     Consecutive seeds form the pairs that ``measure_ensemble`` compares.

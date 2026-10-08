@@ -346,9 +346,9 @@ void build_scene(Scene& scene) {
 // Per-pixel outputs. Pixel (row, col) is at index row * size + col. sum holds three doubles per pixel.
 struct Film {
 	int size = 0;
-	vector<double> sum;        // trace colour summed over passes (pix, smallpaint_painterly.cpp:295-297)
-	vector<uint64_t> k;        // diffuse draws consumed over all passes (hal.index deltas)
-	vector<int32_t> object_id; // scene-list index hit by the unjittered primary ray, or -1
+	vector<double> sum;          // trace colour summed over passes (pix, smallpaint_painterly.cpp:295-297)
+	vector<uint64_t> k_consumed; // diffuse draws consumed over all passes (hal.index deltas)
+	vector<int32_t> object_id;   // scene-list index hit by the unjittered primary ray, or -1
 };
 
 // One sample of pixel (row, col) in pass `pass` (smallpaint_painterly.cpp:289-297), with the oracle's jitter (SPEC §7).
@@ -366,7 +366,7 @@ void take_sample(const Scene& scene, pl& params, Halton& hal, Halton& hal2, Film
 	g_path = PathContext{seed, row, col, pass};
 	trace(ray, scene, 0, c, params, hal, hal2);
 	const size_t px = (size_t)row * (size_t)film.size + (size_t)col;
-	film.k[px] += hal.index - k_before;
+	film.k_consumed[px] += hal.index - k_before;
 	film.sum[3 * px + 0] += c.x;
 	film.sum[3 * px + 1] += c.y;
 	film.sum[3 * px + 2] += c.z;
@@ -460,7 +460,8 @@ void run_chain(const Options& o, const Scene& scene, Film& film, const pl& param
 		});
 		break;
 	case ChainKind::lane: {
-		const int lane_length = o.chain_param;
+		// L >= width is one lane per row (lane_in_row 0): the clamp is exact (SPEC §3)
+		const int lane_length = std::min(o.chain_param, n);
 		const int lanes = (n + lane_length - 1) / lane_length; // ceil(n / L)
 		run_units(n * lanes, o.threads, params, [&](int unit, pl& p) {
 			const int i = unit / lanes;
@@ -575,7 +576,7 @@ bool write_meta(const filesystem::path& path, const Options& o, const double wal
 	return fclose(f) == 0;
 }
 
-const char* const kUsage =
+const char* const usage_text =
 	"usage: smallpaint_oracle --out DIR [options]\n"
 	"  --scene gui|standalone              reference scene (default gui)\n"
 	"  --size N                            image side in pixels (gui 400, standalone 900)\n"
@@ -594,7 +595,7 @@ const char* const kUsage =
 	"  --out DIR                           output directory, created if missing (required)\n";
 
 int usage_error(const string& message) {
-	fprintf(stderr, "smallpaint_oracle: %s\n%s", message.c_str(), kUsage);
+	fprintf(stderr, "smallpaint_oracle: %s\n%s", message.c_str(), usage_text);
 	return 2;
 }
 
@@ -735,7 +736,7 @@ int oracle_main(int argc, char** argv) {
 	Film film;
 	film.size = o.size;
 	film.sum.assign(pixels * 3, 0.0);
-	film.k.assign(pixels, 0);
+	film.k_consumed.assign(pixels, 0);
 	film.object_id.assign(pixels, -1);
 	compute_object_ids(scene, film);
 
@@ -744,7 +745,7 @@ int oracle_main(int argc, char** argv) {
 	const double wall_seconds = chrono::duration<double>(chrono::steady_clock::now() - start).count();
 
 	uint64_t total_k = 0;
-	for (const uint64_t k : film.k) total_k += k;
+	for (const uint64_t k : film.k_consumed) total_k += k;
 
 	const filesystem::path dir = o.out;
 	error_code ec;
@@ -754,7 +755,8 @@ int oracle_main(int argc, char** argv) {
 	const vector<size_t> pixel_shape = {(size_t)o.size, (size_t)o.size};
 	const vector<size_t> rgb_shape = {(size_t)o.size, (size_t)o.size, 3};
 	bool ok = write_npy(dir / "sum.npy", "<f8", rgb_shape, film.sum.data(), film.sum.size() * sizeof(double));
-	ok = write_npy(dir / "k_consumed.npy", "<u8", pixel_shape, film.k.data(), film.k.size() * sizeof(uint64_t)) && ok;
+	ok = write_npy(dir / "k_consumed.npy", "<u8", pixel_shape, film.k_consumed.data(),
+		film.k_consumed.size() * sizeof(uint64_t)) && ok;
 	ok = write_npy(dir / "object_id.npy", "<i4", pixel_shape, film.object_id.data(),
 		film.object_id.size() * sizeof(int32_t)) && ok;
 	ok = write_ppm(dir / "image.ppm", film, o.passes) && ok;

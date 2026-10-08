@@ -138,9 +138,9 @@ class OracleRender:
         return int(self.meta["passes"])
 
 
-def read_oracle(dir: str | Path) -> OracleRender:
-    """Load ``sum.npy``, ``k_consumed.npy``, ``object_id.npy`` and ``meta.json`` from ``dir``."""
-    root = Path(dir)
+def read_oracle(out_dir: str | Path) -> OracleRender:
+    """Load ``sum.npy``, ``k_consumed.npy``, ``object_id.npy`` and ``meta.json`` in ``out_dir``."""
+    root = Path(out_dir)
     meta = json.loads((root / "meta.json").read_text(encoding="utf-8"))
     return OracleRender(
         sum=np.load(root / "sum.npy"),

@@ -6,7 +6,7 @@ These are the smallpaint sources that Painterly reproduces (SPEC §9). They are 
 
 | Archive | Origin | Archive sha256 | Fetched |
 |---|---|---|---|
-| GUI, 2018 (`smallpaint_gui.zip`) | Supplied as an uploaded file, `/root/.claude/uploads/98b29052-844f-5778-93d6-f67301038886/50e77c20-smallpaint.zip`, copied to `.cache/downloads/smallpaint_gui.zip`. No upstream URL was given. | `263e8a5df3a6a9b20151467628d34ea36254a5e5803902137858fc2374fe6d68` | 2026-10-08 |
+| GUI, 2018 (`smallpaint_gui.zip`) | Supplied by the project owner as smallpaint.zip, copied to `.cache/downloads/smallpaint_gui.zip`. No upstream URL was given. | `263e8a5df3a6a9b20151467628d34ea36254a5e5803902137858fc2374fe6d68` | 2026-10-08 |
 | Standalone, 2016 (`smallpaint_old.zip`) | https://users.cg.tuwien.ac.at/zsolnai/wp/wp-content/uploads/2014/02/smallpaint_old.zip, copied to `.cache/downloads/smallpaint_old.zip` | `8ecbd48d4f34b6fd1bb70e7c9009ad6015e6795f4b2dfddf65b66c9ca20797d2` | 2026-10-08 |
 
 Upstream project: smallpaint by Károly Zsolnai-Fehér, https://users.cg.tuwien.ac.at/zsolnai/gfx/smallpaint/. The GUI port is by Michael Oppitz.

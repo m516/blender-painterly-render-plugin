@@ -5,7 +5,16 @@ The expected values are exact. The only tolerance is the bisection's xtol.
 
 import math
 
-from painterly_analysis import holm, permutation_pvalue, sign_flip_pvalue, student_t_ppf
+import pytest
+from painterly_analysis import (
+    compare_ensembles,
+    holm,
+    permutation_pvalue,
+    sign_flip_pvalue,
+    student_t_ppf,
+)
+
+NON_FINITE_MESSAGE = "samples must be finite (got NaN or inf)"
 
 
 def test_identical_samples_give_p_one() -> None:
@@ -39,3 +48,30 @@ def test_sign_flip_one_sided_all_positive_gives_one_over_256() -> None:
     # least 0.125.
     x = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
     assert sign_flip_pvalue(x, "greater") == 1 / 256
+
+
+def test_permutation_rejects_nan_in_x() -> None:
+    with pytest.raises(ValueError) as info:
+        permutation_pvalue([1.0, math.nan, 3.0], [4.0, 5.0], "two-sided")
+    assert str(info.value) == NON_FINITE_MESSAGE
+
+
+def test_permutation_rejects_nan_in_y() -> None:
+    with pytest.raises(ValueError) as info:
+        permutation_pvalue([1.0, 2.0, 3.0], [4.0, math.nan], "two-sided")
+    assert str(info.value) == NON_FINITE_MESSAGE
+
+
+def test_sign_flip_rejects_nan() -> None:
+    with pytest.raises(ValueError) as info:
+        sign_flip_pvalue([0.5, math.nan, -1.0], "two-sided")
+    assert str(info.value) == NON_FINITE_MESSAGE
+
+
+def test_compare_ensembles_names_the_key_of_a_nan_sample() -> None:
+    a = [{"speed": 1.0, "bad": 2.0}, {"speed": 2.0, "bad": math.nan}]
+    b = [{"speed": 3.0, "bad": 1.0}, {"speed": 4.0, "bad": 2.0}]
+    with pytest.raises(ValueError) as info:
+        compare_ensembles(a, b, ["speed", "bad"])
+    assert str(info.value) == f"bad: {NON_FINITE_MESSAGE}"
+    assert isinstance(info.value.__cause__, ValueError)

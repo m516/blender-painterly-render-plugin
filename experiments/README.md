@@ -13,7 +13,15 @@ No experiments yet.
 ## How to run
 
 An experiment declares its renders in `experiments/NNN-…/jobs.py` as `JOBS: list[Job]`, where `Job` comes from
-`painterly_analysis.experiment`. Renders are cached in `.cache/renders/<key>/` (or `$PAINTERLY_CACHE/renders/`), so
+`painterly_analysis.experiment`. For example, eight pairs of renders:
+
+```python
+from painterly_analysis.experiment import ensemble_jobs
+
+JOBS = ensemble_jobs("positive", 8, chain="image", size=400, passes=64)
+```
+
+Renders are cached in `.cache/renders/<key>/` (or `$PAINTERLY_CACHE/renders/`), so
 a run can stop and resume. Run the command below, and repeat it until its exit code is 0. Exit code 3 means jobs
 remain, and it is not an error.
 

@@ -60,10 +60,12 @@ glass and mirror branches are unchanged except where listed.
     - Line 294, `trace(...)`: called from `take_sample()`, after `g_path` is set.
     - Lines 295-297, `pix[j][i] += c`: `film.sum` at `[row][col] = [i][j]` (item 15). The sum is taken per pass in
       increasing pass order.
+    - film: standalone accumulates `pix += c·(1/spp)` and writes `min((int)pix,255)`; for power-of-two passes (default 8)
+      this equals the GUI mapping bit for bit (SPEC §9).
     - Lines 302-303, `imageOutput`: removed (GUI). The outputs are written by the functions in item 17.
-15. **Image index order.** `pix[j][i]` (original lines 295-297) is stored as `[row][col] = [i][j]` in `film.sum`, `film.k`
+15. **Image index order.** `pix[j][i]` (original lines 295-297) is stored as `[row][col] = [i][j]` in `film.sum`, `film.k_consumed`
     and `film.object_id`, with `row = i` and `col = j` (`camcr(i, j)` gives `row = i`, as in the original).
-16. **Film** (new). `sum` (float64, three per pixel), `k` (uint64, the `hal.index` deltas over all passes) and
+16. **Film** (new). `sum` (float64, three per pixel), `k_consumed` (uint64, the `hal.index` deltas over all passes) and
     `object_id` (int32, from the unjittered primary ray, `compute_object_ids()`).
 17. **Outputs** (new). `write_npy()` (NumPy v1.0, header padded to 64 bytes), `write_ppm()` (`min((int)sum / passes, 255)`,
     SPEC §7), `write_meta()` (`meta.json`, `oracle_version` "1").
