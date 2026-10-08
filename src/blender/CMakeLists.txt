@@ -13,9 +13,12 @@ target_link_libraries(_painterly PRIVATE painterly::embree)
 
 # Only PyInit__painterly is exported. Hidden visibility (root CMakeLists) covers everything else.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Embree's vtables reference __cxa_pure_virtual only weakly, so the static libstdc++ member would not be linked and the
+  # weak import would bind to the host process's libstdc++. A strong reference links our own copy (made local by --exclude-libs).
   target_link_options(_painterly PRIVATE
     -static-libstdc++ -static-libgcc
     -Wl,--exclude-libs,ALL
+    -Wl,-u,__cxa_pure_virtual
     -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map)
 elseif(APPLE)
   target_link_options(_painterly PRIVATE

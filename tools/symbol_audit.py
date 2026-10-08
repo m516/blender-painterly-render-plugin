@@ -3,7 +3,8 @@
 
 Usage: symbol_audit.py <path-to-module-or-wheel> [--report {text,json}]
 
-The rules follow the binary's own file format, so a module is audited the same way on any host:
+The rules follow the binary's own file format. Each format needs its platform tools, or
+`llvm-objdump` for PE when dumpbin is absent:
 
 - ELF (Linux): `nm`, `readelf`.
 - Mach-O (macOS): `nm`, `otool`.
@@ -15,7 +16,6 @@ check that cannot run is a failure.
 """
 
 import argparse
-import fnmatch
 import json
 import re
 import shutil
@@ -27,9 +27,9 @@ from pathlib import Path, PurePosixPath
 
 # The one symbol the module may export. Mach-O C symbols carry a leading underscore.
 MODULE_SYMBOL = "PyInit__painterly"
+MACOS_MODULE_SYMBOL = "_PyInit__painterly"
 # Wheels are extracted into a new empty directory under the repository's .cache/ (CLAUDE.md rule 5).
 CACHE_DIR = Path(__file__).resolve().parents[1] / ".cache"
-MACOS_MODULE_SYMBOL = "_PyInit__painterly"
 
 # glibc is the manylinux_2_28 baseline Blender itself requires. The module links libstdc++ and
 # libgcc statically, so neither may appear as a dependency.
@@ -45,21 +45,33 @@ ALLOWED_NEEDED_LINUX = frozenset(
     }
 )
 
-# Imported Linux symbols with these substrings belong to Blender's libraries (Embree tasking,
-# oneTBB, OpenImageIO, OpenColorIO). A C++ mangled name (prefix `_Z`) means a C++ library is
-# imported and is refused for the same reason.
-CXX_MANGLED_PREFIX = "_Z"
-FORBIDDEN_IMPORT_SUBSTRINGS_LINUX = ("rtc", "tbb", "OIIO", "OCIO")
+# ELF imports are allowed only if they are glibc-versioned, a Python C-API symbol (resolved from the
+# interpreter), or a toolchain weak hook. Anything else would bind into Blender's own libraries.
+GLIBC_VERSION_PREFIX = "GLIBC_"
+PYTHON_API_PATTERN_LINUX = re.compile(r"^_?Py")
+# The toolchain's standard weak hooks: weak undefined references that every module carries.
+CRT_WEAK_HOOKS_LINUX = frozenset(
+    {
+        "__gmon_start__",
+        "_ITM_deregisterTMCloneTable",
+        "_ITM_registerTMCloneTable",
+        "__cxa_finalize",
+    }
+)
 
 # Mach-O dependencies: the C library and the C++ runtime that the module links.
 ALLOWED_DYLIBS_MACOS = frozenset({"/usr/lib/libSystem.B.dylib", "/usr/lib/libc++.1.dylib"})
+# Mach-O imports: `nm -m` marks a flat-namespace lookup "(dynamically looked up)". Such a name binds
+# to the first image in the process that defines it, so only Python C-API names (from the
+# interpreter) may be looked up that way.
+MACHO_DYNAMIC_PATTERN = re.compile(r"\s(?P<name>\S+) \(dynamically looked up\)")
+MACHO_PYTHON_API_PATTERN = re.compile(r"^_+Py")
 
 # PE import names are case-insensitive, so they are compared in lower case.
 # python3.dll is the stable-ABI import library's DLL. kernel32.dll is the Windows base library.
-# api-ms-win-crt-*.dll are the Universal CRT forwarders that ship with Windows. They are allowed
-# only because the static CRT (/MT) may still import them. They are OS components, not Blender's.
-ALLOWED_DLLS_WINDOWS = frozenset({"python3.dll", "kernel32.dll"})
-ALLOWED_DLL_PATTERNS_WINDOWS = ("api-ms-win-crt-*.dll",)
+# advapi32.dll: Embree enables SeLockMemoryPrivilege for huge pages (embree common/sys/alloc.cpp,
+# called from kernels/common/device.cpp); a Windows system DLL, not one Blender ships.
+ALLOWED_DLLS_WINDOWS = frozenset({"python3.dll", "kernel32.dll", "advapi32.dll"})
 
 ELF_MAGIC = b"\x7fELF"
 # Mach-O 64-bit headers in little- and big-endian byte order, and the fat (universal) header.
@@ -67,8 +79,11 @@ MACHO_MAGICS = (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe")
 PE_MAGIC = b"MZ"
 
 NEEDED_PATTERN = re.compile(r"\(NEEDED\)\s+Shared library: \[(?P<name>[^\]]+)\]")
-# One dumpbin /exports row: ordinal, hint, RVA, then the name (or [NONAME]).
-DUMPBIN_EXPORT_PATTERN = re.compile(r"^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+(?P<name>\S+)\s*$")
+# One dumpbin /exports row: ordinal, hint, RVA, then the name. A [NONAME] export has no name, so it
+# does not match and the export table fails closed.
+DUMPBIN_EXPORT_PATTERN = re.compile(
+    r"^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+(?P<name>[^\[\s]\S*)\s*$"
+)
 OBJDUMP_EXPORT_PATTERN = re.compile(r"^\s*\d+\s+0x[0-9A-Fa-f]+\s+(?P<name>\S+)\s*$")
 OBJDUMP_DLL_PATTERN = re.compile(r"DLL Name:\s*(?P<name>\S+)")
 
@@ -122,6 +137,22 @@ def _parse_nm(output: str) -> list[tuple[str, str]]:
     return symbols
 
 
+def _parse_undefined_elf(output: str) -> list[tuple[str, str]]:
+    """(name, version) per undefined symbol of `nm -D --undefined-only`.
+
+    `memcpy@GLIBC_2.14` splits at the first '@'. A second leading '@' (`memcpy@@GLIBC_2.14`) is
+    dropped.
+    An unversioned name has an empty version.
+    """
+    imports = []
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) >= 2:
+            name, _, rest = fields[-1].partition("@")
+            imports.append((name, rest.removeprefix("@")))
+    return imports
+
+
 def _export_violations(exports: list[tuple[str, str]], expected: str) -> list[str]:
     """Every export other than `expected`, plus an error if `expected` itself is missing."""
     violations = [
@@ -134,15 +165,22 @@ def _export_violations(exports: list[tuple[str, str]], expected: str) -> list[st
     return violations
 
 
-def _import_violations(imports: list[str]) -> list[str]:
+def _elf_import_violations(imports: list[tuple[str, str]]) -> list[str]:
+    """Every undefined ELF symbol that the allowlist refuses.
+
+    The allowlist: glibc-versioned, a Python C-API symbol, or a toolchain weak hook.
+    """
     violations = []
-    for name in sorted(set(imports)):
-        if name.startswith(CXX_MANGLED_PREFIX):
-            violations.append(f"{name}: C++ mangled name")
-        violations.extend(
-            f"{name}: contains '{token}'"
-            for token in FORBIDDEN_IMPORT_SUBSTRINGS_LINUX
-            if token in name
+    for name, version in sorted(set(imports)):
+        if (
+            version.startswith(GLIBC_VERSION_PREFIX)
+            or PYTHON_API_PATTERN_LINUX.match(name)
+            or name in CRT_WEAK_HOOKS_LINUX
+        ):
+            continue
+        label = f"{name}@{version}" if version else name
+        violations.append(
+            f"{label}: not glibc-versioned, a Python C-API symbol or a toolchain weak hook"
         )
     return violations
 
@@ -157,19 +195,41 @@ def _audit_elf(path: Path) -> list[Check]:
     )
 
     needed = NEEDED_PATTERN.findall(_run(["readelf", "-d", str(path)]))
-    needed_check = Check(
-        "NEEDED",
+    dependency_check = Check(
+        "dependencies",
         "dependencies must be glibc only (manylinux_2_28 baseline)",
         [f"{lib} is not allowed" for lib in needed if lib not in ALLOWED_NEEDED_LINUX],
     )
 
-    imports = [name for _, name in _parse_nm(_run(["nm", "-D", "--undefined-only", str(path)]))]
+    imports = _parse_undefined_elf(_run(["nm", "-D", "--undefined-only", str(path)]))
     import_check = Check(
         "imports",
-        f"{len(set(imports))} undefined symbols, none C++ mangled or from Blender's libraries",
-        _import_violations(imports),
+        "imports: only glibc-versioned, Python C-API or toolchain weak hooks",
+        _elf_import_violations(imports),
     )
-    return [export_check, needed_check, import_check]
+    return [export_check, dependency_check, import_check]
+
+
+def _otool_dylibs(output: str) -> list[str]:
+    """Install names from `otool -L`.
+
+    The first line names the file. Each later line is '<install name> (...)' for one dependency.
+    """
+    dylib_lines = output.splitlines()[1:]
+    return [line.strip().partition(" (")[0] for line in dylib_lines if line.strip()]
+
+
+def _macho_import_violations(output: str) -> list[str]:
+    """Violations in `nm -m -u` output.
+
+    Every dynamically looked-up symbol must be a Python C-API symbol.
+    """
+    names = sorted({match.group("name") for match in MACHO_DYNAMIC_PATTERN.finditer(output)})
+    return [
+        f"{name}: flat-namespace lookup would bind into the host process"
+        for name in names
+        if not MACHO_PYTHON_API_PATTERN.match(name)
+    ]
 
 
 def _audit_macho(path: Path) -> list[Check]:
@@ -181,19 +241,27 @@ def _audit_macho(path: Path) -> list[Check]:
         _export_violations(exports, MACOS_MODULE_SYMBOL),
     )
 
-    # otool -L: first the file name, then one '<install name> (...)' line per dependency.
-    dylib_lines = _run(["otool", "-L", str(path)]).splitlines()[1:]
-    dylibs = [line.strip().partition(" (")[0] for line in dylib_lines if line.strip()]
-    dylib_check = Check(
-        "dylibs",
+    dylibs = _otool_dylibs(_run(["otool", "-L", str(path)]))
+    dependency_check = Check(
+        "dependencies",
         "dependencies must be libSystem and libc++ only",
         [f"{dylib} is not allowed" for dylib in dylibs if dylib not in ALLOWED_DYLIBS_MACOS],
     )
-    return [export_check, dylib_check]
+
+    import_check = Check(
+        "imports",
+        "imports: dynamically looked-up symbols must be Python C-API symbols",
+        _macho_import_violations(_run(["nm", "-m", "-u", str(path)])),
+    )
+    return [export_check, dependency_check, import_check]
 
 
 def _dumpbin_exports(output: str) -> list[str]:
-    """Export names from `dumpbin /exports` output: the rows after the 'ordinal hint RVA' header."""
+    """Export names from `dumpbin /exports`: the rows after the 'ordinal hint RVA' header.
+
+    A non-empty row in the table that does not parse, such as a [NONAME] export, raises AuditError:
+    its name cannot be checked, so the audit fails rather than passing it.
+    """
     names = []
     in_table = False
     for line in output.splitlines():
@@ -202,10 +270,11 @@ def _dumpbin_exports(output: str) -> list[str]:
             in_table = True
         elif stripped.startswith("Summary"):
             in_table = False
-        elif in_table:
+        elif in_table and stripped:
             match = DUMPBIN_EXPORT_PATTERN.match(line)
-            if match:
-                names.append(match.group("name"))
+            if match is None:
+                raise AuditError(f"cannot parse dumpbin export row: {stripped}")
+            names.append(match.group("name"))
     return names
 
 
@@ -225,7 +294,11 @@ def _dumpbin_dependents(output: str) -> list[str]:
 
 
 def _objdump_exports(output: str) -> list[str]:
-    """Export names from llvm-objdump --private-headers: the 'Ordinal RVA Name' table rows."""
+    """Export names from `llvm-objdump --private-headers`.
+
+    The rows follow the 'Ordinal RVA Name' header. The table ends at a blank line or at the end of
+    the output. A non-empty row in the table that does not parse raises AuditError.
+    """
     names = []
     in_table = False
     for line in output.splitlines():
@@ -236,8 +309,9 @@ def _objdump_exports(output: str) -> list[str]:
             in_table = False
         elif in_table:
             match = OBJDUMP_EXPORT_PATTERN.match(line)
-            if match:
-                names.append(match.group("name"))
+            if match is None:
+                raise AuditError(f"cannot parse llvm-objdump export row: {stripped}")
+            names.append(match.group("name"))
     return names
 
 
@@ -247,10 +321,7 @@ def _objdump_dlls(output: str) -> list[str]:
 
 
 def _dll_allowed(name: str) -> bool:
-    lowered = name.lower()
-    return lowered in ALLOWED_DLLS_WINDOWS or any(
-        fnmatch.fnmatch(lowered, pattern) for pattern in ALLOWED_DLL_PATTERNS_WINDOWS
-    )
+    return name.lower() in ALLOWED_DLLS_WINDOWS
 
 
 def _audit_pe(path: Path) -> list[Check]:
@@ -265,15 +336,14 @@ def _audit_pe(path: Path) -> list[Check]:
     export_check = Check(
         "exports",
         f"all {len(set(exports))} exported symbols must be exactly {MODULE_SYMBOL}",
-        [f"export {name}" for name in sorted(set(exports)) if name != MODULE_SYMBOL]
-        + ([f"{MODULE_SYMBOL} is not exported"] if MODULE_SYMBOL not in exports else []),
+        _export_violations([("export", name) for name in exports], MODULE_SYMBOL),
     )
-    dll_check = Check(
-        "dependents",
-        "imported DLLs must be python3.dll, KERNEL32.dll or api-ms-win-crt-*.dll",
+    dependency_check = Check(
+        "dependencies",
+        "imported DLLs must be python3.dll, kernel32.dll or advapi32.dll",
         [f"{dll} is not allowed" for dll in sorted(set(dlls)) if not _dll_allowed(dll)],
     )
-    return [export_check, dll_check]
+    return [export_check, dependency_check]
 
 
 def _audit_module(path: Path, label: str) -> AuditResult:
@@ -344,7 +414,7 @@ def _render_text(result: AuditResult) -> str:
 def _render_json(result: AuditResult) -> str:
     report = {
         "module": result.module,
-        "format": result.file_format,
+        "file_format": result.file_format,
         "passed": result.passed,
         "checks": [
             {

@@ -23,18 +23,37 @@ SelftestResult selftest_embree()
     throw std::runtime_error("rtcNewDevice failed, Embree error " +
                              std::to_string(rtcGetDeviceError(nullptr)));
   }
+  // EMBREE_TASKING_SYSTEM=INTERNAL reports 0 (see RTC_DEVICE_PROPERTY_TASKING_SYSTEM).
+  result.tasking_system = static_cast<int>(
+      rtcGetDeviceProperty(device, RTC_DEVICE_PROPERTY_TASKING_SYSTEM));
 
   RTCScene scene = rtcNewScene(device);
   RTCGeometry geom = rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE);
 
+  // Every failure below releases the geometry, scene and device, then throws with the Embree
+  // error.
+  const auto fail = [&](const std::string &what) [[noreturn]] {
+    const RTCError error = rtcGetDeviceError(device);
+    rtcReleaseGeometry(geom);
+    rtcReleaseScene(scene);
+    rtcReleaseDevice(device);
+    throw std::runtime_error(what + ", Embree error " + std::to_string(error));
+  };
+
   // One triangle with vertices (0,0,0), (1,0,0), (0,1,0).
   float *vertices = static_cast<float *>(rtcSetNewGeometryBuffer(
       geom, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, 3 * sizeof(float), 3));
+  if (!vertices) {
+    fail("rtcSetNewGeometryBuffer (vertex) failed");
+  }
   const float vertex_data[9] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
   std::copy(vertex_data, vertex_data + 9, vertices);
 
   unsigned *indices = static_cast<unsigned *>(rtcSetNewGeometryBuffer(
       geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, 3 * sizeof(unsigned), 1));
+  if (!indices) {
+    fail("rtcSetNewGeometryBuffer (index) failed");
+  }
   indices[0] = 0;
   indices[1] = 1;
   indices[2] = 2;
@@ -44,7 +63,7 @@ SelftestResult selftest_embree()
   rtcReleaseGeometry(geom);
   rtcCommitScene(scene);
 
-  // The ray's direction is unnormalized on purpose: |d| = 2.
+  // The ray's direction is unnormalized on purpose: |d| = 2 (SPEC §4, §5).
   RTCRayHit rayhit{};
   rayhit.ray.org_x = 0.25f;
   rayhit.ray.org_y = 0.25f;
@@ -64,8 +83,8 @@ SelftestResult selftest_embree()
 
   rtcIntersect1(scene, &rayhit);
 
-  // Embree stores the parametric hit distance in ray.tfar. Read the error state before releasing
-  // the device.
+  // Embree stores the parametric hit distance (SPEC §4, §5) in ray.tfar. Read the error state
+  // before releasing the device.
   const RTCError error = rtcGetDeviceError(device);
   rtcReleaseScene(scene);
   rtcReleaseDevice(device);

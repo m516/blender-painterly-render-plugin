@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.28)
 project(painterly VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -9,7 +9,6 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 # static CRT: never bind to Blender's MSVC runtime
-cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(PAINTERLY_BUILD_MODULE "Build the _painterly Python module" ON)
@@ -25,7 +24,9 @@ endif()
 
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(painterly_embree)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+if(PAINTERLY_BUILD_MODULE)
+  include(painterly_embree)
+endif()
 
 add_subdirectory(src)

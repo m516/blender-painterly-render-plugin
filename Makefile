@@ -35,7 +35,8 @@ format:
 	git ls-files 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format -i
 
 audit: build
-	.venv/bin/python tools/symbol_audit.py $(BUILD_DIR)/src/blender/_painterly*
+	@test -n "$(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))" || { echo "audit: no _painterly*.so under $(BUILD_DIR)/src/blender" >&2; exit 1; }
+	.venv/bin/python tools/symbol_audit.py $(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))
 
 check: lint build test audit
 
