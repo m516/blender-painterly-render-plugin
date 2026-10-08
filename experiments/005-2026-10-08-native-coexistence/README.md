@@ -167,7 +167,16 @@ The four violations are `malloc`, `free`, `realloc` and `posix_memalign`, each `
 `libtbbmalloc_proxy.so.2` is a direct `NEEDED` entry of `blender` (`readelf -d`), and it exports those four names
 (`nm -D --defined-only`). It therefore sits in the global lookup scope and interposes glibc's allocator for the
 module's glibc-versioned imports. The module's other 245 bindings are to the Python C API (in `blender`), glibc, libm
-and ld-linux, all allowed. The traced run wrote two `ld.<pid>` files; only `ld.28061` contains `_painterly` bindings.
+and ld-linux, all allowed. The traced run wrote two `ld.<pid>` files; only the larger one (85 MB, the render process)
+contains `_painterly` bindings. `bindings.py` reads both.
+
+**Scope of the allocator binding (post-run observation; the verdict above is unchanged).** The same trace shows that
+the proxy is the process allocator, not a symbol that the module chose. Its 383 bindings to `libtbbmalloc_proxy.so.2`
+come from 85 objects in the traced process, `_painterly` included: the Blender executable (20 bindings),
+`libstdc++.so.6` (10), `libembree4.so.4` (7), `libc.so.6` (4), and 80 other objects, mostly Blender's libraries.
+They bind `malloc`, `free`, `calloc`, `realloc`, `posix_memalign`, `memalign`, `aligned_alloc`, `mallinfo`,
+`malloc_usable_size`, and the `operator new` and `operator delete` family. The four `_painterly` violations are one
+instance of that mechanism. Amendment 4 counts them as violations, and this run does not change that rule.
 
 **Controls (instrument sensitivity).**
 
@@ -188,7 +197,10 @@ trace that missed bindings: coverage is complete in the main run and in both con
 - `make blender`: first run downloaded, verified the sha256 (`84098912789dc450e95697c4184fb8a90acbe5111c2ba4aede3fecb57806a168`)
   and extracted, then printed `Blender 5.2.2 executable: …/.cache/blender/blender-5.2.2-linux-x64/blender`. A second
   run printed the same path with `present and verified`, and took 0.44 s with no download. Pass.
-- `run.sh` exit 0 and `bindings_summary.txt` = 0: **fail** (exit 1; `bindings_summary.txt` = 4).
+- `run.sh` exit 0 and `bindings_summary.txt` = 0: **fail** (exit 1; `bindings_summary.txt` = 4). The card's Goal treats
+  a refuted H3 as a valid outcome that triggers G1, while its Acceptance line requires 0. Both cannot hold, so this
+  line is not met. The rule, the module and `run.sh` were not changed to meet it. Re-run on the committed tree gave the
+  same numbers (summary 4, controls 5 and 122, H1 and H2 unchanged).
 - Both H3 controls show at least 1 violation: pass (5 and 122).
 - `make lint`: pass (ruff check, ruff format --check, clang-format; no network line at parse time).
 
@@ -209,5 +221,6 @@ The isolation claim (`docs/plan.md`, "Isolation from Blender's own libraries"; t
 Python C-API and toolchain weak imports) is refuted on Linux for the allocator: Blender's bundled TBB malloc proxy
 interposes the module's `malloc`, `free`, `realloc` and `posix_memalign`. The T2.3 card's Goal says that if coexistence
 does not work, the experiment shows exactly how it fails, which triggers gate G1 in `docs/plan.md`. This run shows that
-failure mode. Whether it triggers G1, and whether the allocator binding is fixed in the module or accepted, are for the
-Opus review.
+failure mode. The interposition is process-wide: 84 other objects in the same process, including `libc.so.6`, bind the
+same allocator symbols to that proxy (Results, "Scope of the allocator binding"). Whether it triggers G1, and whether
+the allocator binding is fixed in the module or accepted, are for the Opus review.
