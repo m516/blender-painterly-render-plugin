@@ -19,7 +19,7 @@ MIT. See `LICENSES/MIT-smallpaint.txt`. The author relicensed smallpaint under M
 
 ## Scope
 
-Only the files in the table below are imported. Binaries, Qt and DLL dependencies, the other GUI renderers, and the GUI `test_images` are not imported. The two reference images are in `tests/data/reference/`. The standalone archive's `.hpp` headers are imported with its `.cpp` sources, because `standalone/with_bvh/smallpaint.cpp` includes them.
+Only the files in the table below are imported. Binaries, Qt and DLL dependencies, the other GUI renderers, and the GUI `test_images` are not imported. The two reference images are in `tests/data/reference/`. The standalone archive's `.hpp` headers are not imported, because the import covers `.cpp` and `.h` files only (T0.3 card). `standalone/with_bvh/smallpaint.cpp` and `standalone/with_volumetric_pt/smallmedia.cpp` include them, so those two files do not compile from this tree. Amend the card before importing them.
 
 Files are byte-identical to the archives (line endings untouched). Never edit; see CLAUDE.md rule 1.
 
@@ -45,14 +45,9 @@ Files are byte-identical to the archives (line endings untouched). Never edit; s
 | `standalone/smallmis/smallMIS_1d.cpp` | standalone archive `smallmis/smallMIS_1d.cpp` | `d7677c5116eb653e34190bb3c5c2a917ccba1e7e71e2b451dc121cd7eafdb061` |
 | `standalone/smallpaint_fixed.cpp` | standalone archive `smallpaint_fixed.cpp` | `ea36afe9f67104bab1d255bb842fe9ca835200f97ddc3e415dd6cc5fb61c8caf` |
 | `standalone/smallpaint_painterly.cpp` | standalone archive `smallpaint_painterly.cpp` | `41b8b5b26d04d4179ed936e1132b9e2977b8003744c4c2518053e6bc67aedd05` |
-| `standalone/with_bvh/AABB.hpp` | standalone archive `with_bvh/AABB.hpp` | `4e1f5ff10a45665d4ddf6140d868b4911781ed3f54ba130682c08dde047b2a01` |
-| `standalone/with_bvh/Ray.hpp` | standalone archive `with_bvh/Ray.hpp` | `8317d648c150ed2be7994a01c7d35d0b3f19d4fb01d2710cf19b3ad10d5c3bad` |
-| `standalone/with_bvh/Vec.hpp` | standalone archive `with_bvh/Vec.hpp` | `aa40eeef4a864f7aaf83f8cae695a732532d6d25b6e957f6fc3d1a50b0fce223` |
 | `standalone/with_bvh/constants.cpp` | standalone archive `with_bvh/constants.cpp` | `ed84e701abef0264c426cf3acc08c89ef3864b17aacc0f373ebf5e5ed3a12e77` |
-| `standalone/with_bvh/constants.hpp` | standalone archive `with_bvh/constants.hpp` | `138e4dabc9e8819844bb7fd0f2a0b0b6cf30873a8bb654a342a9d7e8d1db9b9d` |
 | `standalone/with_bvh/smallpaint.cpp` | standalone archive `with_bvh/smallpaint.cpp` | `d71c967c2667795e2204b395dd9be3c21baf3deed341a4e6cbbe0ea712b71d38` |
 | `standalone/with_mlt/smallpaint_pssmlt.cpp` | standalone archive `with_mlt/smallpaint_pssmlt.cpp` | `2c8318eb1e10775b8d6986a537d944ad26ea1a82b8405ccb3d4ab386529137fb` |
 | `standalone/with_volumetric_pt/smallmedia.cpp` | standalone archive `with_volumetric_pt/smallmedia.cpp` | `41fac6491335239ba12a39b70eff46410762c582bcecf8b68abfdb96122a5a3e` |
-| `standalone/with_volumetric_pt/smallmedia.hpp` | standalone archive `with_volumetric_pt/smallmedia.hpp` | `5773d58fdb26011def4599924d2bc10465b8d72a9aac6d766d6edd2e56da78d6` |
 
 Checked by `tests/core/test_third_party_hashes.py` against `tests/data/MANIFEST.sha256`.
