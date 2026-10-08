@@ -68,6 +68,7 @@ Read before working:
 | `github.com/.../archive/*.tar.gz`, `codeload.github.com`, `api.github.com` | blocked | `git` over HTTPS, e.g. CMake `FetchContent_Declare(... GIT_REPOSITORY https://github.com/<o>/<r>.git GIT_TAG <tag> GIT_SHALLOW TRUE)` or `git ls-remote` |
 | `raw.githubusercontent.com`, PyPI, `download.blender.org`, `users.cg.tuwien.ac.at`, `apache.org` | allowed | — |
 | `www.gnu.org` | allowed but flaky | retry `curl --retry 5 --retry-all-errors` |
+| `download.blender.org` | allowed, but its CDN answers 403 to Python's default `urllib` User-Agent | send the honest tool User-Agent `painterly-fetch-blender/0.1 (+https://github.com/m516/blender-painterly-render-plugin)` (authorized by Opus; it identifies us and impersonates nothing) |
 
 If a download is blocked, report the host. Do not work around the proxy.
 

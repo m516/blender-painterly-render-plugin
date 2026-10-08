@@ -72,8 +72,12 @@ The knob `chain` selects how K is carried between samples:
   - One chain covers the whole render in the order `for pass, for row, for col` (`painterly.cpp:282-301`). It is single-threaded.
   - K starts at 0 at the beginning of the render and is never reset, including across passes.
   - This is the semantics of the shipped Linux GUI binary, whose `-openmp` flag disabled OpenMP.
-- **`row`.** One chain per (row, pass), walking columns left to right. `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, 0, pass) mod 2^22`.
-- **`lane`** (artist mode; knob `lane_length` = L ≥ 1, default 16).
+- **`row`** (the default for Blender renders). One chain per (row, pass), walking columns left to right.
+  - It matches the reference chain's fidelity: pattern correlation 0.590 vs 0.589 for `image` (experiment 003).
+  - It parallelizes over rows. `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, 0, pass) mod 2^22`.
+- **`lane`** (knob `lane_length` = L ≥ 1 pixels, default 16). A stylization and GPU-parallelism option.
+  - Fidelity to the reference pattern grows with L: 0.13 at L = 1, 0.50 at 16, 0.57 at 128, against 0.59 for `row` (experiment 003).
+  - Each lane start needs a warm-up of about 3 pixels before the pattern settles.
   - Each row is split into lanes `[j0, j0+L)` with `j0 = L·lane_in_row` in *global* image coordinates; the last lane may be shorter.
   - One chain per (lane, pass), walking columns left to right. `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, lane_in_row, pass) mod 2^22`.
 - **`omp-restart:T`** (oracle only, for experiments). This deterministically emulates the Windows OpenMP build:
@@ -166,13 +170,37 @@ The path follows `trace()` (`painterly.cpp:189-239`).
   - The knob `continue_after_emitter` (default true) controls this.
 - **No Russian roulette, no next-event estimation, no MIS, no clamping, no adaptive sampling.**
 
+**Constants.** `PI = 3.1415926536` is smallpaint's macro (`painterly.cpp:33`), not M_PI. It is used by `hemisphere()` and `camcr()`.
+
 **Evaluation order.** The recursion `L_d = E_d·g + f(L_{d+1})` may be implemented iteratively. To stay bit-identical
 with the oracle, record the per-depth terms and evaluate them backward with the same operation order.
 
+**Materials are lobe mixtures.** smallpaint's three material types become *lobes*:
+- `diffuse` (type 1, §4): the weight is `cl`.
+- `mirror` (type 2) and `glass` (type 3): the weight tints the child radiance as `L += L_child * weight`. A unit weight reproduces
+  smallpaint's `clr + tmp` exactly.
+- `transparent`: straight continuation, tinted.
+
+A material is a list of lobes plus an emission colour.
+- Per hit, one lobe is chosen with probability `p_k = lum(w_k) / Σ_j lum(w_j)` using `rng_unit(seed, PURPOSE_CLOSURE, depth, row, col, pass)`.
+  - `lum` uses the Rec.709 luma weights.
+  - When all luminances are 0, the choice is uniform.
+- The chosen lobe's weight is divided by `p_k`. With one lobe, `p = 1` and nothing changes.
+- Selection never touches K.
+- M6 evaluates Blender node graphs per hit into the same lobe list.
+
+**Triangles.** Triangle shading normals use interpolated corner normals, or the geometric normal. They face the incoming ray when the
+knob `two_sided` is true (the default; Blender surfaces are double-sided). Analytic primitives keep smallpaint's normals.
+
+**Self-intersection.** The knob `ray_epsilon` is smallpaint's `eps`, parametric along d. The default is 1e-4 (`painterly.cpp:39`).
+
 **Blender extras** (absent from smallpaint):
-- Area lights are emissive quads (no ghosting).
-- The sun is an angular disk seen by escaping rays.
-- The world shader is evaluated on a miss and scaled by `emission_gain`.
+- Point and spot lights are ghost spheres (§5) with lobe `diffuse` of weight 0 and emission `color · energy · emission_scale`. Their
+  power is treated as smallpaint emission, independent of radius.
+- Area lights are emissive quads (no ghosting) with the same emission mapping.
+- Sun lights are angular disks seen by escaping rays: `dot(normalize(d), sun_dir) ≥ cos(angle/2)`, with radiance
+  `color · strength · emission_scale`.
+- The world is evaluated on a miss (constant in M3–M5; a node graph from M6). Misses and suns are scaled by `emission_gain` like every emitter.
 
 ## §7 Camera, jitter, film
 
@@ -189,8 +217,11 @@ jx = rng_signed(seed, PURPOSE_JITTER_X, 0, row, col, pass) · jitter;  jy likewi
 - Reference `jitter = 1/700` image-plane units (`painterly.cpp:291-292`).
 - Note the GUI quirk: `w` (width) scales the *row* term. The reference image is square, so this is harmless.
 
-**Perspective camera** (Blender): built from `calc_matrix_camera` and `matrix_world`. Jitter is a knob in pixels whose
-default comes from the X-resolution experiment.
+**Perspective camera** (Blender): built from `calc_matrix_camera` and `matrix_world`.
+- Jitter is a knob in **pixels**: the maximum displacement, uniform in [−jitter, +jitter].
+- Default **2/7 px**, smallpaint's 1/700 image-plane units at the 400 px reference: 400/1400 px.
+- Jitter units measurably change the texture at other resolutions (experiment 004 pilot: structure std 4.11 vs 4.79 at 800 px).
+  Pixels keep the stroke scale tied to the image, as Cycles' pixel filter is.
 
 **Film.**
 - The film accumulates `sum += L` per pixel in pass order.
@@ -214,11 +245,11 @@ equals the reference behaviour unless noted:
 
 | Group | Knobs |
 |---|---|
-| Sampling | `chain`, `lane_length` (16), `seed`, `seed_per_frame` (false), `passes` |
+| Sampling | `chain` (Blender default `row`: same fidelity as `image`, 0.590 vs 0.589 pattern correlation, and parallel over rows; experiment 003. The reference uses `image`), `lane_length` (16; only for `chain=lane`, an artistic stroke-length control: correlation 0.13 at L=1 to 0.57 at L=128), `seed`, `seed_per_frame` (false), `passes` |
 | Brush | `spiral_frame`, `spiral_rotation`, `u2_mode`, `k0_phase_lock_bits` (0; when q > 0, K0 ← K0 with its low q bits cleared) |
-| Path | `alpha` (0), `max_depth` (20), `diffuse_gain` (Blender 1.0), `emission_gain` (2), `continue_after_emitter` (true) |
-| Lights | `emission_scale` (calibrated by X-ghost-lights), `ghost_lights` (true) |
-| Film | `output_mode`, `exposure`, `jitter` |
+| Path | `alpha` (0), `max_depth` (20), `diffuse_gain` (1.0 for Blender albedos; the reference uses 0.1 with smallpaint `cl`), `emission_gain` (2), `continue_after_emitter` (true), `ray_epsilon` (1e-4), `two_sided` (true) |
+| Lights | `emission_scale` (1.0: Blender light power in W is used as smallpaint emission, so a 120 W point light of radius 0.5 is the reference light), `ghost_lights` (true) |
+| Film | `output_mode`, `exposure`, `jitter` (2/7 px, §7) |
 
 ## §9 Reference scene (GUI)
 
