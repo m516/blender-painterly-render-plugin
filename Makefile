@@ -6,7 +6,7 @@ export PATH := $(abspath .venv/bin):$(PATH)
 BLENDER ?= $(abspath .cache/blender/blender-$(BLENDER_VERSION)-linux-x64/blender)
 export BLENDER
 
-.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow lint format audit check clean
+.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow lint format audit vendor-check check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -58,7 +58,11 @@ audit: build
 	@test -n "$(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))" || { echo "audit: no _painterly*.so under $(BUILD_DIR)/src/blender" >&2; exit 1; }
 	.venv/bin/python tools/symbol_audit.py $(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))
 
-check: lint build test audit
+check: lint build test audit vendor-check
+
+# Offline check that third_party/cycles matches VENDORED.toml (T3.1); no network access.
+vendor-check:
+	.venv/bin/python tools/vendor_sync.py check
 
 clean:
 	rm -rf build

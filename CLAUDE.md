@@ -94,7 +94,8 @@ If a download is blocked, report the host. Do not work around the proxy.
 | `make test-slow` | all pytest tests including slow ones |
 | `make lint` | `ruff check`, `ruff format --check`, `clang-format --dry-run` |
 | `make audit` | `tools/symbol_audit.py` on the built `_painterly` (exports, dependencies, imports) |
-| `make check` | lint + build + test + audit |
+| `make check` | lint + build + test + audit + vendor-check |
+| `make vendor-check` | `tools/vendor_sync.py check`: vendored files match `third_party/cycles/VENDORED.toml` |
 
 ## Experiments
 
