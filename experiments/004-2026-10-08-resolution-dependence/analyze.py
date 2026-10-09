@@ -190,39 +190,6 @@ def _check_design(
         raise RuntimeError("seeds are not unique across configurations")
 
 
-def _masked_cov(x, y, mask) -> float:
-    """Population covariance of x and y over the pixels where mask is true, each centred by its own
-    masked mean."""
-    n = int(jnp.sum(mask))
-    if n == 0:
-        raise ValueError("mask selects no pixels")
-    mean_x = jnp.sum(jnp.where(mask, x, 0.0)) / n
-    mean_y = jnp.sum(jnp.where(mask, y, 0.0)) / n
-    dx = jnp.where(mask, x - mean_x, 0.0)
-    dy = jnp.where(mask, y - mean_y, 0.0)
-    return float(jnp.sum(dx * dy) / n)
-
-
-def _noise_corrected_lag1(hp_a, hp_b, mask, axis: int) -> float:
-    """Lag-1 autocorrelation of the structure shared by two independent half renders, dimensionless.
-
-    The halves share the structure and have independent noise. The covariance of ``a[p]`` and
-    ``b[p + 1]`` (one step along ``axis``, both pixels in mask) estimates the structure's lag-1
-    covariance. The covariance of ``a`` and ``b`` over mask estimates the structure's variance.
-    Their ratio is the structure's lag-1 autocorrelation, free of the noise-to-structure ratio.
-    """
-    a = jnp.asarray(hp_a, dtype=jnp.float64)
-    b = jnp.asarray(hp_b, dtype=jnp.float64)
-    m = jnp.asarray(mask, dtype=bool)
-    if axis == 0:
-        x, y, pair = a[:-1], b[1:], m[:-1] & m[1:]
-    elif axis == 1:
-        x, y, pair = a[:, :-1], b[:, 1:], m[:, :-1] & m[:, 1:]
-    else:
-        raise ValueError("axis must be 0 or 1")
-    return _masked_cov(x, y, pair) / _masked_cov(a, b, m)
-
-
 def _reference_free(
     sum_a, sum_b, passes: int, object_id: np.ndarray, regions: Iterable[int]
 ) -> dict[str, float]:
@@ -252,8 +219,8 @@ def _reference_free(
         out[f"{prefix}.structure_std"] = float(metrics.structure_std(hp_a, hp_b, mask))
         out[f"{prefix}.lag1.x"] = float(metrics.lag1_autocorrelation(hp_ab, mask, axis=1))
         out[f"{prefix}.lag1.y"] = float(metrics.lag1_autocorrelation(hp_ab, mask, axis=0))
-        out[f"{prefix}.slag1.x"] = _noise_corrected_lag1(hp_a, hp_b, mask, axis=1)
-        out[f"{prefix}.slag1.y"] = _noise_corrected_lag1(hp_a, hp_b, mask, axis=0)
+        out[f"{prefix}.slag1.x"] = float(metrics.noise_corrected_lag(hp_a, hp_b, mask, axis=1))
+        out[f"{prefix}.slag1.y"] = float(metrics.noise_corrected_lag(hp_a, hp_b, mask, axis=0))
         out[f"{prefix}.spectral_slope"] = float(metrics.radial_spectral_slope(hp_ab, mask))
     union = jnp.any(jnp.stack(list(masks.values())), axis=0)
     out["all.clip_fraction"] = float(metrics.clip_fraction(ab8))

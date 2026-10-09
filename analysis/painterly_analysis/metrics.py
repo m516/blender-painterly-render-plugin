@@ -73,6 +73,32 @@ def highpass(x, size: int = HIGHPASS_SIZE) -> Array:
     return x - box_blur(x, size)
 
 
+def gaussian_highpass(x, sigma: float) -> Array:
+    """``x - G_sigma * x``: the texture left after removing a Gaussian blur. Units of ``x``.
+
+    ``x`` is a 2-D field (H, W). ``G_sigma`` is a Gaussian of standard deviation ``sigma`` pixels,
+    ``sigma >= 0``. The blur acts on the half-sample-symmetric extension of ``x`` to 2H x 2W (``x``
+    followed by its mirror image on each axis), so no wrap-around enters at the border. The result
+    is cropped back to H x W. In the frequency domain the transfer of ``G_sigma`` at frequency
+    ``f`` (cycles per pixel of the extended grid) is ``exp(-2 pi^2 sigma^2 (f_x^2 + f_y^2))``. This
+    is the Fourier transform of a Gaussian of standard deviation ``sigma`` (a definition, not a
+    tuned value). Its value at ``f = 0`` is 1, so a constant field has no high-pass.
+    """
+    x = _f64(x)
+    if x.ndim != 2:
+        raise ValueError("x must be a 2-D field")
+    if sigma < 0:
+        raise ValueError("sigma must be >= 0")
+    h, w = x.shape
+    ext = jnp.concatenate([x, x[:, ::-1]], axis=1)
+    ext = jnp.concatenate([ext, ext[::-1, :]], axis=0)
+    fy = jnp.fft.fftfreq(2 * h)
+    fx = jnp.fft.rfftfreq(2 * w)
+    transfer = jnp.exp(-2.0 * jnp.pi**2 * sigma**2 * (fy[:, None] ** 2 + fx[None, :] ** 2))
+    low = jnp.fft.irfft2(jnp.fft.rfft2(ext) * transfer, s=(2 * h, 2 * w))[:h, :w]
+    return x - low
+
+
 def erode(mask, radius: int) -> Array:
     """Morphological erosion with a (2r+1) x (2r+1) square.
 
@@ -118,6 +144,43 @@ def region_mean_rgb(img, mask) -> Array:
     x = _f64(img)
     m = _bool(mask)
     return jnp.sum(jnp.where(m[..., None], x, 0.0), axis=(0, 1)) / _count(m)
+
+
+def _masked_cov(x: Array, y: Array, mask: Array) -> Array:
+    """Population covariance of x and y over the pixels where mask is true, each centred by its own
+    masked mean."""
+    n = _count(mask)
+    mean_x = jnp.sum(jnp.where(mask, x, 0.0)) / n
+    mean_y = jnp.sum(jnp.where(mask, y, 0.0)) / n
+    dx = jnp.where(mask, x - mean_x, 0.0)
+    dy = jnp.where(mask, y - mean_y, 0.0)
+    return jnp.sum(dx * dy) / n
+
+
+def noise_corrected_lag(hp_a, hp_b, mask, axis: int, lag: int = 1) -> Array:
+    """Lag-``lag`` autocorrelation of the structure shared by two independent half renders.
+
+    Dimensionless. ``hp_a`` and ``hp_b`` are high-passed fields of two half renders that share the
+    structure and have independent noise. ``axis=0`` pairs rows (y) and ``axis=1`` pairs columns
+    (x): the pairs are ``(p, p + lag)`` along ``axis``, and only pairs whose two pixels both lie in
+    ``mask`` count. The covariance of ``hp_a[p]`` and ``hp_b[p + lag]`` estimates the structure's
+    lagged covariance. The covariance of ``hp_a`` and ``hp_b`` over ``mask`` estimates its variance.
+    Their ratio is the structure's autocorrelation at that lag, free of the noise-to-structure
+    ratio. Each covariance is in population form, centred by its own masked mean. ``lag=1`` is the
+    lag-1 estimator of experiment 004.
+    """
+    if lag < 1:
+        raise ValueError("lag must be >= 1")
+    a = _f64(hp_a)
+    b = _f64(hp_b)
+    m = _bool(mask)
+    if axis == 0:
+        x, y, pair = a[:-lag], b[lag:], m[:-lag] & m[lag:]
+    elif axis == 1:
+        x, y, pair = a[:, :-lag], b[:, lag:], m[:, :-lag] & m[:, lag:]
+    else:
+        raise ValueError("axis must be 0 or 1")
+    return _masked_cov(x, y, pair) / _masked_cov(a, b, m)
 
 
 def pearson(a, b, mask) -> Array:
