@@ -16,6 +16,7 @@ add_executable(painterly_tests
   test_util.cpp
   test_graph.cpp
   test_math_double3.cpp
-  test_kernel_headers.cpp)
+  test_kernel_headers.cpp
+  test_sampler.cpp)
 target_link_libraries(painterly_tests PRIVATE doctest::doctest cycles_util cycles_graph)
 add_test(NAME painterly_tests COMMAND painterly_tests)
