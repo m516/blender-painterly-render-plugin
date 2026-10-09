@@ -10,7 +10,10 @@ add_library(cycles_util STATIC
   ${PAINTERLY_CYCLES_VENDOR}/util/aligned_malloc.cpp
   ${PAINTERLY_CYCLES_VENDOR}/util/guarded_allocator.cpp
   ${PAINTERLY_CYCLES_VENDOR}/util/transform_avx2.cpp
-  shim/util/system.cpp)
+  shim/util/path.cpp
+  shim/util/string.cpp
+  shim/util/system.cpp
+  shim/util/thread.cpp)
 
 # Shims come first, so that they shadow upstream headers of the same relative path. src lets our code
 # include painterly/...; the sse2neon directory provides <sse2neon.h> on arm64.
@@ -48,4 +51,20 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
     set_property(SOURCE ${PAINTERLY_CYCLES_VENDOR}/util/transform_avx2.cpp
                  APPEND PROPERTY COMPILE_OPTIONS ${PAINTERLY_AVX2_FLAGS})
   endif()
+endif()
+
+# cycles_graph (T3.3): Cycles' node reflection (graph/node.cpp, graph/node_type.cpp) and its MD5 helper
+# (util/md5.cpp), compiled unmodified. util/md5.cpp calls path_fopen from shim/util/path.cpp, so cycles_graph links
+# cycles_util, and the static-library order follows from that link.
+add_library(cycles_graph STATIC
+  ${PAINTERLY_CYCLES_VENDOR}/graph/node.cpp
+  ${PAINTERLY_CYCLES_VENDOR}/graph/node_type.cpp
+  ${PAINTERLY_CYCLES_VENDOR}/util/md5.cpp)
+target_link_libraries(cycles_graph PUBLIC cycles_util)
+
+# Every node type's SOCKET_* macros call offsetof (graph/node_type.h), and a node derives from the polymorphic Node, so
+# GCC reports -Winvalid-offsetof: the standard leaves offsetof conditionally supported for such types. Upstream relies on
+# this for every node, and the code is vendored unmodified, so the warning is silenced for every consumer of cycles_graph.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(cycles_graph PUBLIC -Wno-invalid-offsetof)
 endif()

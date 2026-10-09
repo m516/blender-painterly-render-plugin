@@ -11,6 +11,6 @@ FetchContent_Declare(
 set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
 FetchContent_MakeAvailable(doctest)
 
-add_executable(painterly_tests test_main.cpp test_util.cpp)
-target_link_libraries(painterly_tests PRIVATE doctest::doctest cycles_util)
+add_executable(painterly_tests test_main.cpp test_util.cpp test_graph.cpp)
+target_link_libraries(painterly_tests PRIVATE doctest::doctest cycles_util cycles_graph)
 add_test(NAME painterly_tests COMMAND painterly_tests)

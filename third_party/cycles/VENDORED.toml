@@ -461,3 +461,67 @@ dest = "sse2neon/LICENSE"
 upstream_sha256 = "5c347d431a555ec6e5bc9720ceba2119570357dab5203372d469be9bcce374cc"
 sha256 = "5c347d431a555ec6e5bc9720ceba2119570357dab5203372d469be9bcce374cc"
 patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "graph/node.h"
+dest = "graph/node.h"
+upstream_sha256 = "3720c68f6576c2e1b83a0955006f6592561262fb2f4c4feb05ec4680e8a4728e"
+sha256 = "3720c68f6576c2e1b83a0955006f6592561262fb2f4c4feb05ec4680e8a4728e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "graph/node.cpp"
+dest = "graph/node.cpp"
+upstream_sha256 = "8b650adb388536b7687051c6a8e97350a4ef6f0697bb1912bd4792d3a4e1a814"
+sha256 = "8b650adb388536b7687051c6a8e97350a4ef6f0697bb1912bd4792d3a4e1a814"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "graph/node_type.h"
+dest = "graph/node_type.h"
+upstream_sha256 = "ea0c9654e5ca4e3b08f96400dbf26d4f073528df29fa9e612d11b72d05b2d8b9"
+sha256 = "ea0c9654e5ca4e3b08f96400dbf26d4f073528df29fa9e612d11b72d05b2d8b9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "graph/node_type.cpp"
+dest = "graph/node_type.cpp"
+upstream_sha256 = "ee14d565261a763915a8f45707a0a79cb4490219376db854c1143cc40ae34805"
+sha256 = "ee14d565261a763915a8f45707a0a79cb4490219376db854c1143cc40ae34805"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "graph/node_enum.h"
+dest = "graph/node_enum.h"
+upstream_sha256 = "9248f7ebd961d6fcc57aea1c68ac1d71b7209ecb3b4622212a8e99d936f1826c"
+sha256 = "9248f7ebd961d6fcc57aea1c68ac1d71b7209ecb3b4622212a8e99d936f1826c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/md5.h"
+dest = "util/md5.h"
+upstream_sha256 = "2c4ea281d95c7485546efbca7509e559e2034992c0bdae8ad673bcc3479d287a"
+sha256 = "2c4ea281d95c7485546efbca7509e559e2034992c0bdae8ad673bcc3479d287a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/md5.cpp"
+dest = "util/md5.cpp"
+upstream_sha256 = "ac1dc7b4907a55526efb9d0cacb8c9ea7074f05f874e79a8845033719886e1ed"
+sha256 = "ac1dc7b4907a55526efb9d0cacb8c9ea7074f05f874e79a8845033719886e1ed"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/path.h"
+dest = "util/path.h"
+upstream_sha256 = "2e012d8ab17b29126da11db6a68ee23bc57ab1856afa0ff61cc134c7495b0b98"
+sha256 = "2e012d8ab17b29126da11db6a68ee23bc57ab1856afa0ff61cc134c7495b0b98"
+patched = false
