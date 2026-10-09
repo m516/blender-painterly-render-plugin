@@ -17,17 +17,16 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
-import numpy as np
-
-from . import metrics
 from .io import OracleRender, read_oracle
 from .oracle import REPO_ROOT, _option_flags, oracle_binary
 
@@ -219,42 +218,32 @@ def load(job: Job) -> OracleRender:
 def ensemble_jobs(name: str, pairs: int, base_seed: int = 0, **options: Any) -> list[Job]:
     """``2 * pairs`` jobs named ``name`` with seeds ``base_seed … base_seed + 2 * pairs - 1``.
 
-    Consecutive seeds form the pairs that ``measure_ensemble`` compares.
+    Consecutive seeds form the pairs that ``report.ensemble_metrics`` compares.
     """
     if pairs < 1:
         raise ValueError("pairs must be >= 1")
     return [Job.make(name, base_seed + i, **options) for i in range(2 * pairs)]
 
 
-def measure_ensemble(
-    jobs: list[Job], ref8: np.ndarray, object_id: np.ndarray | None = None
-) -> list[dict[str, float]]:
-    """``metrics.measure`` for each consecutive pair of jobs, in order.
+def load_jobs_module(path: Path) -> ModuleType:
+    """Import a Python file, such as an experiment's ``jobs.py``, and return the module.
 
-    ``ref8`` is the reference display image. ``object_id`` is the SPEC §9 id map shared by the
-    pairs. When it is None, the first job's ``object_id`` is used. All jobs must be rendered.
+    The module is named after the file's directory, so two jobs files do not collide. ``sys.path``
+    is not changed. Raises RuntimeError when the file cannot be loaded. It lives here, not in
+    ``report``, because ``report`` imports this module, and ``report`` re-exports it.
     """
-    if not jobs or len(jobs) % 2 != 0:
-        raise ValueError("jobs must form pairs: a non-zero, even number of jobs")
-    if object_id is None:
-        object_id = load(jobs[0]).object_id
-    results: list[dict[str, float]] = []
-    for first, second in zip(jobs[0::2], jobs[1::2], strict=True):
-        a = load(first)
-        b = load(second)
-        if a.passes != b.passes:
-            raise ValueError(f"pair {first.name!r}: passes differ ({a.passes} vs {b.passes})")
-        results.append(metrics.measure(a.sum, b.sum, a.passes, ref8, object_id))
-    return results
+    path = Path(path)
+    name = "painterly_jobs_" + re.sub(r"\W", "_", path.parent.name)
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _load_jobs(path: Path) -> list[Job]:
-    spec = importlib.util.spec_from_file_location("painterly_experiment_jobs", path)
-    if spec is None or spec.loader is None:
-        raise SystemExit(f"{path}: not a Python source file")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    jobs = getattr(module, "JOBS", None)
+    jobs = getattr(load_jobs_module(path), "JOBS", None)
     if not isinstance(jobs, list) or not all(isinstance(job, Job) for job in jobs):
         raise SystemExit(f"{path}: JOBS must be a list of Job")
     return jobs

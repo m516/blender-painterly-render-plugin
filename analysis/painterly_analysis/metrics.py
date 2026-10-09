@@ -15,6 +15,8 @@ from jax import Array
 from .io import smallpaint_display
 
 LUMA_REC709 = (0.2126, 0.7152, 0.0722)  # ITU-R BT.709 luma coefficients (definition)
+# the plan's acceptance metrics: 9×9-box high-pass luminance
+HIGHPASS_SIZE = 9
 
 # SPEC §9 object ids of type diffuse, excluding the light (id 9). The scene-list order is the
 # object id (painterly.cpp:252-262).
@@ -65,7 +67,7 @@ def box_blur(x, size: int) -> Array:
     return total / (size * size)
 
 
-def highpass(x, size: int = 9) -> Array:
+def highpass(x, size: int = HIGHPASS_SIZE) -> Array:
     """``x - box_blur(x, size)``: the texture left after removing the local mean. Units of ``x``."""
     x = _f64(x)
     return x - box_blur(x, size)
@@ -239,7 +241,7 @@ def measure(
     ref8,
     object_id,
     *,
-    highpass_size: int = 9,
+    highpass_size: int = HIGHPASS_SIZE,
     erosion_radius: int | None = None,
     block: int = 25,
 ) -> dict[str, float]:

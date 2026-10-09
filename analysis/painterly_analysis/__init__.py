@@ -28,6 +28,7 @@ from .io import (  # noqa: E402
 )
 from .metrics import (  # noqa: E402
     DIFFUSE_REGION_IDS,
+    HIGHPASS_SIZE,
     LUMA_REC709,
     block_rmse,
     box_blur,
@@ -49,6 +50,7 @@ from .oracle import oracle_binary, run_many, run_oracle  # noqa: E402
 
 __all__ = [
     "DIFFUSE_REGION_IDS",
+    "HIGHPASS_SIZE",
     "LUMA_REC709",
     "Comparison",
     "OracleRender",

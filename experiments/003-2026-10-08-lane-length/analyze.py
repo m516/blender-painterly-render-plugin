@@ -18,10 +18,10 @@ from painterly_analysis import (
     metrics,
     read_ppm,
     report,
-    smallpaint_display,
     write_png,
 )
 from painterly_analysis.experiment import Job, load
+from painterly_analysis.metrics import HIGHPASS_SIZE
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -39,7 +39,6 @@ EARLIER_JOBS = (
 SIGNIFICANCE = 0.01
 PASSES = 64  # P of every configuration (jobs.py)
 BLOCK = 16  # seeds per configuration: 8 pairs x 2 half renders (jobs.py)
-HIGHPASS_SIZE = 9  # metrics.measure default; the erosion radius is HIGHPASS_SIZE // 2
 ERODE_RADIUS = HIGHPASS_SIZE // 2
 # The experiment's size in pixels (jobs.py SIZE). The cross-experiment seed check applies only at
 # this size: a smoke run at another size has option sets that differ from experiments 001 and 002.
@@ -61,6 +60,8 @@ GRID_LAYOUT = (
     ("lane_4", "lane_8", "lane_16", "lane_32"),
     ("lane_64", "lane_128", "reference", None),
 )
+# The previews in GRID_LAYOUT's row-major order, without the empty cell (the trailing None).
+GRID_ORDER = tuple(name for row in GRID_LAYOUT for name in row if name is not None)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -144,24 +145,6 @@ def _check_design(ensembles: dict[str, list[Job]], earlier: dict[int, dict]) -> 
     return pairs, size
 
 
-def _pair_test(runs: dict[str, list[dict]], key: str, a: str, b: str) -> dict:
-    """One key of ``a`` against ``b``: one-sided permutation p-values in both directions.
-
-    ``p_less`` is the p-value of ``permutation_pvalue(a, b, "less")``: a small value means ``a`` is
-    lower than ``b``. ``p_greater`` is the opposite direction.
-    """
-    less = report.pair_test(runs[a], runs[b], key, "less", SIGNIFICANCE)
-    greater = report.pair_test(runs[a], runs[b], key, "greater", SIGNIFICANCE)
-    return {
-        "comparison": f"{a} vs {b}",
-        "key": key,
-        "p_less": less["p_value"],
-        "p_greater": greater["p_value"],
-        "min_attainable_p": less["min_attainable_p"],
-        "effect": less["effect"],
-    }
-
-
 def _h1(runs: dict[str, list[dict]]) -> dict:
     """H1: ``all.pattern_corr`` is non-decreasing in L, over the adjacent steps of the ladder."""
     # The ladder ascends in L, so each step is (shorter, longer) and the longer one is tested.
@@ -190,7 +173,12 @@ def _h1(runs: dict[str, list[dict]]) -> dict:
 
 def _h2(runs: dict[str, list[dict]]) -> dict:
     """H2: L* exists. Each lane length is tested against row, with Holm across the whole ladder."""
-    tests = {name: _pair_test(runs, PATTERN_KEY, name, ROW) for name in LADDER}
+    tests = {
+        name: report.directional_pair_test(
+            runs[name], runs[ROW], PATTERN_KEY, SIGNIFICANCE, labels=(name, ROW)
+        )
+        for name in LADDER
+    }
     less = ensemble.holm({name: t["p_less"] for name, t in tests.items()}, SIGNIFICANCE)
     powered = all(t["min_attainable_p"] <= SIGNIFICANCE / len(LADDER) for t in tests.values())
     kept = [length for length, name in zip(LANE_LENGTHS, LADDER, strict=True) if not less[name]]
@@ -253,37 +241,6 @@ def _chains_per_pass() -> dict[str, int]:
     for name, length in zip(LADDER, LANE_LENGTHS, strict=True):
         chains[name] = TARGET_HEIGHT * ((TARGET_WIDTH + length - 1) // length)
     return chains
-
-
-def _ab8(jobs: list[Job]) -> np.ndarray:
-    """``ab8`` of pair 0: the display image of the two half renders summed, at 2 * passes."""
-    first, second = load(jobs[0]), load(jobs[1])
-    return smallpaint_display(
-        np.asarray(first.sum) + np.asarray(second.sum), first.passes + second.passes
-    )
-
-
-def _quarter(img8: np.ndarray) -> np.ndarray:
-    """Quarter-size preview: the mean over PREVIEW_FACTOR x PREVIEW_FACTOR blocks, rounded."""
-    h, w = img8.shape[:2]
-    if h % PREVIEW_FACTOR or w % PREVIEW_FACTOR:
-        raise ValueError(f"image side must be a multiple of {PREVIEW_FACTOR}, got {h} x {w}")
-    blocks = img8.astype(np.float64).reshape(
-        h // PREVIEW_FACTOR, PREVIEW_FACTOR, w // PREVIEW_FACTOR, PREVIEW_FACTOR, 3
-    )
-    return np.round(blocks.mean(axis=(1, 3))).astype(np.uint8)
-
-
-def _grid(previews: dict[str, np.ndarray]) -> np.ndarray:
-    """Mosaic of the previews in GRID_LAYOUT (row-major). Empty cells stay black."""
-    tile = next(iter(previews.values())).shape[0]
-    rows, cols = len(GRID_LAYOUT), len(GRID_LAYOUT[0])
-    mosaic = np.zeros((rows * tile, cols * tile, 3), dtype=np.uint8)
-    for r, row in enumerate(GRID_LAYOUT):
-        for c, name in enumerate(row):
-            if name is not None:
-                mosaic[r * tile : (r + 1) * tile, c * tile : (c + 1) * tile] = previews[name]
-    return mosaic
 
 
 def _decision_table(h1: dict, h2: dict, h3: dict) -> list[dict]:
@@ -431,11 +388,12 @@ def main(argv: list[str] | None = None) -> None:
 
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    ab8 = {name: _ab8(jobs) for name, jobs in ensembles.items()}
-    previews = {name: _quarter(img) for name, img in ab8.items()}
-    previews["reference"] = _quarter(reference8)
+    ab8 = {name: report.ab8_of_pair(jobs) for name, jobs in ensembles.items()}
+    previews = {name: report.block_preview(img, PREVIEW_FACTOR) for name, img in ab8.items()}
+    previews["reference"] = report.block_preview(reference8, PREVIEW_FACTOR)
     grid_name = "fig_grid.png"
-    write_png(out_dir / grid_name, _grid(previews))
+    grid = report.mosaic({name: previews[name] for name in GRID_ORDER}, len(GRID_LAYOUT[0]))
+    write_png(out_dir / grid_name, grid)
     figures = {grid_name: (out_dir / grid_name).stat().st_size}
 
     results = {

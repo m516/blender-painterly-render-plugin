@@ -18,10 +18,10 @@ from painterly_analysis import (
     metrics,
     read_ppm,
     report,
-    smallpaint_display,
     write_png,
 )
 from painterly_analysis.experiment import Job, load
+from painterly_analysis.metrics import HIGHPASS_SIZE
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -31,7 +31,6 @@ DEFAULT_REFERENCE = REPO_ROOT / "tests" / "data" / "reference" / "smallpaint_pai
 
 # Family-wise level of every decision (README, Hypothesis). Not the oracle option `alpha`.
 SIGNIFICANCE = 0.01
-HIGHPASS_SIZE = 9  # metrics.measure default; the erosion radius is HIGHPASS_SIZE // 2
 ERODE_RADIUS = HIGHPASS_SIZE // 2
 BACK_WALL_ID = 4  # SPEC §9: the back plane
 LUMA = metrics.LUMA_REC709  # ITU-R BT.709 luma weights (definition)
@@ -61,6 +60,8 @@ GRID_LAYOUT = (
     ("alpha_05", "alpha_1", "u2_independent", "u2_base3"),
     ("per_path_start", "stop_at_emitter", "reference", None),
 )
+# The previews in GRID_LAYOUT's row-major order, without the empty cell (the trailing None).
+GRID_ORDER = tuple(name for row in GRID_LAYOUT for name in row if name is not None)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -107,25 +108,13 @@ def _with_luma(run: dict) -> dict:
     return {**run, LUMA_KEY: LUMA[0] * red + LUMA[1] * green + LUMA[2] * blue}
 
 
-def _pair_test(runs: dict[str, list[dict]], key: str, a: str, b: str) -> dict:
-    """One key of ``a`` against ``b``: one-sided permutation p-values in both directions.
-
-    ``p_less`` is ``ensemble.separated(a, b, "less")`` at the significance level.
-    """
-    less = report.pair_test(runs[a], runs[b], key, "less", SIGNIFICANCE)
-    greater = report.pair_test(runs[a], runs[b], key, "greater", SIGNIFICANCE)
-    return {
-        "comparison": f"{a} vs {b}",
-        "key": key,
-        "p_less": less["p_value"],
-        "p_greater": greater["p_value"],
-        "min_attainable_p": less["min_attainable_p"],
-        "effect": less["effect"],
-    }
-
-
 def _h1(runs: dict[str, list[dict]]) -> dict:
-    tests = {v: _pair_test(runs, LUMA_KEY, v, POSITIVE) for v in H1_VARIANTS}
+    tests = {
+        v: report.directional_pair_test(
+            runs[v], runs[POSITIVE], LUMA_KEY, SIGNIFICANCE, labels=(v, POSITIVE)
+        )
+        for v in H1_VARIANTS
+    }
     if all(t["p_less"] <= SIGNIFICANCE for t in tests.values()):
         decision = "supported"
     elif any(t["p_greater"] <= SIGNIFICANCE for t in tests.values()):
@@ -149,7 +138,12 @@ def _holm_decision(tests: dict[str, dict]) -> dict:
 
 
 def _h2(runs: dict[str, list[dict]]) -> dict:
-    tests = {v: _pair_test(runs, PATTERN_KEY, v, POSITIVE) for v in H2_VARIANTS}
+    tests = {
+        v: report.directional_pair_test(
+            runs[v], runs[POSITIVE], PATTERN_KEY, SIGNIFICANCE, labels=(v, POSITIVE)
+        )
+        for v in H2_VARIANTS
+    }
     return {"metric": PATTERN_KEY, "tests": tests, **_holm_decision(tests)}
 
 
@@ -221,37 +215,6 @@ def _k_summary(ensembles: dict[str, list[Job]]) -> dict[str, dict]:
             "renders": len(per_render),
         }
     return summary
-
-
-def _ab8(jobs: list[Job]) -> np.ndarray:
-    """``ab8`` of pair 0: the display image of the two half renders summed, at 2 * passes."""
-    first, second = load(jobs[0]), load(jobs[1])
-    return smallpaint_display(
-        np.asarray(first.sum) + np.asarray(second.sum), first.passes + second.passes
-    )
-
-
-def _quarter(img8: np.ndarray) -> np.ndarray:
-    """Quarter-size preview: the mean over PREVIEW_FACTOR x PREVIEW_FACTOR blocks, rounded."""
-    h, w = img8.shape[:2]
-    if h % PREVIEW_FACTOR or w % PREVIEW_FACTOR:
-        raise ValueError(f"image side must be a multiple of {PREVIEW_FACTOR}, got {h} x {w}")
-    blocks = img8.astype(np.float64).reshape(
-        h // PREVIEW_FACTOR, PREVIEW_FACTOR, w // PREVIEW_FACTOR, PREVIEW_FACTOR, 3
-    )
-    return np.round(blocks.mean(axis=(1, 3))).astype(np.uint8)
-
-
-def _grid(previews: dict[str, np.ndarray]) -> np.ndarray:
-    """Mosaic of the previews in GRID_LAYOUT (row-major). Empty cells stay black."""
-    tile = next(iter(previews.values())).shape[0]
-    rows, cols = len(GRID_LAYOUT), len(GRID_LAYOUT[0])
-    mosaic = np.zeros((rows * tile, cols * tile, 3), dtype=np.uint8)
-    for r, row in enumerate(GRID_LAYOUT):
-        for c, name in enumerate(row):
-            if name is not None:
-                mosaic[r * tile : (r + 1) * tile, c * tile : (c + 1) * tile] = previews[name]
-    return mosaic
 
 
 def _decision_table(h1: dict, h2: dict, h3: dict, h4: dict, h5: dict) -> list[dict]:
@@ -366,13 +329,14 @@ def main(argv: list[str] | None = None) -> None:
 
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    ab8 = {name: _ab8(jobs) for name, jobs in ensembles.items()}
+    ab8 = {name: report.ab8_of_pair(jobs) for name, jobs in ensembles.items()}
     for name in CONFIGURATIONS:
         write_png(out_dir / f"fig_{name}.png", ab8[name])
-    previews = {name: _quarter(img) for name, img in ab8.items()}
-    previews["reference"] = _quarter(reference8)
+    previews = {name: report.block_preview(img, PREVIEW_FACTOR) for name, img in ab8.items()}
+    previews["reference"] = report.block_preview(reference8, PREVIEW_FACTOR)
     grid_name = "fig_grid.png"
-    write_png(out_dir / grid_name, _grid(previews))
+    grid = report.mosaic({name: previews[name] for name in GRID_ORDER}, len(GRID_LAYOUT[0]))
+    write_png(out_dir / grid_name, grid)
     figures = {
         f"fig_{name}.png": (out_dir / f"fig_{name}.png").stat().st_size for name in CONFIGURATIONS
     }

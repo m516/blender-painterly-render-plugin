@@ -1,8 +1,8 @@
 """Helpers shared by the experiment analyses (T1.11).
 
 Each ``experiments/NNN-*/analyze.py`` keeps its own decisions and figures. The statistics it would
-otherwise copy, the Holm bookkeeping, the Markdown tables and the JSON writer live here, so they are
-written and tested once.
+otherwise copy, the Holm bookkeeping, the pair and preview helpers and the JSON writer live here, so
+they are written and tested once.
 
 Conventions. An ensemble is a list of per-pair metric dicts, one per pair of half renders, as
 ``ensemble_metrics`` returns them. ``alpha`` is a family-wise level, the significance of a decision.
@@ -10,19 +10,18 @@ It is not the oracle option of the same name. Every p-value is a permutation p-v
 ``ensemble.permutation_pvalue``, so no distributional assumption is made.
 """
 
-import importlib.util
 import json
 import math
-import re
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import numpy as np
 
 from . import ensemble, metrics
 from .experiment import Job, load
+from .experiment import load_jobs_module as load_jobs_module  # re-exported (see experiment.py)
+from .io import smallpaint_display
 
 
 def _column(runs: Sequence[Mapping[str, float]], key: str) -> list[float]:
@@ -83,6 +82,37 @@ def pair_test(
     }
 
 
+def directional_pair_test(
+    a: list[dict],
+    b: list[dict],
+    key: str,
+    alpha: float,
+    *,
+    labels: tuple[str, str] = ("a", "b"),
+) -> dict[str, Any]:
+    """One metric key of ensemble ``a`` against ``b``, with both one-sided permutation tests.
+
+    ``p_less`` is the p-value of "a is lower than b" and ``p_greater`` that of "a is higher than b".
+    Both are exact permutation p-values from ``pair_test``. ``min_attainable_p`` is the smallest
+    p-value the "greater" test can return, ``ensemble.min_attainable_pvalue(n, m, "greater")``. For
+    one-sided tests this equals the "less" minimum. ``effect`` is the ``ensemble.effect_summary``
+    entry of the key. ``labels`` name the two ensembles, and ``comparison`` reads ``"<a> vs <b>"``.
+
+    Returns ``{"comparison", "key", "p_less", "p_greater", "min_attainable_p", "effect"}``. Holm
+    across keys or steps is the caller's (``ensemble.holm``).
+    """
+    less = pair_test(a, b, key, "less", alpha)
+    greater = pair_test(a, b, key, "greater", alpha)
+    return {
+        "comparison": f"{labels[0]} vs {labels[1]}",
+        "key": key,
+        "p_less": less["p_value"],
+        "p_greater": greater["p_value"],
+        "min_attainable_p": greater["min_attainable_p"],
+        "effect": less["effect"],
+    }
+
+
 def family_test(a: list[dict], b: list[dict], keys: Iterable[str], alpha: float) -> dict[str, Any]:
     """``ensemble.compare_ensembles`` of ``a`` against ``b`` on a key family, with the power check.
 
@@ -133,30 +163,24 @@ def adjacent_tests(
     """Adjacent steps of a monotone sequence of ensembles, on one metric key.
 
     ``order`` names the ensembles from low to high. Each step ``lo -> hi`` of consecutive names is
-    tested as ``hi`` against ``lo`` in both directions. ``p_less`` is the p-value of "hi is lower"
-    and ``p_greater`` the p-value of "hi is higher". Holm (``ensemble.holm``) runs across the steps
-    in each direction at ``alpha``.
+    tested as ``hi`` against ``lo`` with ``directional_pair_test``, which gives ``p_less`` (the
+    p-value of "hi is lower") and ``p_greater`` ("hi is higher"). Holm (``ensemble.holm``) runs
+    across the steps in each direction at ``alpha``.
 
     Returns ``{"key", "alpha", "steps", "holm_rejected_less", "holm_rejected_greater",
     "significant_decreases", "significant_increases", "powered"}``. Each entry of ``steps`` (named
-    ``"lo->hi"``) has ``comparison`` ("hi vs lo"), ``key``, ``p_less``, ``p_greater``,
-    ``min_attainable_p`` (of the less test) and ``effect``. ``powered`` is True when every step's
-    smallest attainable p-value is at most ``alpha / (number of steps)``.
+    ``"lo->hi"``) is a ``directional_pair_test`` record with ``comparison`` ("hi vs lo"), ``key``,
+    ``p_less``, ``p_greater``, ``min_attainable_p`` and ``effect``. ``powered`` is True when every
+    step's smallest attainable p-value is at most ``alpha / (number of steps)``.
     """
     if len(order) < 2 or len(set(order)) != len(order):
         raise ValueError("order must name at least two distinct ensembles")
-    steps: dict[str, dict[str, Any]] = {}
-    for lo, hi in zip(order[:-1], order[1:], strict=True):
-        less = pair_test(ensembles[hi], ensembles[lo], key, "less", alpha)
-        greater = pair_test(ensembles[hi], ensembles[lo], key, "greater", alpha)
-        steps[f"{lo}->{hi}"] = {
-            "comparison": f"{hi} vs {lo}",
-            "key": key,
-            "p_less": less["p_value"],
-            "p_greater": greater["p_value"],
-            "min_attainable_p": less["min_attainable_p"],
-            "effect": less["effect"],
-        }
+    steps: dict[str, dict[str, Any]] = {
+        f"{lo}->{hi}": directional_pair_test(
+            ensembles[hi], ensembles[lo], key, alpha, labels=(hi, lo)
+        )
+        for lo, hi in zip(order[:-1], order[1:], strict=True)
+    }
     less_rejected = ensemble.holm({name: s["p_less"] for name, s in steps.items()}, alpha)
     greater_rejected = ensemble.holm({name: s["p_greater"] for name, s in steps.items()}, alpha)
     return {
@@ -169,31 +193,6 @@ def adjacent_tests(
         "significant_increases": [name for name in steps if greater_rejected[name]],
         "powered": all(s["min_attainable_p"] <= alpha / len(steps) for s in steps.values()),
     }
-
-
-def _cell(value: Any) -> str:
-    if value is None:
-        return "n/a"
-    if isinstance(value, bool):
-        return "yes" if value else "no"
-    if isinstance(value, (float, np.floating)):
-        return format(float(value), ".6g")
-    return str(value).replace("|", "\\|")
-
-
-def markdown_table(rows: Sequence[Mapping[str, Any]], columns: Sequence[str]) -> str:
-    """A GitHub-flavoured Markdown table with one column per name in ``columns``.
-
-    Each row is a mapping, and every column must be present in it (a missing key raises KeyError).
-    Floats are written with six significant digits, None as "n/a", booleans as "yes" or "no", and a
-    pipe inside a cell is escaped. The lines are joined with newlines and there is no final newline.
-    """
-    if not columns:
-        raise ValueError("need at least one column")
-    lines = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
-    for row in rows:
-        lines.append("| " + " | ".join(_cell(row[column]) for column in columns) + " |")
-    return "\n".join(lines)
 
 
 def _reject_non_finite(value: Any, where: str) -> None:
@@ -218,22 +217,6 @@ def write_results_json(path: Path, obj: Any) -> None:
     _reject_non_finite(obj, "results")
     text = json.dumps(obj, indent=2, sort_keys=True, allow_nan=False) + "\n"
     Path(path).write_text(text, encoding="utf-8")
-
-
-def load_jobs_module(path: Path) -> ModuleType:
-    """Import a Python file, such as an experiment's ``jobs.py``, and return the module.
-
-    The module is named after the file's directory, so two jobs files do not collide. ``sys.path``
-    is not changed. Raises RuntimeError when the file cannot be loaded.
-    """
-    path = Path(path)
-    name = "painterly_jobs_" + re.sub(r"\W", "_", path.parent.name)
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def diffuse_only(object_id: np.ndarray, regions: Iterable[int]) -> np.ndarray:
@@ -279,3 +262,59 @@ def ensemble_metrics(
             measure_map = object_id if regions is None else diffuse_only(object_id, regions)
         results.append(metrics.measure(a.sum, b.sum, a.passes, reference8, measure_map))
     return results
+
+
+def ab8_of_pair(jobs: Sequence[Job]) -> np.ndarray:
+    """The display image of pair 0: its two half renders summed, at the sum of their passes.
+
+    ``jobs[0]`` and ``jobs[1]`` form the pair. The result is ``smallpaint_display(sum_a + sum_b,
+    passes_a + passes_b)``, uint8 display bytes (SPEC §7). The arithmetic is that of experiment
+    002's ``_ab8``: the sums are added first, and only then mapped to display bytes.
+    """
+    first, second = load(jobs[0]), load(jobs[1])
+    return smallpaint_display(
+        np.asarray(first.sum) + np.asarray(second.sum), first.passes + second.passes
+    )
+
+
+def block_preview(img8: np.ndarray, factor: int) -> np.ndarray:
+    """A preview of a display image: each ``factor`` x ``factor`` pixel block replaced by its mean.
+
+    The mean of each block is taken per channel and rounded with ``np.round`` (half to even). An
+    (H, W, 3) image gives a uint8 array of shape (H / factor, W / factor, 3). The image sides must
+    be multiples of ``factor``, or ValueError is raised.
+    """
+    if factor < 1:
+        raise ValueError("factor must be >= 1")
+    h, w = img8.shape[:2]
+    if h % factor or w % factor:
+        raise ValueError(f"image side must be a multiple of {factor}, got {h} x {w}")
+    blocks = img8.astype(np.float64).reshape(
+        h // factor, factor, w // factor, factor, *img8.shape[2:]
+    )
+    return np.round(blocks.mean(axis=(1, 3))).astype(np.uint8)
+
+
+def mosaic(previews: Mapping[str, np.ndarray], columns: int) -> np.ndarray:
+    """A mosaic of equal-size previews, laid out row-major in the mapping's order.
+
+    Preview ``i`` goes in row ``i // columns`` and column ``i % columns``. The last row is padded
+    with black cells when the count is not a multiple of ``columns``. Every preview must have the
+    same shape, or ValueError is raised. The result is uint8, with the grid size times the preview
+    shape.
+    """
+    if columns < 1:
+        raise ValueError("columns must be >= 1")
+    tiles = list(previews.values())
+    if not tiles:
+        raise ValueError("need at least one preview")
+    tile_shape = tiles[0].shape
+    if any(tile.shape != tile_shape for tile in tiles):
+        raise ValueError("every preview must have the same shape")
+    tile_h, tile_w = tile_shape[:2]
+    rows = (len(tiles) + columns - 1) // columns
+    grid = np.zeros((rows * tile_h, columns * tile_w, *tile_shape[2:]), dtype=np.uint8)
+    for index, tile in enumerate(tiles):
+        row, col = divmod(index, columns)
+        grid[row * tile_h : (row + 1) * tile_h, col * tile_w : (col + 1) * tile_w] = tile
+    return grid

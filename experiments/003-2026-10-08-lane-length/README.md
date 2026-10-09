@@ -92,6 +92,7 @@
 - Block 19 is unused.
 - There are 128 new renders: 8 configurations x 16 seeds (`lane_2` to `lane_128`, and `row`). Reused: 32 (`image`
   from experiment 001's block 0, and `lane_1` from experiment 002's block 17).
+- D1 is superseded by this amendment: the new blocks are 20-27, and block 19 is unused.
 
 ### Configurations
 
@@ -150,6 +151,10 @@ renders: 128 (8 configurations x 16). Reused: 32 (`image` from block 0, `lane_1`
 - **D3 (decision rules not stated on the card).** The card says "refuted iff" for H1 and gives no rule for "supported".
   The rules above are fixed here. H2 has no card rule either: it is decided by L* and the power of its tests.
 - **D4 (anisotropy).** The card's H2 anisotropy claim has no test, so it has no verdict (see H2).
+
+### Amendments (T1.12)
+
+- Metrics are computed by report.ensemble_metrics (T1.11), the same metrics.measure call that the Analysis section names as experiment.measure_ensemble.
 
 ## Results
 

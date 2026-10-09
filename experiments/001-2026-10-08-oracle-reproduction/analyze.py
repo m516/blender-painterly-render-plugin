@@ -23,6 +23,7 @@ from painterly_analysis import (
     write_png,
 )
 from painterly_analysis.experiment import load
+from painterly_analysis.metrics import HIGHPASS_SIZE
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -32,7 +33,6 @@ REFERENCE_PPM = REPO_ROOT / "tests" / "data" / "reference" / "smallpaint_painter
 ALPHA = 0.01  # family-wise level of every decision (README, Hypothesis)
 PAIRS = 8
 RENDERS_PER_P = 2 * PAIRS  # single renders per configuration: half a and half b of each pair
-HIGHPASS_SIZE = 9  # metrics.measure default; the erosion radius is HIGHPASS_SIZE // 2
 BACK_WALL_ID = 4  # SPEC §9 id of the back plane
 P_VALUES = (16, 32, 64, 128, 256, 512)
 P_MIN = P_VALUES[0]

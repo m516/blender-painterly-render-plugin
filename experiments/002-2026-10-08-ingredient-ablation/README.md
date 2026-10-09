@@ -186,6 +186,10 @@ blocks 10-18, the first free blocks after 001's block 9. New renders: 144 (9 con
   the 2-pair smoke at 128 px: the figures are byte-identical, and `results.json` differs from the unrestricted version
   only in `metric_keys` (67 measured keys before, 46 now).
 
+### Amendments (T1.12)
+
+- Metrics are computed by report.ensemble_metrics (T1.11), the same metrics.measure call that the Analysis section names as experiment.measure_ensemble.
+
 ## Results
 
 Source: `results.json` and the `fig_*.png` previews, written by `analyze.py` from the render cache (160 renders: 144 new,

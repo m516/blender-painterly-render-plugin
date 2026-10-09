@@ -27,6 +27,7 @@ from painterly_analysis import (
     write_png,
 )
 from painterly_analysis.experiment import Job, load
+from painterly_analysis.metrics import HIGHPASS_SIZE
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -47,7 +48,6 @@ SIGNIFICANCE = 0.01
 PASSES = 64  # P of every configuration (jobs.py)
 PAIRS = 8  # pairs per configuration in the experiment (jobs.py)
 BLOCK = 16  # seeds per configuration: 8 pairs x 2 half renders (jobs.py)
-HIGHPASS_SIZE = 9  # metrics.measure default
 ERODE_RADIUS = HIGHPASS_SIZE // 2  # metrics.measure default: half-width of the high-pass box
 REFERENCE_SIZE = 400  # the native reference (GUI scene)
 PREVIEW_SIDE = 200  # side in pixels of each figure tile, whatever the render size
@@ -331,16 +331,8 @@ def _reference_free_downsampled(
     return results
 
 
-def _ab8(jobs: list[Job]) -> np.ndarray:
-    """``ab8`` of pair 0: the display image of the two half renders summed, at 2 * passes."""
-    first, second = load(jobs[0]), load(jobs[1])
-    return smallpaint_display(
-        np.asarray(first.sum) + np.asarray(second.sum), first.passes + second.passes
-    )
-
-
-def _ab8_downsampled(jobs: list[Job]) -> np.ndarray:
-    """``ab8`` of pair 0 after 2 x 2 box downsampling."""
+def _downsampled_ab8(jobs: list[Job]) -> np.ndarray:
+    """``ab8`` of pair 0 with each half render box-downsampled 2 x 2 before the sum (H1b)."""
     first, second = load(jobs[0]), load(jobs[1])
     return smallpaint_display(
         _box_down(first.sum) + _box_down(second.sum), first.passes + second.passes
@@ -486,18 +478,6 @@ def _preview(img8: np.ndarray) -> np.ndarray:
     return np.asarray(jnp.clip(jnp.round(y), 0.0, 255.0)).astype(np.uint8)
 
 
-def _grid(tiles: dict[str, np.ndarray]) -> np.ndarray:
-    """Mosaic of the tiles in FIG_LAYOUT (row-major)."""
-    rows, cols = len(FIG_LAYOUT), len(FIG_LAYOUT[0])
-    mosaic = np.zeros((rows * PREVIEW_SIDE, cols * PREVIEW_SIDE, 3), dtype=np.uint8)
-    for r, row in enumerate(FIG_LAYOUT):
-        for c, name in enumerate(row):
-            mosaic[
-                r * PREVIEW_SIDE : (r + 1) * PREVIEW_SIDE, c * PREVIEW_SIDE : (c + 1) * PREVIEW_SIDE
-            ] = tiles[name]
-    return mosaic
-
-
 def _fmt(value: float | None, spec: str = ".4g") -> str:
     return "n/a" if value is None else format(value, spec)
 
@@ -619,11 +599,14 @@ def main(argv: list[str] | None = None) -> None:
 
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    tiles = {name: _preview(_ab8(jobs)) for name, jobs in ensembles.items()}
-    tiles["downsampled"] = _preview(_ab8_downsampled(ensembles[DOWNSAMPLED]))
+    tiles = {name: _preview(report.ab8_of_pair(jobs)) for name, jobs in ensembles.items()}
+    tiles["downsampled"] = _preview(_downsampled_ab8(ensembles[DOWNSAMPLED]))
     tiles["reference"] = _preview(reference8)
     grid_name = "fig_grid.png"
-    write_png(out_dir / grid_name, _grid(tiles))
+    grid = report.mosaic(
+        {name: tiles[name] for row in FIG_LAYOUT for name in row}, len(FIG_LAYOUT[0])
+    )
+    write_png(out_dir / grid_name, grid)
 
     results = {
         "experiment": EXPERIMENT,
