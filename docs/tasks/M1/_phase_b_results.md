@@ -81,3 +81,27 @@ Add these two paragraphs verbatim at the end of Results:
   lines after `## Method`'s last line, except 004's D6 re-indentation.
 - Each figure is ≤ 1 MB (`find experiments/00N-* -name 'fig_*.png' -size +1M` prints nothing).
 - `make lint` passes.
+
+## Section 006 (card T1.13). Commit `T1.13: experiment — jitter units results`
+Run after T1.14, and only when `--budget 0` prints `remaining=0` for `experiments/006-*/jobs.py`, which now has 256 jobs.
+The README's "Amendments before analysis" apply. Never edit them or any pre-registered text.
+
+Expected decisions, from the milestone review's exploratory run of the original design. H4 is new data, so no value is
+expected for it:
+- H1-image refuted: 1, 0 and 2 of 18 keys for (200, 400), (400, 800) and (200, 800).
+- H1-row refuted: 0, 0 and 1 of 18.
+- H2-image supported: 7 and 9 of 18. H2-row supported: 9 and 9 of 18.
+- H3 supported, row chain: Δ_image-plane 0.0513 [0.0460, 0.1127] vs Δ_pixel 0.1578 [0.1412, 0.2281]. The difference is
+  0.1064 [0.0489, 0.1632], whose interval excludes 0.
+- H5 refuted: 1 of 36 rows fails (s400 vs s800 `r5.mean.R`).
+- H4 on `row_j0_*`: report whatever the rule gives.
+
+Include these tables:
+1. Δ_u per unit and chain, with the bootstrap intervals and `delta_by_class`.
+2. For every comparison: the rejected keys out of 18, `min_attainable_p`, and the texture-only largest |rel| and |d|.
+3. The rejected keys of H1-image and H1-row, each with its relative difference. They concentrate on `r4.slag.x`, the
+   back wall's along-row lag.
+4. H5 rows: scaled vs fixed |rel_diff| for every region-mean key and both pairs.
+5. `distinct_renders` of the image-chain `j0_*` family, and the `jitter_footprint` effects (`row_j0_sN` vs `row_sN`).
+Describe σ as "the standard deviation of a continuous 9-px box (the discrete 9-tap box has 2.582 px)".
+Figures: the six `fig_grid_*.png` files and `fig_slag_profile.png`.
