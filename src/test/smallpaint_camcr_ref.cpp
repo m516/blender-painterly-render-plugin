@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Oracle reference for test_camera.cpp (T3.8). It holds smallpaint_oracle.cpp's camcr() (oracle
 // change 12 in src/app/CHANGES.md, lines 247-255) and the jitter lines of its take_sample()
-// (oracle change 14, lines 364-366), with the oracle's headers and `using namespace std;`. The
+// (oracle change 14, lines 365-366), with the oracle's headers and `using namespace std;`. The
 // oracle's globals `width`, `height` and `g_jitter` are a namespace variable pair and a parameter
 // here. clang-format is off for the copied code, so it stays byte-identical to the source, tabs
 // included.
@@ -65,8 +65,8 @@ Vec camcr(const double x, const double y) {
 // clang-format on
 
 // The primary ray of pixel (row, col) in pass `pass`, as the oracle forms it. With `jittered`, it
-// is take_sample()'s camera (smallpaint_oracle.cpp:364-367), with `jitter` in place of g_jitter.
-// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:384-386). The origin is
+// is take_sample()'s camera (smallpaint_oracle.cpp:363-367), with `jitter` in place of g_jitter.
+// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:383-385). The origin is
 // Vec(0, 0, 0), and the direction is (cam - origin).norm().
 void primary_ray(int image_width,
                  int image_height,

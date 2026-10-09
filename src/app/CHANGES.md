@@ -100,4 +100,4 @@ glass and mirror branches are unchanged except where listed.
     - Values parse with `parse_double_arg()` (`strtod`, correctly rounded, finite values only) or `parse_int_arg()`. Any double
       printed with `%.17g` parses back to itself, so a float32 socket value such as `0.1` (0.100000001490116119...) passed as
       text reproduces the same double.
-    - `meta.json` does not record the new knobs, so its content is the same for every render.
+    - `meta.json` does not record the new knobs, so its fields are the same as before T3.4.

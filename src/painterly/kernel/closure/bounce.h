@@ -22,8 +22,8 @@
 CCL_NAMESPACE_BEGIN
 
 /* SPEC §4. ray->o is already the hit point. Advances *K by one, and the increment comes before the
- * draw (painterly.cpp:203-205). Writes the new unnormalized direction into ray->d and returns
- * cost = dot(d, N). The cost uses the unnormalized d (painterly.cpp:206). */
+ * draw (smallpaint_painterly.cpp:203-205). Writes the new unnormalized direction into ray->d and
+ * returns cost = dot(d, N). The cost uses the unnormalized d (smallpaint_painterly.cpp:206). */
 ccl_device_inline double painterly_diffuse_bounce(const KernelPainterlyIntegrator &p,
                                                   double3 N,
                                                   uint64_t *K,
@@ -47,7 +47,8 @@ ccl_device_inline double painterly_diffuse_bounce(const KernelPainterlyIntegrato
   const double phi = 2 * SMALLPAINT_PI * u2;
   const double3 s = make_double3(std::cos(phi) * r, std::sin(phi) * r, u1);
 
-  /* d = N + F s (painterly.cpp:205). The spiral is not rotated into N's frame (SPEC §4). */
+  /* d = N + F s (smallpaint_painterly.cpp:205). The spiral is not rotated into N's frame
+   * (SPEC §4). */
   double3 d = N + transform_direction_3x3(p.spiral_frame, s);
   /* Normalization blend (SPEC §4). For alpha = 0, pow(|d|, -0) = 1 exactly, so d is unchanged. */
   d = d * std::pow(len(d), -p.alpha);

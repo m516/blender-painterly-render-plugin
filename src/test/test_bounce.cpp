@@ -58,7 +58,7 @@ double diffuse_block(Vec N, Vec &d, double u1, double u2) {
 	return cost;
 }
 
-// trace(), type 2 (smallpaint_painterly.cpp:216-217).
+// trace(), type 2 (smallpaint_painterly.cpp:215-216).
 void mirror_block(Vec N, Vec &d) {
 	double cost = d.dot(N);
 	d = (d - N*(cost * 2)).norm();

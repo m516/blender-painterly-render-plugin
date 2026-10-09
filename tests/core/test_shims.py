@@ -38,7 +38,7 @@ SHIM_IDS = [_relative(path) for path in SHIM_FILES]
 
 
 def test_shim_directory_is_not_empty() -> None:
-    """The T3.2 shims exist: util/log.h, util/stats.h and util/system.cpp."""
+    """The shim directory holds files (T3.2, T3.3), so the parametrized tests below run."""
     assert SHIM_FILES, f"no shim files under {SHIM_DIR}"
 
 

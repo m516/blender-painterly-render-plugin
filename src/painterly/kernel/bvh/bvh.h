@@ -19,7 +19,7 @@ CCL_NAMESPACE_BEGIN
 /* Closest hit over triangles (Embree, tnear = ray_epsilon), then the analytic primitives in list
  * order with smallpaint's acceptance t > eps && t < best.t (smallpaint_painterly.cpp:136-141). A
  * tie resolves to the earlier primitive, and a triangle beats an analytic primitive at equal t.
- * The initial best.t is +infinity. smallpaint uses inf = 1e9 (smallpaint_painterly.cpp:35). No
+ * The initial best.t is +infinity. smallpaint uses inf = 1e9 (smallpaint_painterly.cpp:38). No
  * reference ray reaches 1e9, so the two agree on every reference scene. Returns false on a miss,
  * with isect reset to HIT_NONE. */
 ccl_device_inline bool painterly_scene_intersect(PainterlyGlobals kg,

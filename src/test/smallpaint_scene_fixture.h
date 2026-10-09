@@ -26,7 +26,7 @@ struct SmallpaintSceneFixture {
   /* SPEC §9 table: object ids are the positions in the object list, and so are the material
    * indices of this fixture (one material per object). */
   static constexpr int LIGHT_OBJECT_ID = 9;
-  /* SPEC §9: light emission 120 (painterly.cpp:262). */
+  /* SPEC §9: light emission 120 (smallpaint_painterly.cpp:262). */
   static constexpr double LIGHT_EMISSION = 120.0;
   /* SPEC §9: glass IOR 1.5 (GUI default, refr_index). */
   static constexpr double GLASS_IOR = 1.5;
@@ -40,7 +40,7 @@ struct SmallpaintSceneFixture {
   static constexpr int MAX_DEPTH = 20; /* smallpaint_painterly.cpp:190 */
   /* SPEC §7, image-plane units. The knob 1/1400 is a fraction of the image side (T3.13), and the
    * smallpaint camera works in image-plane units, so the value is 2 * jitter (reference 1/700,
-   * painterly.cpp:291-292). */
+   * smallpaint_painterly.cpp:291-292). */
   static constexpr double JITTER = 2.0 * double(float(1.0 / 1400));
 
   KernelPainterlyData data{};

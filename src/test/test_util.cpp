@@ -13,14 +13,15 @@
 #include "util/transform.h"
 #include "util/types.h"
 
-CCL_NAMESPACE_BEGIN
-
 // The oracle's copy of the hash functions (src/app/smallpaint_oracle_hash.h), in its own namespace
-// so that both copies compile in this translation unit. <cstdint> is already included above, so
-// the header adds no standard-library declarations inside the namespace.
-namespace oracle {
-#include "../app/smallpaint_oracle_hash.h"
-}
+// so that both copies compile in this translation unit, as test_sampler.cpp does. <cstdint> is
+// already included above, so the header adds no standard-library declarations inside the
+// namespace.
+namespace smallpaint_oracle {
+#include "app/smallpaint_oracle_hash.h"
+}  // namespace smallpaint_oracle
+
+CCL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -54,7 +55,7 @@ TEST_CASE("hash_uint4 equals the oracle copy on fixed and random inputs")
   int mismatches = 0;
   for (const auto &corner : corners) {
     mismatches += hash_uint4(corner[0], corner[1], corner[2], corner[3]) !=
-                  oracle::hash_uint4(corner[0], corner[1], corner[2], corner[3]);
+                  smallpaint_oracle::hash_uint4(corner[0], corner[1], corner[2], corner[3]);
   }
 
   std::mt19937 generator(HASH_TEST_SEED);
@@ -63,7 +64,7 @@ TEST_CASE("hash_uint4 equals the oracle copy on fixed and random inputs")
     const std::uint32_t ky = generator();
     const std::uint32_t kz = generator();
     const std::uint32_t kw = generator();
-    mismatches += hash_uint4(kx, ky, kz, kw) != oracle::hash_uint4(kx, ky, kz, kw);
+    mismatches += hash_uint4(kx, ky, kz, kw) != smallpaint_oracle::hash_uint4(kx, ky, kz, kw);
   }
   CHECK(mismatches == 0);
 }

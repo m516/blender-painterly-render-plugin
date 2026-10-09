@@ -149,7 +149,7 @@ bool PainterlyPathTrace::render_lanes(const int pass_begin,
     const int lane = int(unit % per_row);
     PainterlyPathVertex *scratch = scratch_[worker].data();
 
-    /* Cancellation is checked before the unit and between its passes (SPEC §3 unit). */
+    /* Cancellation is checked before the unit and between its passes (T3.12 card). */
     const auto stop_requested = [&] {
       if (cancel.load() || interrupted.load()) {
         interrupted.store(true);

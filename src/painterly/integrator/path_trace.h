@@ -22,8 +22,8 @@ CCL_NAMESPACE_BEGIN
 class PainterlyPathTrace {
  public:
   /* Throws std::invalid_argument when the chain is unknown, lane_length < 1 for CHAIN_LANE,
-   * max_depth < 0, or buffers do not have the camera's size. The buffers and the pool must outlive
-   * this object. */
+   * max_depth < 0, or buffers do not have the camera's size. kg (and the arrays it points to), the
+   * buffers and the pool must outlive this object. */
   PainterlyPathTrace(const PainterlyGlobalsCPU &kg,
                      PainterlyRenderBuffers &buffers,
                      PainterlyThreadPool &pool);

@@ -3,9 +3,9 @@
 
 #pragma once
 
-/* Triangle BVH over instanced meshes, built on Embree 4 (T3.10). The conventions are SPEC §4
- * (unnormalized rays: t is parametric along ray.d) and SPEC §5 (the hit record). Embree stays out
- * of this header: only embree.cpp includes it.
+/* Triangle BVH over instanced meshes, built on Embree 4 (T3.10). The convention is SPEC §4 and §5
+ * (unnormalized rays: t is parametric along ray.d). The hit record is PainterlyIntersection
+ * (painterly/kernel/globals.h). Embree stays out of this header: only embree.cpp includes it.
  *
  * Structure. One RTCScene per mesh holds one triangle geometry. A top-level scene holds one
  * instance per object, with the object's transform. A hit reports the object index (the position

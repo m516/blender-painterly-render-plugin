@@ -4,7 +4,7 @@
 #pragma once
 
 /* The painterly path (SPEC §6): one sample of one pixel. The forward walk records one vertex per
- * hit, and the backward pass evaluates the vertices in reverse. This replaces smallpaint's
+ * hit, and the backward evaluation visits the vertices in reverse. This replaces smallpaint's
  * recursion trace() (smallpaint_painterly.cpp:189-239) with the same operations in the same order,
  * so the result is bit-identical to the recursion (SPEC §6 "Evaluation order").
  *
@@ -27,16 +27,16 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* What a recorded vertex contributes to the backward pass (SPEC §6). */
+/* What a recorded vertex contributes to the backward evaluation (SPEC §6). */
 enum PainterlyPathVertexKind : int {
   VERTEX_DIFFUSE = 0, /* Spiral diffuse bounce: Li = Li + cost * (L * color) * diffuse_gain. */
-  VERTEX_PASS = 1,    /* Tint (mirror, glass, transparent): Li = Li + L * color. */
+  VERTEX_TINT = 1,    /* Tint (mirror, glass, transparent): Li = Li + L * color. */
   VERTEX_END = 2,     /* The path ends here: Li = emission_term. */
 };
 
 /* One recorded hit. emission_term is 0.0 + (E * emission_gain) per channel, where E is the
  * emission of the hit, or the background on a miss (SPEC §6). cost and color are read by
- * VERTEX_DIFFUSE and VERTEX_PASS. */
+ * VERTEX_DIFFUSE and VERTEX_TINT. */
 struct PainterlyPathVertex {
   int kind; /* PainterlyPathVertexKind */
   double3 emission_term;
@@ -119,7 +119,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
       }
       case LOBE_MIRROR:
         painterly_mirror_bounce(N, &ray);
-        scratch[n++] = PainterlyPathVertex{VERTEX_PASS, e_term, 0.0, lobe.weight};
+        scratch[n++] = PainterlyPathVertex{VERTEX_TINT, e_term, 0.0, lobe.weight};
         break;
       case LOBE_GLASS: {
         /* The glass lobe always gets the unflipped normal (SPEC §6). */
@@ -127,7 +127,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
                                     painterly_triangle_shading_normal(kg, isect, ray, false) :
                                     N;
         if (painterly_glass_bounce(N_glass, lobe.ior, &ray)) {
-          scratch[n++] = PainterlyPathVertex{VERTEX_PASS, e_term, 0.0, lobe.weight};
+          scratch[n++] = PainterlyPathVertex{VERTEX_TINT, e_term, 0.0, lobe.weight};
         }
         else {
           /* Total internal reflection: the path ends with its emission (SPEC §6). */
@@ -138,7 +138,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
       }
       case LOBE_TRANSPARENT:
         /* Straight continuation: ray.d is unchanged (SPEC §6). */
-        scratch[n++] = PainterlyPathVertex{VERTEX_PASS, e_term, 0.0, lobe.weight};
+        scratch[n++] = PainterlyPathVertex{VERTEX_TINT, e_term, 0.0, lobe.weight};
         break;
     }
     if (path_ends) {
@@ -148,7 +148,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
 
   /* Backward evaluation (SPEC §6), last vertex first. Each operation matches smallpaint's order:
    * the diffuse term is cost * (L * color) * diffuse_gain (smallpaint_painterly.cpp:209-211), and
-   * the tint adds L * color (:220, :238). */
+   * the tint adds L * color (:219, :236). */
   double3 L = zero;
   for (int i = n - 1; i >= 0; i--) {
     const PainterlyPathVertex &v = scratch[i];
@@ -158,7 +158,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
       Li.y = Li.y + v.cost * (L.y * v.color.y) * p.diffuse_gain;
       Li.z = Li.z + v.cost * (L.z * v.color.z) * p.diffuse_gain;
     }
-    else if (v.kind == VERTEX_PASS) {
+    else if (v.kind == VERTEX_TINT) {
       Li.x = Li.x + L.x * v.color.x;
       Li.y = Li.y + L.y * v.color.y;
       Li.z = Li.z + L.z * v.color.z;
@@ -169,8 +169,8 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
   return PainterlyPathResult{L, *K - K_start};
 }
 
-/* Object id of the unjittered primary hit, or -1 on a miss (SPEC §7; the object-id pass). The
- * unjittered ray does not depend on the pass, so pass 0 is used. */
+/* Object id of the unjittered primary hit, or -1 on a miss (SPEC §9 object ids; the object_id
+ * buffer). The unjittered ray does not depend on the pass, so pass 0 is used. */
 ccl_device int painterly_primary_object_id(PainterlyGlobals kg, int row, int col)
 {
   const PainterlyRay ray = painterly_camera_generate_ray(kg, row, col, 0, false);

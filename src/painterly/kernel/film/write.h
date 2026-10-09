@@ -10,7 +10,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* sum += L per channel, in pass order (SPEC §7; smallpaint_painterly.cpp:287-289). Each channel is
+/* sum += L per channel, in pass order (SPEC §7; smallpaint_painterly.cpp:295-297). Each channel is
  * one double addition, so a pixel's sum depends only on the order of its passes. */
 ccl_device_inline void painterly_film_accumulate(double *pixel_sum_rgb, double3 L)
 {

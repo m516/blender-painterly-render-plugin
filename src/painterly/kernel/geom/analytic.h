@@ -23,9 +23,10 @@ CCL_NAMESPACE_BEGIN
 
 /* Returns smallpaint's t_sphere (smallpaint_painterly.cpp:100-109) for SPHERE_GHOST, or the exact
  * quadratic for SPHERE_EXACT (SPEC §5): (sol2 > eps) ? sol2/2 : ((sol1 > eps) ? sol1/2 : 0). The
- * far root is tried first, and the near root only when the far one is not beyond eps. Returns 0 on
- * a miss. The caller accepts the hit iff the returned t > eps (Scene::intersect,
- * smallpaint_painterly.cpp:138). */
+ * near root sol2 = -b - sqrt(disc) is tried first, and the far root sol1 only when the undivided
+ * near root is not beyond eps. Returns 0 on a miss. The caller accepts the hit iff the returned
+ * t > eps (Scene::intersect, smallpaint_painterly.cpp:138), so a near root that passes the
+ * undivided test but not the divided one is rejected without trying the far root (SPEC §5). */
 ccl_device_inline double painterly_sphere_intersect(const KernelPainterlyAnalytic &sphere,
                                                     const PainterlyRay &ray,
                                                     double eps)

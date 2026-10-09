@@ -15,7 +15,7 @@ option(PAINTERLY_BUILD_MODULE "Build the _painterly Python module" ON)
 option(PAINTERLY_BUILD_TESTS "Build the doctest unit tests" ON)
 option(PAINTERLY_BUILD_ORACLE "Build the smallpaint_oracle reference CLI" ON)
 
-# SPEC §6: bit-identical oracle parity requires no FMA contraction
+# Bit-identical oracle parity requires no FMA contraction (docs/architecture.md, "Determinism contract").
 if(MSVC)
   add_compile_options(/fp:precise)
 else()

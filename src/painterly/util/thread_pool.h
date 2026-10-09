@@ -5,8 +5,8 @@
 
 /* A fixed pool of worker threads with a blocking parallel_for (T3.12). The pool decides only which
  * worker runs which item. Results must not depend on that choice: the path tracer gives every lane
- * its own pixels, its own K and its own scratch, so the output is bit-identical for any thread
- * count (docs/architecture.md, "Determinism contract"). */
+ * its own pixels and its own K, and every worker its own scratch, so the output is bit-identical
+ * for any thread count (docs/architecture.md, "Determinism contract"). */
 
 #include <atomic>
 #include <condition_variable>

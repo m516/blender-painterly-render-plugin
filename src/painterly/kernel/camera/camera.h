@@ -70,7 +70,7 @@ ccl_device_inline double painterly_camera_jitter_axis(const uint seed,
 
 /* smallpaint's camcr(x, y) with x = row and y = col (smallpaint_painterly.cpp:171-179), then the
  * image-plane jitter of smallpaint_painterly.cpp:291-292, and d = normalize(cam - o) with o = 0
- * (:292-293). KernelPainterlyCamera::jitter holds the jitter in image-plane units. */
+ * (:289, :293). KernelPainterlyCamera::jitter holds the jitter in image-plane units. */
 ccl_device_inline PainterlyRay painterly_camera_smallpaint_ray(const KernelPainterlyData &data,
                                                                const int row,
                                                                const int col,
@@ -80,7 +80,7 @@ ccl_device_inline PainterlyRay painterly_camera_smallpaint_ray(const KernelPaint
   const KernelPainterlyCamera &cam = data.cam;
   const double w = cam.width;
   const double h = cam.height;
-  /* smallpaint_painterly.cpp:173-174. fovx and fovy are float, as in smallpaint. */
+  /* smallpaint_painterly.cpp:174-175. fovx and fovy are float, as in smallpaint. */
   const float fovx = SMALLPAINT_PI / 4;
   const float fovy = (h / w) * fovx;
   const double x = row;
@@ -97,13 +97,13 @@ ccl_device_inline PainterlyRay painterly_camera_smallpaint_ray(const KernelPaint
     cam_point.y = cam_point.y +
                   painterly_camera_jitter_axis(seed, PURPOSE_JITTER_Y, row, col, pass, cam.jitter);
   }
-  /* smallpaint's ray origin is Vec(0, 0, 0) (smallpaint_painterly.cpp:292). */
+  /* smallpaint's ray origin is Vec(0, 0, 0) (smallpaint_painterly.cpp:289). */
   const double3 origin = make_double3(0.0);
   return PainterlyRay{origin, normalize(cam_point - origin)};
 }
 
 /* Primary ray for pixel (row, col) of `pass` (SPEC §7). jittered = false gives the unjittered ray
- * that the object-id pass uses. Directions are unit length. */
+ * that the object_id buffer uses (painterly_primary_object_id). Directions are unit length. */
 ccl_device_inline PainterlyRay
 painterly_camera_generate_ray(PainterlyGlobals kg, int row, int col, int pass, bool jittered)
 {
@@ -127,7 +127,8 @@ painterly_camera_generate_ray(PainterlyGlobals kg, int row, int col, int pass, b
   const double3 point_cam = painterly_camera_raster_to_camera(cam, raster_x, raster_y);
 
   if (cam.type == PAINTERLY_CAMERA_PERSPECTIVE) {
-    /* Pinhole at the camera origin: the ray leaves the origin along R * normalize(Pc). */
+    /* Pinhole at the camera origin: the ray leaves the origin along normalize(R * normalize(Pc)).
+     * The outer normalize keeps the direction unit length when camera_to_world carries a scale. */
     return PainterlyRay{painterly_camera_translation(cam),
                         normalize(painterly_camera_rotate(cam, normalize(point_cam)))};
   }
