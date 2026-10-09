@@ -286,3 +286,81 @@ def test_wheel_platform_tag_of_a_linux_wheel_has_no_manylinux_baseline() -> None
 def test_wheel_filename_without_the_pep_427_fields_is_refused() -> None:
     with pytest.raises(audit.AuditError, match="PEP 427"):
         audit._wheel_platform_tag("painterly_core.whl")
+
+
+# Compressed tag sets (PEP 425): the wheel claims every tag in the set.
+WHEEL_COMPRESSED_2_27_2_28 = (
+    "painterly_core-0.1.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl"
+)
+WHEEL_COMPRESSED_2_17_LEGACY = (
+    "painterly_core-0.1.0-cp312-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+)
+
+
+def test_compressed_tag_set_takes_the_lowest_manylinux_baseline() -> None:
+    tag = audit._wheel_platform_tag(WHEEL_COMPRESSED_2_27_2_28)
+    assert audit._manylinux_baseline(tag) == (2, 27)
+    # GLIBC_2.28 is within the 2.28 element, but the set also claims 2.27, so the audit fails it.
+    check = audit._glibc_check(audit._nm_undefined_elf(NM_GLIBC_2_17_AND_2_28), tag)
+    assert check.violations == [
+        "strlen@GLIBC_2.28: requires glibc 2.28, above the manylinux_2_27 baseline 2.27"
+    ]
+
+
+def test_compressed_tag_set_with_a_legacy_alias_gives_2_17() -> None:
+    tag = audit._wheel_platform_tag(WHEEL_COMPRESSED_2_17_LEGACY)
+    assert audit._manylinux_baseline(tag) == (2, 17)
+
+
+def test_legacy_manylinux_alias_gives_its_pep_600_baseline() -> None:
+    assert audit._manylinux_baseline("manylinux2014_x86_64") == (2, 17)
+    assert audit._manylinux_baseline("manylinux2010_x86_64") == (2, 12)
+    assert audit._manylinux_baseline("manylinux1_x86_64") == (2, 5)
+
+
+def test_manylinux_element_in_neither_form_raises() -> None:
+    with pytest.raises(audit.AuditError, match="manylinuxfoo_x86_64"):
+        audit._manylinux_baseline("manylinuxfoo_x86_64")
+
+
+# The 19 export names of the failed Windows run (T2.9, run 37935120179) besides PyInit__painterly.
+# They are the members of nanobind's NB_EXPORT exception classes, MSVC-decorated.
+NANOBIND_EXCEPTION_EXPORTS_WINDOWS = [
+    "??0builtin_exception@abi1@nanobind@@QEAA@$$QEAV012@@Z",
+    "??0builtin_exception@abi1@nanobind@@QEAA@AEBV012@@Z",
+    "??0builtin_exception@abi1@nanobind@@QEAA@W4exception_type@2@PEBD@Z",
+    "??0python_error@abi1@nanobind@@QEAA@$$QEAV012@@Z",
+    "??0python_error@abi1@nanobind@@QEAA@AEBV012@@Z",
+    "??0python_error@abi1@nanobind@@QEAA@XZ",
+    "??1builtin_exception@abi1@nanobind@@UEAA@XZ",
+    "??1python_error@abi1@nanobind@@UEAA@XZ",
+    "??_7builtin_exception@abi1@nanobind@@6B@",
+    "??_7python_error@abi1@nanobind@@6B@",
+    "?discard_as_unraisable@python_error@abi1@nanobind@@QEAAXPEBD@Z",
+    "?discard_as_unraisable@python_error@abi1@nanobind@@QEAAXVhandle@3@@Z",
+    "?matches@python_error@abi1@nanobind@@QEBA_NVhandle@3@@Z",
+    "?restore@python_error@abi1@nanobind@@QEAAXXZ",
+    "?traceback@python_error@abi1@nanobind@@QEBA?AVobject@3@XZ",
+    "?type@builtin_exception@abi1@nanobind@@QEBA?AW4exception_type@3@XZ",
+    "?type@python_error@abi1@nanobind@@QEBA?AVhandle@3@XZ",
+    "?value@python_error@abi1@nanobind@@QEBA?AVhandle@3@XZ",
+    "?what@python_error@abi1@nanobind@@UEBAPEBDXZ",
+]
+
+
+def test_windows_nanobind_exception_exports_pass_with_the_module_symbol() -> None:
+    assert len(NANOBIND_EXCEPTION_EXPORTS_WINDOWS) == 19
+    exports = [audit.MODULE_SYMBOL, *NANOBIND_EXCEPTION_EXPORTS_WINDOWS]
+    assert audit._pe_export_violations(exports) == []
+
+
+def test_windows_exports_without_the_module_symbol_fail() -> None:
+    assert audit._pe_export_violations(NANOBIND_EXCEPTION_EXPORTS_WINDOWS) == [
+        f"{audit.MODULE_SYMBOL} is not exported"
+    ]
+
+
+def test_windows_export_outside_the_nanobind_exception_classes_fails() -> None:
+    for extra in ("rtcNewDevice", "?foo@bar@@YAXXZ"):
+        exports = [audit.MODULE_SYMBOL, *NANOBIND_EXCEPTION_EXPORTS_WINDOWS, extra]
+        assert audit._pe_export_violations(exports) == [f"export {extra}"]

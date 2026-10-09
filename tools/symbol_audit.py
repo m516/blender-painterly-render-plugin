@@ -12,8 +12,10 @@ The rules follow the binary's own file format. Each format needs its platform to
 
 A wheel (.whl) may be given instead of a module: its single `_painterly*` file is extracted into a
 temporary directory and audited there. A wheel's platform tag (PEP 427) sets the glibc baseline of
-the ELF `glibc_versions` check: `manylinux_X_Y_<arch>` (PEP 600) means every imported GLIBC version
-must be at most X.Y. Any other tag, or a bare module, only reports the highest imported version.
+the ELF `glibc_versions` check: a `manylinux_X_Y_<arch>` tag or a PEP 600 legacy alias means every
+imported GLIBC version must be at most X.Y. A compressed tag set (PEP 425) takes the lowest baseline
+of its manylinux elements. Any other tag, or a bare module, only reports the highest imported
+version.
 Exit status is 0 when every check passes and 1 otherwise. A check that cannot run is a failure.
 """
 
@@ -54,6 +56,14 @@ GLIBC_VERSION_PREFIX = "GLIBC_"
 GLIBC_VERSION_PATTERN = re.compile(r"^GLIBC_(?P<parts>\d+\.\d+(?:\.\d+)?)$")
 # A PEP 600 platform tag `manylinux_X_Y_<arch>`: glibc >= X.Y on the target.
 MANYLINUX_TAG_PATTERN = re.compile(r"^manylinux_(?P<major>\d+)_(?P<minor>\d+)_\w+$")
+# PEP 600 legacy aliases, each the glibc baseline of an older manylinux tag: manylinux1 is glibc
+# 2.5, manylinux2010 is 2.12 and manylinux2014 is 2.17. The alias keeps its `_<arch>` suffix.
+MANYLINUX_LEGACY_PATTERN = re.compile(r"^(?P<alias>manylinux1|manylinux2010|manylinux2014)_\w+$")
+MANYLINUX_LEGACY_BASELINES = {
+    "manylinux1": (2, 5),
+    "manylinux2010": (2, 12),
+    "manylinux2014": (2, 17),
+}
 PYTHON_API_PATTERN_LINUX = re.compile(r"^_?Py")
 # The toolchain's standard weak hooks: weak undefined references that every module carries.
 CRT_WEAK_HOOKS_LINUX = frozenset(
@@ -78,6 +88,15 @@ PYTHON_API_PATTERN_MACOS = re.compile(r"^_+Py")
 # advapi32.dll: Embree enables SeLockMemoryPrivilege for huge pages (embree common/sys/alloc.cpp,
 # called from kernels/common/device.cpp); a Windows system DLL, not one Blender ships.
 ALLOWED_DLLS_WINDOWS = frozenset({"python3.dll", "kernel32.dll", "advapi32.dll"})
+# nanobind 3.1.0 marks python_error and builtin_exception NB_EXPORT (nb_error.h:35,99), which is
+# __declspec(dllexport) on Windows (nb_defs.h:27), so that exceptions can cross module boundaries.
+# Their MSVC names are a constructor `??0`, a destructor `??1`, a vftable `??_7`, deleting
+# destructors `??_G` and `??_E`, or a member `?name@`, each followed by the class scope
+# `<class>@abi1@nanobind@@`. A PE image's imports bind by DLL name, so an export cannot interpose
+# into another module. Every other export is still refused.
+NANOBIND_EXCEPTION_EXPORT_PATTERN_WINDOWS = re.compile(
+    r"(?:\?\?(?:[01]|_[7GE])|\?[A-Za-z_]\w*@)(?:python_error|builtin_exception)@abi1@nanobind@@"
+)
 
 ELF_MAGIC = b"\x7fELF"
 # Mach-O 64-bit headers in little- and big-endian byte order, and the fat (universal) header.
@@ -203,19 +222,37 @@ def _wheel_platform_tag(filename: str) -> str:
     return fields[-1]
 
 
-def _manylinux_baseline(platform_tag: str | None) -> tuple[int, int] | None:
-    """(X, Y) of a `manylinux_X_Y_<arch>` platform tag (PEP 600), or None when there is no such tag.
+def _manylinux_element_baseline(element: str) -> tuple[int, int]:
+    """(X, Y) of one manylinux element of a platform tag: `manylinux_X_Y_<arch>` or a PEP 600 alias.
 
-    None covers a bare module (no tag) and any tag that is not manylinux, such as `linux_x86_64`.
-    A tag that starts with `manylinux` but is not in the X_Y form (`manylinux2014_x86_64`, for
-    example) raises AuditError: its glibc baseline cannot be read, so the audit fails.
+    An element that starts with `manylinux` but is in neither form raises AuditError: its glibc
+    baseline cannot be read, so the audit fails.
     """
-    if platform_tag is None or not platform_tag.startswith("manylinux"):
+    match = MANYLINUX_TAG_PATTERN.match(element)
+    if match is not None:
+        return int(match["major"]), int(match["minor"])
+    legacy = MANYLINUX_LEGACY_PATTERN.match(element)
+    if legacy is not None:
+        return MANYLINUX_LEGACY_BASELINES[legacy["alias"]]
+    raise AuditError(f"cannot read the glibc baseline of platform tag {element}")
+
+
+def _manylinux_baseline(platform_tag: str | None) -> tuple[int, int] | None:
+    """(X, Y) glibc baseline of a platform tag, or None when the tag has no manylinux element.
+
+    The tag may be a compressed tag set (PEP 425), such as
+    `manylinux_2_27_x86_64.manylinux_2_28_x86_64`. The wheel claims every tag in the set, so the
+    baseline is the minimum (X, Y) over its manylinux elements. Other elements, such as
+    `linux_x86_64`, make no glibc claim and are not read.
+
+    None covers a bare module (no tag) and a tag with no manylinux element, such as `linux_x86_64`.
+    """
+    if platform_tag is None:
         return None
-    match = MANYLINUX_TAG_PATTERN.match(platform_tag)
-    if match is None:
-        raise AuditError(f"cannot read the glibc baseline of platform tag {platform_tag}")
-    return int(match["major"]), int(match["minor"])
+    manylinux = [element for element in platform_tag.split(".") if element.startswith("manylinux")]
+    if not manylinux:
+        return None
+    return min(_manylinux_element_baseline(element) for element in manylinux)
 
 
 def _glibc_version(version: str) -> tuple[int, ...] | None:
@@ -412,6 +449,14 @@ def _dll_allowed(name: str) -> bool:
     return name.lower() in ALLOWED_DLLS_WINDOWS
 
 
+def _pe_export_violations(exports: list[str]) -> list[str]:
+    """Every PE export other than PyInit__painterly and nanobind's exception-class members."""
+    unexpected = [
+        name for name in exports if not NANOBIND_EXCEPTION_EXPORT_PATTERN_WINDOWS.match(name)
+    ]
+    return _export_violations([("export", name) for name in unexpected], MODULE_SYMBOL)
+
+
 def _audit_pe(path: Path) -> list[Check]:
     if shutil.which("dumpbin"):
         exports = _dumpbin_exports(_run(["dumpbin", "/exports", str(path)]))
@@ -423,8 +468,8 @@ def _audit_pe(path: Path) -> list[Check]:
 
     export_check = Check(
         "exports",
-        f"all {len(set(exports))} exported symbols must be exactly {MODULE_SYMBOL}",
-        _export_violations([("export", name) for name in exports], MODULE_SYMBOL),
+        "exports: PyInit__painterly and nanobind's NB_EXPORT exception classes only",
+        _pe_export_violations(exports),
     )
     dependency_check = Check(
         "dependencies",

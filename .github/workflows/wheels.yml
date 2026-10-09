@@ -49,6 +49,13 @@ jobs:
       - name: Build, audit and smoke-test the wheels
         uses: pypa/cibuildwheel@v4.3.0
 
+      # Linux only. The test-command audits the installed module, which has no platform tag, so the glibc baseline of the
+      # repaired wheel's manylinux tag is enforced here.
+      - name: Audit the repaired wheel (glibc baseline)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: python tools/symbol_audit.py wheelhouse/*.whl
+
       - name: Upload the wheels
         uses: actions/upload-artifact@v4
         with:
@@ -59,6 +66,9 @@ jobs:
   coexist:
     name: coexist (${{ matrix.os }})
     needs: wheels
+    # Runs even when an OS of the wheels job failed: each OS then needs only its own wheel. A missing wheel fails at the
+    # download step, which is the right outcome.
+    if: ${{ !cancelled() }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -104,7 +114,7 @@ jobs:
         if: matrix.platform == 'linux-x64'
         shell: bash
         run: |
-          if ldd "$BLENDER_EXE" | grep 'not found'; then exit 1; fi
+          test -x "$BLENDER_EXE" || exit 1; deps=$(ldd "$BLENDER_EXE") || exit 1; if grep 'not found' <<<"$deps"; then exit 1; fi
 
       # Extracts the one _painterly* module from the wheel into a directory, which coexist.py then imports from.
       - name: Extract _painterly from the wheel

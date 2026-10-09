@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Native core (_painterly) of the Painterly render engine for Blender"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "LICENSES/*.txt"]
 
 [tool.scikit-build]
 wheel.py-api = "cp312"            # stable ABI: one wheel serves Blender's Python 3.13
