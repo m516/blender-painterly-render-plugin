@@ -199,7 +199,7 @@ and 400), each with `--reference` at the scaled size. They are not part of the e
   At `--scale` above 1, the comparisons therefore use the regions measured in every configuration (3-7 at this scale;
   region 2 is listed as `dropped_at_this_scale`). At `--scale 1` the rule is strict and stops the analysis. The smoke at
   `--scale 2` (sizes 100, 200 and 400) measures all six regions at every size, so the intersection equals the strict set.
-At full scale,
+  At full scale,
   the 1-pass object-id maps at 200, 400 and 800 px (and 800 px with jitter 1/1400) measure regions 2-7 and no region 8.
   The maps are identical across seeds and jitter, since the id is that of the unjittered primary hit (SPEC §9, `io.py`).
   The 2-pair smoke runs no comparison (its smallest attainable p is 0.333), so the decision path is also run in a scratch
@@ -222,3 +222,112 @@ At full scale,
      distance is available from the existing renders: native 800 px lag-2 against native 400 px lag-1. The card specifies
      the downsample test, so it is not substituted here. Opus decides whether H1b is kept as written, supplemented by that
      comparison, or replaced. No result has been computed on the real renders.
+
+## Results
+
+Provenance. The budget-0 check, `PAINTERLY_BUILD_DIR=.cache/oracle-build .venv/bin/python -m painterly_analysis.experiment run experiments/004-2026-10-08-resolution-dependence/jobs.py --budget 0`, printed `completed=112 remaining=0`, so no render was made for this section. `analyze.py` ran with `PAINTERLY_BUILD_DIR=.cache/oracle-build` into the default out-dir and exited 0; its design check passed. A second run into a scratch out-dir wrote `results.json` and `fig_grid.png` byte-identical to the first (`cmp` on both). Every number below is read from `results.json`.
+
+Measured diffuse regions: [2, 3, 4, 5, 6, 7] at every size (region 8 absent, region 9 excluded). Each configuration has 16 renders, which form 8 pairs. Values are mean ± sample sd over the 8 pairs. The 56 reference-free keys per configuration include the 12 `slag1` keys, which H1a, H1b and H1d test, and the 30-key family F2 of H2.
+
+### Table 1: noise-corrected lag-1 (`slag1`) and `r4.structure_std` per configuration
+
+| key | `s200` | `s400` | `s800` | `s800_j1400` | `row_s200` | `row_s400` | `row_s800` |
+|---|---|---|---|---|---|---|---|
+| `r2.slag1.x` | 0.383 ± 0.155 | 0.494 ± 0.067 | 0.640 ± 0.033 | 0.508 ± 0.025 | 0.483 ± 0.122 | 0.495 ± 0.045 | 0.634 ± 0.041 |
+| `r2.slag1.y` | 0.316 ± 0.106 | 0.451 ± 0.037 | 0.638 ± 0.044 | 0.478 ± 0.019 | 0.408 ± 0.099 | 0.446 ± 0.066 | 0.599 ± 0.050 |
+| `r3.slag1.x` | 0.742 ± 0.038 | 0.796 ± 0.025 | 0.852 ± 0.031 | 0.751 ± 0.018 | 0.732 ± 0.037 | 0.810 ± 0.014 | 0.854 ± 0.022 |
+| `r3.slag1.y` | 0.470 ± 0.040 | 0.437 ± 0.032 | 0.543 ± 0.026 | 0.429 ± 0.013 | 0.456 ± 0.062 | 0.449 ± 0.015 | 0.556 ± 0.025 |
+| `r4.slag1.x` | 0.473 ± 0.033 | 0.528 ± 0.037 | 0.638 ± 0.016 | 0.491 ± 0.018 | 0.482 ± 0.025 | 0.522 ± 0.025 | 0.631 ± 0.020 |
+| `r4.slag1.y` | 0.542 ± 0.037 | 0.584 ± 0.013 | 0.695 ± 0.019 | 0.546 ± 0.013 | 0.550 ± 0.026 | 0.572 ± 0.025 | 0.672 ± 0.019 |
+| `r5.slag1.x` | 0.360 ± 0.069 | 0.412 ± 0.062 | 0.538 ± 0.027 | 0.419 ± 0.020 | 0.348 ± 0.028 | 0.443 ± 0.025 | 0.556 ± 0.029 |
+| `r5.slag1.y` | 0.567 ± 0.046 | 0.636 ± 0.024 | 0.722 ± 0.024 | 0.603 ± 0.033 | 0.522 ± 0.061 | 0.659 ± 0.055 | 0.747 ± 0.034 |
+| `r6.slag1.x` | 0.351 ± 0.045 | 0.438 ± 0.024 | 0.542 ± 0.023 | 0.414 ± 0.019 | 0.349 ± 0.025 | 0.412 ± 0.037 | 0.527 ± 0.016 |
+| `r6.slag1.y` | 0.599 ± 0.041 | 0.692 ± 0.035 | 0.823 ± 0.038 | 0.699 ± 0.009 | 0.612 ± 0.059 | 0.716 ± 0.030 | 0.812 ± 0.025 |
+| `r7.slag1.x` | 0.399 ± 0.063 | 0.508 ± 0.045 | 0.659 ± 0.033 | 0.522 ± 0.025 | 0.467 ± 0.099 | 0.525 ± 0.030 | 0.665 ± 0.051 |
+| `r7.slag1.y` | 0.315 ± 0.050 | 0.448 ± 0.048 | 0.590 ± 0.036 | 0.443 ± 0.023 | 0.326 ± 0.050 | 0.449 ± 0.043 | 0.595 ± 0.049 |
+| `r4.structure_std` | 7.64 ± 0.11 | 5.74 ± 0.07 | 4.14 ± 0.02 | 4.79 ± 0.03 | 7.60 ± 0.06 | 5.74 ± 0.09 | 4.17 ± 0.05 |
+
+### Table 2: decisions
+
+| test | comparison | keys | Holm-rejected | min attainable p | Holm first threshold | largest abs rel diff | largest abs Cohen d | decision |
+|---|---|---|---|---|---|---|---|---|
+| H1a, level 0.01/3 per pair | s200 vs s400 | 12 | 3 of 12 | 0.0001554 | 0.0002778 | 0.299 (`r2.slag1.y`) | 2.72 (`r7.slag1.y`) | rejected |
+|  | s400 vs s800 | 12 | 12 of 12 | 0.0001554 | 0.0002778 | 0.292 (`r2.slag1.y`) | 6.88 (`r4.slag1.y`) | rejected |
+|  | s200 vs s800 | 12 | 12 of 12 | 0.0001554 | 0.0002778 | 0.504 (`r2.slag1.y`) | 6.36 (`r4.slag1.x`) | rejected |
+| | **H1a overall** | | | | | | | **refuted** |
+| H1d, level 0.01/3 per pair | row_s200 vs row_s400 | 12 | 2 of 12 | 0.0001554 | 0.0002778 | 0.275 (`r7.slag1.y`) | 3.59 (`r5.slag1.x`) | rejected |
+|  | row_s400 vs row_s800 | 12 | 11 of 12 | 0.0001554 | 0.0002778 | 0.255 (`r2.slag1.y`) | 5.15 (`r3.slag1.y`) | rejected |
+|  | row_s200 vs row_s800 | 12 | 11 of 12 | 0.0001554 | 0.0002778 | 0.453 (`r7.slag1.y`) | 8.49 (`r6.slag1.x`) | rejected |
+| | **H1d overall** | | | | | | | **refuted** |
+| H1b, one-sided, level 0.01 | downsampled 800 vs native 400, greater | 12 | 12 of 12 | 7.77e-05 (one-sided) | 0.0008333 | 0.295 (`r7.slag1.y`) | 8.74 (`r4.slag1.y`) | |
+| | downsampled 800 vs native 400, less | 12 | 0 of 12 | 7.77e-05 (one-sided) | 0.0008333 | | | |
+| | **H1b overall** | | | | | | | **refuted** |
+| H2, level 0.01 | s800 vs s800_j1400 (jitter 1/700 vs 1/1400) | 30 | 23 of 30 | 0.0001554 | 0.0003333 | 0.335 (`r2.slag1.y`) | 25.18 (`r4.structure_std`) | **supported** |
+| **H1 overall (H1a and H1b)** | | | | | | | | **refuted** |
+
+The one-sided H1b row reports the largest relative difference and Cohen's d of its 12 keys (`downsampled - native`, as `ensemble.effect_summary`). Min attainable p is 2 / C(16, 8) = 1.55e-4 for a two-sided test and 1 / C(16, 8) = 7.77e-5 for a one-sided test. Every comparison is powered, since its min attainable p is at most its Holm first threshold. The 'not rejected' keys are read against that min attainable p, and their p-values are in Table 2b and Table 2c. Relative differences are not reported for near-zero means: the smallest mean of any key in Table 1 is 0.315, and the largest |Cohen's d| in Table 2 is 25.18 (H2), so no Cohen's d is in the thousands.
+
+### Table 2b: per-key p-values for H1a, H1d and H1b (`slag1` keys)
+
+Two-sided exact permutation p-values for H1a and H1d, and one-sided p-values for H1b (`p_less` and `p_greater`). `*` marks a key Holm-rejected at that comparison's level. The 12 keys are the `slag1` keys of Table 1.
+
+| key | s200 vs s400 | s400 vs s800 | s200 vs s800 | row_s200 vs row_s400 | row_s400 vs row_s800 | row_s200 vs row_s800 | H1b less (p) | H1b greater (p) |
+|---|---|---|---|---|---|---|---|---|
+| `r2.slag1.x` | 0.08547 | 0.0001554* | 0.0001554* | 0.8163 | 0.0001554* | 0.00373 | 0.9998 | 0.0003108* |
+| `r2.slag1.y` | 0.00777 | 0.0001554* | 0.0001554* | 0.3761 | 0.0003108* | 0.0004662* | 1 | 7.77e-05* |
+| `r3.slag1.x` | 0.004351 | 0.00202* | 0.0003108* | 0.0009324 | 0.001088* | 0.0003108* | 1 | 7.77e-05* |
+| `r3.slag1.y` | 0.0892 | 0.0001554* | 0.0009324* | 0.7725 | 0.0001554* | 0.000777* | 1 | 7.77e-05* |
+| `r4.slag1.x` | 0.006061 | 0.0001554* | 0.0001554* | 0.007459 | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+| `r4.slag1.y` | 0.01274 | 0.0001554* | 0.0001554* | 0.115 | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+| `r5.slag1.x` | 0.1316 | 0.0006216* | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* | 0.9995 | 0.0005439* |
+| `r5.slag1.y` | 0.001709 | 0.0001554* | 0.0001554* | 0.0006216 | 0.004351 | 0.0001554* | 1 | 7.77e-05* |
+| `r6.slag1.x` | 0.0003108* | 0.0001554* | 0.0001554* | 0.001088 | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+| `r6.slag1.y` | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+| `r7.slag1.x` | 0.002797 | 0.0001554* | 0.0001554* | 0.1366 | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+| `r7.slag1.y` | 0.0001554* | 0.0003108* | 0.0001554* | 0.0006216 | 0.0001554* | 0.0001554* | 1 | 7.77e-05* |
+
+### Table 2c: per-key p-values for H2 (family F2, 30 keys)
+
+Two-sided exact permutation p-values of s800 vs s800_j1400. `*` marks a Holm-rejected key at level 0.01.
+
+| region | raw lag1 x | raw lag1 y | slag1 x | slag1 y | structure_std |
+|---|---|---|---|---|---|
+| 2 | 0.1144 | 0.003885 | 0.0001554* | 0.0001554* | 0.0001554* |
+| 3 | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* |
+| 4 | 0.03217 | 0.1986 | 0.0001554* | 0.0001554* | 0.0001554* |
+| 5 | 0.001088* | 0.01943 | 0.0001554* | 0.0001554* | 0.0001554* |
+| 6 | 0.0004662* | 0.0001554* | 0.0001554* | 0.0001554* | 0.0001554* |
+| 7 | 0.003108 | 0.03994 | 0.0001554* | 0.0001554* | 0.0001554* |
+
+### Table 3: region mean `r4.mean.G` by size (mean ± sd over 8 pairs)
+
+| configuration | size (px) | chain | jitter | `r4.mean.G` |
+|---|---|---|---|---|
+| `s200` | 200 | image | 1/700 (default) | 153.94 ± 0.12 |
+| `s400` | 400 | image | 1/700 (default) | 148.68 ± 0.04 |
+| `s800` | 800 | image | 1/700 (default) | 145.83 ± 0.01 |
+| `s800_j1400` | 800 | image | 1/1400 | 145.83 ± 0.02 |
+| `row_s200` | 200 | row | 1/700 (default) | 153.96 ± 0.07 |
+| `row_s400` | 400 | row | 1/700 (default) | 148.69 ± 0.03 |
+| `row_s800` | 800 | row | 1/700 (default) | 145.85 ± 0.01 |
+
+> **Limitation (Opus).** H1a, H1b and H1d compare the sizes in fixed pixel units: a 9-px high-pass, a 4-px erosion and
+> lag 1 at every size. At 800 px those filters cover half the image-plane footprint they cover at 400 px. H1b's sign rule
+> also assumes an exponential correlation. The measured 800 px correlation in x is not exponential: lag 1 0.638, lag 2
+> 0.231 (an exponential would give 0.407), lag 3 0.027. The pre-registered verdicts therefore do not decide whether the
+> texture is locked to the pixel grid or to the image. Experiment 006 asks that question with filters, erosion and lag
+> scaled with the image side.
+
+> **Region means and erosion.** The trend of `r4.mean.G` with size comes from the fixed 4-px erosion, which keeps a
+> wider band near region edges at 200 px than at 800 px. It is not a property of the renderer.
+
+## Conclusion
+
+DRAFT (Haiku) — pending Opus review.
+
+- **H1 (the texture is pixel-locked): refuted.** H1a and H1b are both refuted under their pre-registered rules, so H1 is refuted (refuted iff either is refuted).
+  - H1a (sizes, noise-corrected lag-1, level 0.01/3 per pair): 3 of 12 keys Holm-rejected for 200 vs 400 px, 12 of 12 for 400 vs 800 px and 12 of 12 for 200 vs 800 px. Min attainable p is 1.554e-4 and the Holm first threshold is 2.778e-4 in each pair, so every pair is powered.
+  - H1b (800 px box-downsampled vs native 400 px, one-sided, level 0.01): 12 of 12 keys rejected "greater" and 0 of 12 rejected "less". Min attainable one-sided p is 7.77e-5 against a threshold of 8.33e-4. The smallest p_less is 0.9995. Box averaging also changes the lag-1 (README D7), so the sign rule carries this verdict.
+  - The Limitation paragraph in Results applies: these are fixed-pixel comparisons, and they do not decide between pixel-locked and image-locked texture.
+- **H1d (artist-mode row chain, level 0.01/3 per pair): refuted.** 2 of 12 keys rejected for 200 vs 400 px, 11 of 12 for 400 vs 800 px and 11 of 12 for 200 vs 800 px. Min attainable p is 1.554e-4 and the threshold is 2.778e-4.
+- **H2 (jitter units matter at 800 px, level 0.01): supported.** 23 of 30 keys are Holm-rejected for 1/700 vs 1/1400 (min attainable p 1.554e-4, threshold 3.333e-4). The 23 are all 12 `slag1` keys, all 6 `structure_std` keys and 5 raw lag-1 keys. The 7 keys not rejected are raw lag-1 keys with p from 0.00311 to 0.199 (Table 2c). `r4.structure_std` is 4.14 ± 0.02 at 1/700 and 4.79 ± 0.03 at 1/1400. Largest abs rel diff is 0.335 (`r2.slag1.y`).
