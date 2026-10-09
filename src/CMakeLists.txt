@@ -1,3 +1,5 @@
+add_subdirectory(cycles)
+
 if(PAINTERLY_BUILD_MODULE)
   add_subdirectory(blender)
 endif()

@@ -48,11 +48,11 @@ test-slow: build
 lint:
 	.venv/bin/ruff check .
 	.venv/bin/ruff format --check .
-	git ls-files 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format --dry-run --Werror
+	git ls-files --cached --others --exclude-standard 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format --dry-run --Werror
 
 format:
 	.venv/bin/ruff format .
-	git ls-files 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format -i
+	git ls-files --cached --others --exclude-standard 'src/*.cpp' 'src/*.h' | xargs -r .venv/bin/clang-format -i
 
 audit: build
 	@test -n "$(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))" || { echo "audit: no _painterly*.so under $(BUILD_DIR)/src/blender" >&2; exit 1; }

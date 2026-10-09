@@ -4,12 +4,6 @@
 
 #include <string>
 
-// Until the Cycles util/ headers are vendored (M3), these macros are defined here.
-#ifndef CCL_NAMESPACE_BEGIN
-#  define CCL_NAMESPACE_BEGIN namespace painterly {
-#  define CCL_NAMESPACE_END }
-#endif
-
 CCL_NAMESPACE_BEGIN
 
 struct SelftestResult {

@@ -13,3 +13,451 @@ root = "intern/cycles"
 repo = "https://github.com/DLTcollab/sse2neon.git"
 commit = "227cc413fb2d50b2a10073087be96b59d5364aea"
 root = ""
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/aligned_malloc.cpp"
+dest = "util/aligned_malloc.cpp"
+upstream_sha256 = "190c3ffe130336ac2d135ad73d70d71e75510b5185f786b6c2347d63109cce2d"
+sha256 = "190c3ffe130336ac2d135ad73d70d71e75510b5185f786b6c2347d63109cce2d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/aligned_malloc.h"
+dest = "util/aligned_malloc.h"
+upstream_sha256 = "7bbd215fc048b472b66ae75c31ada51bca8aad1db1d996026d6304f238fb240e"
+sha256 = "7bbd215fc048b472b66ae75c31ada51bca8aad1db1d996026d6304f238fb240e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/array.h"
+dest = "util/array.h"
+upstream_sha256 = "fc347e6faa51118c77fe8b9c6b42f19232117a1957e254a0a59d9052610870d5"
+sha256 = "fc347e6faa51118c77fe8b9c6b42f19232117a1957e254a0a59d9052610870d5"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/color.h"
+dest = "util/color.h"
+upstream_sha256 = "303a8d336b9cc14d7833c0c9be8bf78c07155086b5842b978cc0cabc2b974471"
+sha256 = "303a8d336b9cc14d7833c0c9be8bf78c07155086b5842b978cc0cabc2b974471"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/defines.h"
+dest = "util/defines.h"
+upstream_sha256 = "cbaab6248ddd571de5ce41482d580c769c6b4316566bdc05cb17a38a38962b66"
+sha256 = "cbaab6248ddd571de5ce41482d580c769c6b4316566bdc05cb17a38a38962b66"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/guarded_allocator.cpp"
+dest = "util/guarded_allocator.cpp"
+upstream_sha256 = "f4c78ea06464e459e2f126ea27b6e99354e362d66f14544ae5b0114fcf76030c"
+sha256 = "f4c78ea06464e459e2f126ea27b6e99354e362d66f14544ae5b0114fcf76030c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/guarded_allocator.h"
+dest = "util/guarded_allocator.h"
+upstream_sha256 = "23b506022ff6477ab2c5006ed56bf19daf7109fc5230deb4ea9c1d5d71f786c2"
+sha256 = "23b506022ff6477ab2c5006ed56bf19daf7109fc5230deb4ea9c1d5d71f786c2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/hash.h"
+dest = "util/hash.h"
+upstream_sha256 = "9177a2bab972c02e5229796b6f898d68d0957fc3005d1d2f48a5aab385174aa8"
+sha256 = "9177a2bab972c02e5229796b6f898d68d0957fc3005d1d2f48a5aab385174aa8"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/map.h"
+dest = "util/map.h"
+upstream_sha256 = "e42b20bdcdc83b457cdc251f195a23e8f136ce575d04351fbcba57b1b262741e"
+sha256 = "e42b20bdcdc83b457cdc251f195a23e8f136ce575d04351fbcba57b1b262741e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math.h"
+dest = "util/math.h"
+upstream_sha256 = "58edeae5ab363dbfe602f272b0b6552096bac139e61e48c6dad3ef1431498d9c"
+sha256 = "58edeae5ab363dbfe602f272b0b6552096bac139e61e48c6dad3ef1431498d9c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_base.h"
+dest = "util/math_base.h"
+upstream_sha256 = "f375b0f91dabdbf3e9fbedaa7bff767988e60d05d7c3ad01dfa486948dbeebd0"
+sha256 = "f375b0f91dabdbf3e9fbedaa7bff767988e60d05d7c3ad01dfa486948dbeebd0"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_dual.h"
+dest = "util/math_dual.h"
+upstream_sha256 = "935a7c7719135f1ee82877f0de1d563f19a6f378967ba61d3661b67f279b179a"
+sha256 = "935a7c7719135f1ee82877f0de1d563f19a6f378967ba61d3661b67f279b179a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_fast.h"
+dest = "util/math_fast.h"
+upstream_sha256 = "8ae830fff8b3aee77144f855731fdb74c9fce94ea65dd5b609b507a514ac2157"
+sha256 = "8ae830fff8b3aee77144f855731fdb74c9fce94ea65dd5b609b507a514ac2157"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_float2.h"
+dest = "util/math_float2.h"
+upstream_sha256 = "54e08fbbea58630959db46d26756bf659d859bc1662e20d52c75134cdd3a2c0a"
+sha256 = "54e08fbbea58630959db46d26756bf659d859bc1662e20d52c75134cdd3a2c0a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_float3.h"
+dest = "util/math_float3.h"
+upstream_sha256 = "99d667df6ba2de5c42b09cb26497062cf6b0dc047e0c75e2adb4965910a558ff"
+sha256 = "99d667df6ba2de5c42b09cb26497062cf6b0dc047e0c75e2adb4965910a558ff"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_float4.h"
+dest = "util/math_float4.h"
+upstream_sha256 = "1f017e74acbdb065213364d4ac24f5524a4bbfd7d741036924f5c44dd465b3f9"
+sha256 = "1f017e74acbdb065213364d4ac24f5524a4bbfd7d741036924f5c44dd465b3f9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_float8.h"
+dest = "util/math_float8.h"
+upstream_sha256 = "93fda0a327de793ca79fc9185ed5deec7495bd5299659b6495b70d8391b40a98"
+sha256 = "93fda0a327de793ca79fc9185ed5deec7495bd5299659b6495b70d8391b40a98"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_int2.h"
+dest = "util/math_int2.h"
+upstream_sha256 = "6c719553e3838d457d6c4bec6afb5c969e9339252492f3fb10af53c745fd8da2"
+sha256 = "6c719553e3838d457d6c4bec6afb5c969e9339252492f3fb10af53c745fd8da2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_int3.h"
+dest = "util/math_int3.h"
+upstream_sha256 = "4a305f47761108f17f1db2b6943e01335123cd314a0951731ff086f70625377a"
+sha256 = "4a305f47761108f17f1db2b6943e01335123cd314a0951731ff086f70625377a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_int4.h"
+dest = "util/math_int4.h"
+upstream_sha256 = "c91872cdccdd38918ee6274ef633197752b5a899be4d851d99ef33beae5979b8"
+sha256 = "c91872cdccdd38918ee6274ef633197752b5a899be4d851d99ef33beae5979b8"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_int8.h"
+dest = "util/math_int8.h"
+upstream_sha256 = "d6722e88fdfa8fa92e37894751ef167490fb18af3382bc12e0c5f476a00d1834"
+sha256 = "d6722e88fdfa8fa92e37894751ef167490fb18af3382bc12e0c5f476a00d1834"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/math_intersect.h"
+dest = "util/math_intersect.h"
+upstream_sha256 = "ec7796c1c7d0a1e5c1d85e03963036e5ceb54f3ead115a52868b0ac088fd9d0b"
+sha256 = "ec7796c1c7d0a1e5c1d85e03963036e5ceb54f3ead115a52868b0ac088fd9d0b"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/optimization.h"
+dest = "util/optimization.h"
+upstream_sha256 = "f93d17eadbfbecf2d6b4b37d5f36e1b9a6486b91418c3062efb4a5fc7a7bbf6e"
+sha256 = "f93d17eadbfbecf2d6b4b37d5f36e1b9a6486b91418c3062efb4a5fc7a7bbf6e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/projection.h"
+dest = "util/projection.h"
+upstream_sha256 = "09f5f97bdcf519ac45e5e1a78abf31f00445207662d9bde1f8f6260a237a3e99"
+sha256 = "09f5f97bdcf519ac45e5e1a78abf31f00445207662d9bde1f8f6260a237a3e99"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/projection_inverse.h"
+dest = "util/projection_inverse.h"
+upstream_sha256 = "31654fd1b5e29999e2db706a1afcc3786cc8586af03b45f32ff8d3c8187205a8"
+sha256 = "31654fd1b5e29999e2db706a1afcc3786cc8586af03b45f32ff8d3c8187205a8"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/rect.h"
+dest = "util/rect.h"
+upstream_sha256 = "c073d59dee06943d87a885ad1aaced384a875fa905071d425778257d0728945d"
+sha256 = "c073d59dee06943d87a885ad1aaced384a875fa905071d425778257d0728945d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/simd.h"
+dest = "util/simd.h"
+upstream_sha256 = "29a3b99af2656c5d25dd5a45d05e58c487b305784fecc5342243a741288052cb"
+sha256 = "29a3b99af2656c5d25dd5a45d05e58c487b305784fecc5342243a741288052cb"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/system.h"
+dest = "util/system.h"
+upstream_sha256 = "3c1a1bd388496df5e6f3c73628ec84f69790da12abd06720374744618b06ecd6"
+sha256 = "3c1a1bd388496df5e6f3c73628ec84f69790da12abd06720374744618b06ecd6"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/transform.h"
+dest = "util/transform.h"
+upstream_sha256 = "622b4ebce2e5743b4cebe12e88137b6edce4db255d8a49550f16cb4643182b8f"
+sha256 = "622b4ebce2e5743b4cebe12e88137b6edce4db255d8a49550f16cb4643182b8f"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/transform_avx2.cpp"
+dest = "util/transform_avx2.cpp"
+upstream_sha256 = "830ad5c10b00fefc721a8cd7b461f75c2742ff597d060bf164425580da2a98a2"
+sha256 = "830ad5c10b00fefc721a8cd7b461f75c2742ff597d060bf164425580da2a98a2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types.h"
+dest = "util/types.h"
+upstream_sha256 = "839640096efc30b09b4e9081b732bf3d73908cadd1c1d5565b953ee5c527189c"
+sha256 = "839640096efc30b09b4e9081b732bf3d73908cadd1c1d5565b953ee5c527189c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_base.h"
+dest = "util/types_base.h"
+upstream_sha256 = "9cf2d881accbde5a11b1f5359a3abcdc8ef4ac2d8bfb829533ce295ec4c2e2a2"
+sha256 = "9cf2d881accbde5a11b1f5359a3abcdc8ef4ac2d8bfb829533ce295ec4c2e2a2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_dual.h"
+dest = "util/types_dual.h"
+upstream_sha256 = "a19346229cfa4e6334d12a6393b3ebe32864b5d304fdf65b47edd7b5555c1817"
+sha256 = "a19346229cfa4e6334d12a6393b3ebe32864b5d304fdf65b47edd7b5555c1817"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_float2.h"
+dest = "util/types_float2.h"
+upstream_sha256 = "df3ab1124d9fa76e3262684179d2bbc9638d897fef0cf458ab3554829cacb74f"
+sha256 = "df3ab1124d9fa76e3262684179d2bbc9638d897fef0cf458ab3554829cacb74f"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_float3.h"
+dest = "util/types_float3.h"
+upstream_sha256 = "554f13ec0e60631b8858a1d1cc9bcd7f74d6011fb5f2afa6ea019c7303d6d369"
+sha256 = "554f13ec0e60631b8858a1d1cc9bcd7f74d6011fb5f2afa6ea019c7303d6d369"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_float4.h"
+dest = "util/types_float4.h"
+upstream_sha256 = "b0e1167fdd33ba571637cd97d9552c215b068e18938b4e9f89ea4cbbbd06dd7d"
+sha256 = "b0e1167fdd33ba571637cd97d9552c215b068e18938b4e9f89ea4cbbbd06dd7d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_float8.h"
+dest = "util/types_float8.h"
+upstream_sha256 = "cfc216ab67df93c4573e479978b5dc7683bfcb3cd1daa314790b5b1206a95e90"
+sha256 = "cfc216ab67df93c4573e479978b5dc7683bfcb3cd1daa314790b5b1206a95e90"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_int2.h"
+dest = "util/types_int2.h"
+upstream_sha256 = "282936350f4380d68749d41c3feb264c8d5d98078a8f791f0c99da8ea92b662c"
+sha256 = "282936350f4380d68749d41c3feb264c8d5d98078a8f791f0c99da8ea92b662c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_int3.h"
+dest = "util/types_int3.h"
+upstream_sha256 = "d6687ff22fa25f3e93c082dbd7799c7023b9d18611dfbab6f0ffc1e5fd421de6"
+sha256 = "d6687ff22fa25f3e93c082dbd7799c7023b9d18611dfbab6f0ffc1e5fd421de6"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_int4.h"
+dest = "util/types_int4.h"
+upstream_sha256 = "92be785482e2b76b69d9077e0b0643bd718414f6c60660cee6b8896b013a4f7e"
+sha256 = "92be785482e2b76b69d9077e0b0643bd718414f6c60660cee6b8896b013a4f7e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_int8.h"
+dest = "util/types_int8.h"
+upstream_sha256 = "5ca31c18718fb2a241d11f7aa19e30ae295d3acd3d4503bd9235f1853af6e3a7"
+sha256 = "5ca31c18718fb2a241d11f7aa19e30ae295d3acd3d4503bd9235f1853af6e3a7"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_normal.h"
+dest = "util/types_normal.h"
+upstream_sha256 = "d6a9dcee0eb501893f93012cf42d9026b207baa9d3fc978ac26693da300eac82"
+sha256 = "d6a9dcee0eb501893f93012cf42d9026b207baa9d3fc978ac26693da300eac82"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_rgbe.h"
+dest = "util/types_rgbe.h"
+upstream_sha256 = "f7f8da0b46e10a295e0acd46ee9eab94db185bac9e3e7a1cfc4e8c2bc11c1f11"
+sha256 = "f7f8da0b46e10a295e0acd46ee9eab94db185bac9e3e7a1cfc4e8c2bc11c1f11"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_spectrum.h"
+dest = "util/types_spectrum.h"
+upstream_sha256 = "f3640d0a19c9c7c8d0b00b24bf54b1f9c85a1bed0c22ec17491437af2d564658"
+sha256 = "f3640d0a19c9c7c8d0b00b24bf54b1f9c85a1bed0c22ec17491437af2d564658"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uchar2.h"
+dest = "util/types_uchar2.h"
+upstream_sha256 = "4cb10952b845958b2e920330d7258c1349c10a764b97f5168bfa36ad47efb5fa"
+sha256 = "4cb10952b845958b2e920330d7258c1349c10a764b97f5168bfa36ad47efb5fa"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uchar3.h"
+dest = "util/types_uchar3.h"
+upstream_sha256 = "66dde4e0726b8c200c82f75ed89b5d39e9033141534965e0941b63d2caee0df1"
+sha256 = "66dde4e0726b8c200c82f75ed89b5d39e9033141534965e0941b63d2caee0df1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uchar4.h"
+dest = "util/types_uchar4.h"
+upstream_sha256 = "2e513a3cab124efaa0f8faf4f2c8a999020f1857069d48fba0dbc7050fd4965c"
+sha256 = "2e513a3cab124efaa0f8faf4f2c8a999020f1857069d48fba0dbc7050fd4965c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uint2.h"
+dest = "util/types_uint2.h"
+upstream_sha256 = "a1f6ce758bc6cbc003b030a5709f71bedc36a0b744c25f47aa4459d74eb23b35"
+sha256 = "a1f6ce758bc6cbc003b030a5709f71bedc36a0b744c25f47aa4459d74eb23b35"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uint3.h"
+dest = "util/types_uint3.h"
+upstream_sha256 = "9a2d48c882274596565b806d7ddbce3548d127ba4a49ce68ef2af0a4b6ed37d2"
+sha256 = "9a2d48c882274596565b806d7ddbce3548d127ba4a49ce68ef2af0a4b6ed37d2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_uint4.h"
+dest = "util/types_uint4.h"
+upstream_sha256 = "9959edde8e1d2f2e1aaade2941d931a2e3a528a93c648f840be221f347af7eb8"
+sha256 = "9959edde8e1d2f2e1aaade2941d931a2e3a528a93c648f840be221f347af7eb8"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_ushort4.h"
+dest = "util/types_ushort4.h"
+upstream_sha256 = "273ab469161e15e63be3be1bd2f55b4e985d5045ff064f3518c1ca31b66aee3a"
+sha256 = "273ab469161e15e63be3be1bd2f55b4e985d5045ff064f3518c1ca31b66aee3a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/unique_ptr.h"
+dest = "util/unique_ptr.h"
+upstream_sha256 = "25b67e43d5cf976f09ebcd7634b3026f874dbe211386b040aec494e7ff1231c9"
+sha256 = "25b67e43d5cf976f09ebcd7634b3026f874dbe211386b040aec494e7ff1231c9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/vector.h"
+dest = "util/vector.h"
+upstream_sha256 = "55925d7c23c6a8b4ef1f49c40fad36f3e2ba5f5bd420a51210dcd9cd06f073ad"
+sha256 = "55925d7c23c6a8b4ef1f49c40fad36f3e2ba5f5bd420a51210dcd9cd06f073ad"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/windows.h"
+dest = "util/windows.h"
+upstream_sha256 = "0b7ad995a9be18057c3d83bf3e9918c90a7d32f109f84e8ceef620dcc924b05e"
+sha256 = "0b7ad995a9be18057c3d83bf3e9918c90a7d32f109f84e8ceef620dcc924b05e"
+patched = false
+
+[[file]]
+upstream = "sse2neon"
+upstream_path = "sse2neon.h"
+dest = "sse2neon/sse2neon.h"
+upstream_sha256 = "69bb92f9553692e25079f55b6beb2de31ee01a8b270d043bf4de7d2d1b450ed9"
+sha256 = "69bb92f9553692e25079f55b6beb2de31ee01a8b270d043bf4de7d2d1b450ed9"
+patched = false
+
+[[file]]
+upstream = "sse2neon"
+upstream_path = "LICENSE"
+dest = "sse2neon/LICENSE"
+upstream_sha256 = "5c347d431a555ec6e5bc9720ceba2119570357dab5203372d469be9bcce374cc"
+sha256 = "5c347d431a555ec6e5bc9720ceba2119570357dab5203372d469be9bcce374cc"
+patched = false
