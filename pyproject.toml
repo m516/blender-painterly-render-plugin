@@ -35,7 +35,7 @@ analysis = ["painterly-analysis"]
 blender = ["bpy==5.2.2"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "analysis/tests"]
+testpaths = ["tests", "analysis/tests", "experiments"]
 addopts = "--import-mode=importlib"
 markers = ["slow: takes more than ~10 s"]
 

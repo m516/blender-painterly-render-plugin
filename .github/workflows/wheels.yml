@@ -161,7 +161,7 @@ jobs:
           LD_BIND_NOW=1 LD_DEBUG=bindings LD_DEBUG_OUTPUT="$OUT/ld" \
             "$BLENDER_EXE" -b --factory-startup --python-exit-code 1 --python "$EXP_DIR/coexist.py" -- "$MODULE_DIR"
           mv "$OUT/coexist.json" "$OUT/coexist_traced.json"
-          python -I "$EXP_DIR/bindings.py" "$OUT" --module "$(ls "$MODULE_DIR"/_painterly*.so)"
+          python -I "$EXP_DIR/bindings.py" "$OUT" --module "$(ls "$MODULE_DIR"/_painterly*.so)" --rule coherent
           echo "H3 violations (linux-x64): $(cat "$OUT/bindings_summary.txt")" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the coexistence results

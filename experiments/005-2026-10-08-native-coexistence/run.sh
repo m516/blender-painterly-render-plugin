@@ -80,7 +80,7 @@ PY
 [[ ${PIPESTATUS[0]} -eq 0 ]] || STATUS=1
 
 # 3. H3: violations and import coverage of the bindings that the traced run's _painterly makes.
-"$VENV_PY" "$EXP_DIR/bindings.py" "$OUT" --module "$MODULE" | tee -a "$OUT/run.log" || STATUS=1
+"$VENV_PY" "$EXP_DIR/bindings.py" "$OUT" --module "$MODULE" --rule coherent | tee -a "$OUT/run.log" || STATUS=1
 "$VENV_PY" - "$OUT/bindings.json" <<'PY' | tee -a "$OUT/run.log"
 import json
 import sys
@@ -140,10 +140,12 @@ for name in no_cxa dyn_libstdc; do
     --python-expr "import sys; sys.path.insert(0, '$dir'); import _painterly; _painterly.selftest()" \
     > "$dir/blender.log" 2>&1
   note "control $name: blender exit $?"
-  "$VENV_PY" "$EXP_DIR/bindings.py" "$dir" --module "$dir/_painterly.abi3.so" > "$dir/bindings.log" 2>&1
+  "$VENV_PY" "$EXP_DIR/bindings.py" "$dir" --module "$dir/_painterly.abi3.so" --rule coherent \
+    --baseline "$OUT/bindings.json" > "$dir/bindings.log" 2>&1
   violations="$(cat "$dir/bindings_summary.txt" 2> /dev/null || echo missing)"
-  note "control $name: violations $violations; $(cat "$dir/bindings.log" 2> /dev/null || echo 'no bindings.py output')"
-  [[ "$violations" =~ ^[0-9]+$ && "$violations" -ge 1 ]] || { note "control $name: insensitive instrument"; STATUS=1; }
+  specific="$("$VENV_PY" -I -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["control_specific_violations"]["count"])' "$dir/bindings.json" 2> /dev/null || echo missing)"
+  note "control $name: violations $violations; control-specific $specific; $(cat "$dir/bindings.log" 2> /dev/null || echo 'no bindings.py output')"
+  [[ "$specific" =~ ^[0-9]+$ && "$specific" -ge 1 ]] || { note "control $name: insensitive instrument"; STATUS=1; }
 done
 
 if [[ $STATUS -eq 0 ]]; then
