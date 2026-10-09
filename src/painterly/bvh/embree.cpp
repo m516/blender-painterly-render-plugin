@@ -65,17 +65,17 @@ void check_embree(const char *what)
 /* Releases an Embree geometry handle when it leaves scope, so that an exception cannot leak it. An
  * attached geometry is kept alive by its scene, so the handle is released right after the attach.
  */
-class GeometryHandle {
+class PainterlyEmbreeGeometryHandle {
  public:
-  explicit GeometryHandle(RTCGeometry geometry) : geometry_(geometry) {}
-  ~GeometryHandle()
+  explicit PainterlyEmbreeGeometryHandle(RTCGeometry geometry) : geometry_(geometry) {}
+  ~PainterlyEmbreeGeometryHandle()
   {
     if (geometry_) {
       rtcReleaseGeometry(geometry_);
     }
   }
-  GeometryHandle(const GeometryHandle &) = delete;
-  GeometryHandle &operator=(const GeometryHandle &) = delete;
+  PainterlyEmbreeGeometryHandle(const PainterlyEmbreeGeometryHandle &) = delete;
+  PainterlyEmbreeGeometryHandle &operator=(const PainterlyEmbreeGeometryHandle &) = delete;
 
   RTCGeometry get() const
   {
@@ -199,7 +199,7 @@ PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInp
     rtcSetSceneFlags(mesh_scene, RTC_SCENE_FLAG_ROBUST);
     rtcSetSceneBuildQuality(mesh_scene, RTC_BUILD_QUALITY_HIGH);
 
-    GeometryHandle geometry(rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE));
+    PainterlyEmbreeGeometryHandle geometry(rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE));
     if (!geometry.get()) {
       check_embree("painterly_embree_scene_create: rtcNewGeometry (triangle)");
       throw std::runtime_error("painterly_embree_scene_create: rtcNewGeometry failed");
@@ -259,7 +259,7 @@ PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInp
     }
     const std::array<double, 9> normal_matrix = inverse_transpose_3x3(object.object_to_world);
 
-    GeometryHandle instance(rtcNewGeometry(device, RTC_GEOMETRY_TYPE_INSTANCE));
+    PainterlyEmbreeGeometryHandle instance(rtcNewGeometry(device, RTC_GEOMETRY_TYPE_INSTANCE));
     if (!instance.get()) {
       check_embree("painterly_embree_scene_create: rtcNewGeometry (instance)");
       throw std::runtime_error("painterly_embree_scene_create: rtcNewGeometry failed");
