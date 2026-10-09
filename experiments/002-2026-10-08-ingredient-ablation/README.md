@@ -231,7 +231,7 @@ Mean over pixels of `k_consumed / P`, mean ± sd over the 16 renders of each con
 | positive | 16.274 ± 0.0009 | 0 |
 | ghost_none | 18.682 ± 0.0008 | +2.408 |
 | ghost_lights | 19.210 ± 0.0009 | +2.936 |
-| alpha_025 | 15.959 ± 0.0012 | −0.316 |
+| alpha_025 | 15.958 ± 0.0012 | −0.316 |
 | alpha_05 | 15.990 ± 0.0010 | −0.284 |
 | alpha_1 | 19.187 ± 0.0006 | +2.913 |
 | u2_independent | 17.736 ± 0.0012 | +1.462 |
@@ -317,31 +317,46 @@ difference +15.40. H4 0.01175 ± 0.00014 (stop_at_emitter), relative difference 
 
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results.
 
-- **H1 supported.** The back wall needs the ghost spheres and the unnormalized bounce. `r4.luma` is 12.935 ± 0.019 with
-  `ghost=none` and 5.507 ± 0.017 with `alpha=1`, against 144.375 ± 0.038 for the positive control (relative differences
-  −0.910 and −0.962). Each one-sided "less" test gives p = 7.77e-5, the minimum attainable, and each "greater" p is 1.
-  The two tests are not corrected for each other (D3).
-- **H2 supported.** The spiral and the chaining are necessary for the texture. `all.pattern_corr` falls from
-  0.5889 ± 0.0016 to 0.0113 ± 0.0041 (`u2=independent`), 0.00950 ± 0.00355 (`u2=base3`) and 0.1260 ± 0.0026
-  (`chain=lane:1`), with relative differences −0.981, −0.984 and −0.786. Holm over the three rejects all three "less" at
-  0.01, and no "greater" is rejected. The `lane:1` value lies above the 0 to 0.11 range that the Hypothesis cites from
-  research runs.
-- **H3 supported.** Alpha is a monotone control of the back wall in this ladder. `r4.luma` goes 144.375 (alpha 0) to
-  118.061 (0.25, relative −0.182), to 94.137 (0.5, relative −0.203), to 5.507 (1, relative −0.942). Each step has
-  p_less = 7.77e-5, and Holm rejects all three.
-- **H4 supported.** Continuing after an emitter hit changes both the region means and the texture. Of 46 keys, 44 are
-  rejected: all 18 region-mean keys, 24 of 26 texture keys, `all.block_rmse` and `all.clip_fraction`. The two not
-  rejected are `all.spectral_slope` (p = 0.932) and `r3.lag1.y` (p = 0.752). K draws fall from 16.274 to 5.056.
-  `r4.luma` falls to 126.795 (relative −0.122), and `r4.structure_std` rises to 9.942 ± 0.071 from 5.738 ± 0.071
-  (relative +0.733).
-- **H5 distinguishable (45 of 46 keys).** H5 defines the verdicts distinguishable, indistinguishable and underpowered, so
-  it carries no supported or refuted label. The back wall is 191.517 ± 0.064 against 144.375 ± 0.038 (ratio 1.327), and
-  `all.pattern_corr` is 0.00491 against 0.5889 (ratio 0.0083). `r4.structure_std` is 5.384 ± 0.073 against
-  5.738 ± 0.071 (relative −0.062, d −4.9): the amplitude is close, and the difference is still rejected. The clip
-  fraction is 0.0712 against 0.0043, a factor of 16.4. The only key not rejected is `r5.structure_std` (p = 0.172). The
-  region-mean ratios range from 0.718 (`r7` B) to 1.957 (`r3` G). No numeric threshold for "most of the look" is applied,
-  as the Hypothesis specifies. The gap is the figures above.
-- **For Opus.** The K-consumption explanation of the `ghost_lights` pattern correlation is not established by these
-  ten configurations (Results, note 1).
+**Every ingredient the plan named is necessary, and each controls a different part of the look.**
+
+- **H1 supported: the back wall is lit by the ghost spheres through the unnormalized bounce.**
+  - `r4.luma` is 12.94 ± 0.02 without ghosts and 5.51 ± 0.02 with a normalized bounce (α = 1), against 144.38 ± 0.04.
+  - Both "less" tests are at the smallest attainable p (7.77e-5).
+- **H2 supported: the lockstep u1 = u2 *is* the texture.**
+  - With an independent u2 the texture amplitude `r4.structure_std` falls from 5.74 to 0.02. With a base-3 u2 it falls to
+    1.11. The pattern correlation falls to 0.011 and 0.010.
+  - Per-path random starts (`lane:1`) keep the spiral but break the chain. Amplitude halves (2.56) and the pattern
+    correlation falls to 0.126.
+- **H3 supported: α is a continuous but strongly nonlinear control.**
+  - The back wall goes 144.4 → 118.1 → 94.1 → 5.5 for α = 0, 0.25, 0.5, 1.
+  - Any α > 0 already changes the texture's realization (pattern correlation 0.080 at α = 0.25) while most of its amplitude
+    stays (4.83). α is a stylization knob that trades back-wall brightness for realization. It is not a fidelity knob, and
+    its default stays 0.
+- **H4 supported: the zero-throughput continuation after an emitter hit is part of the look.**
+  - It consumes 11.2 of the 16.3 draws per pixel per pass.
+  - Stopping at the emitter changes 44 of 46 keys. The texture amplitude rises by 73% (9.94) and the back wall dims by 12%.
+  - `continue_after_emitter` stays true by default, and it is a strong contrast control for artists.
+- **H5: lights-only ghosting is distinguishable from the reference look (45 of 46 keys).**
+  - The back wall is 33% brighter (191.5), the clip fraction is 16× (0.071), and the realization is lost (pattern
+    correlation 0.005).
+  - The texture amplitude is close: 5.38 against 5.74 (−6%).
+  - Lights-only ghosting is what a Blender scene gives (meshes are never ghosts), so it is the Blender look. It is a
+    different look, not a degraded copy.
+
+**On the pattern correlation.** It measures agreement with one specific realization of the texture. Every variant here
+that loses that realization also changes K consumption. K consumption is not the whole story, though: per-path starts
+leave consumption almost unchanged (−0.06 draws) and still fall to 0.126, because each pixel then sees a different K
+sequence. The K explanation is therefore *consistent with these configurations, not isolated by them*. The Haiku draft was
+right to say so.
+
+**Decisions.**
+1. M5 T5.4: Blender parity is judged against the oracle's `--ghost lights` ensemble, on `metrics.realization_free_key_family`.
+   Pattern correlation against the GUI reference image is never a parity criterion for Blender scenes.
+2. SPEC defaults confirmed: `u2_mode = same`, `alpha = 0`, `continue_after_emitter = true`, and ghosts for every analytic
+   sphere in reference mode.
+
+**Hypothesis for later work.** The realization is a function of the K sequence each pixel sees. A test: an oracle knob that
+adds a fixed number of extra draws per diffuse event changes only K, not geometry or sampling. The pattern correlation
+should then fall with the number of extra draws, while amplitude and region means stay.

@@ -323,11 +323,25 @@ Two-sided exact permutation p-values of s800 vs s800_j1400. `*` marks a Holm-rej
 
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results.
 
-- **H1 (the texture is pixel-locked): refuted.** H1a and H1b are both refuted under their pre-registered rules, so H1 is refuted (refuted iff either is refuted).
-  - H1a (sizes, noise-corrected lag-1, level 0.01/3 per pair): 3 of 12 keys Holm-rejected for 200 vs 400 px, 12 of 12 for 400 vs 800 px and 12 of 12 for 200 vs 800 px. Min attainable p is 1.554e-4 and the Holm first threshold is 2.778e-4 in each pair, so every pair is powered.
-  - H1b (800 px box-downsampled vs native 400 px, one-sided, level 0.01): 12 of 12 keys rejected "greater" and 0 of 12 rejected "less". Min attainable one-sided p is 7.77e-5 against a threshold of 8.33e-4. The smallest p_less is 0.9995. Box averaging also changes the lag-1 (README D7), so the sign rule carries this verdict.
-  - The Limitation paragraph in Results applies: these are fixed-pixel comparisons, and they do not decide between pixel-locked and image-locked texture.
-- **H1d (artist-mode row chain, level 0.01/3 per pair): refuted.** 2 of 12 keys rejected for 200 vs 400 px, 11 of 12 for 400 vs 800 px and 11 of 12 for 200 vs 800 px. Min attainable p is 1.554e-4 and the threshold is 2.778e-4.
-- **H2 (jitter units matter at 800 px, level 0.01): supported.** 23 of 30 keys are Holm-rejected for 1/700 vs 1/1400 (min attainable p 1.554e-4, threshold 3.333e-4). The 23 are all 12 `slag1` keys, all 6 `structure_std` keys and 5 raw lag-1 keys. The 7 keys not rejected are raw lag-1 keys with p from 0.00311 to 0.199 (Table 2c). `r4.structure_std` is 4.14 ± 0.02 at 1/700 and 4.79 ± 0.03 at 1/1400. Largest abs rel diff is 0.335 (`r2.slag1.y`).
+**The pre-registered verdicts stand, but they do not answer the question the experiment was meant to answer. Experiment
+006 answers it.**
+
+- **Verdicts.**
+  - H1 refuted: H1a 3, 12 and 12 of 12 keys; H1b 12 "greater" and 0 "less".
+  - H1d refuted: 2, 11 and 11 of 12 keys.
+  - H2 supported: 23 of 30 keys. `r4.structure_std` is 4.14 ± 0.02 at jitter 1/700 vs 4.79 ± 0.03 at 1/1400, at 800 px.
+- **Why they do not decide the question** (the Limitation paragraph in Results).
+  - Every size was analysed with the same filters in pixels: a 9-px high-pass, a 4-px erosion and lag 1. At 800 px those
+    cover half the image-plane footprint they cover at 400 px.
+  - H1b's sign rule also assumed an exponential correlation, which the 800 px data do not show (lag 1 0.638, lag 2 0.231).
+  - "Not pixel-locked" therefore does not imply "image-locked". The fixed-pixel analysis cannot tell the two apart.
+- **What the experiment did establish.**
+  1. The jitter unit matters for the look (H2).
+  2. The region-mean trend with size (`r4.mean.G` 153.9 → 148.7 → 145.8) is a property of the fixed erosion, not of the
+     renderer: with erosion scaled to the side, r4 luma is 144.25 at 800 px against 144.38 at 400 px. Experiment 006 H5
+     tests this formally.
+- **Follow-up: experiment 006.** It repeated the question with scale-equivariant metrics (Gaussian high-pass, erosion and
+  lag all ∝ side) and a pixel-jitter family. Image-plane jitter keeps the look much closer to resolution-independent than
+  pixel jitter (006 H3). SPEC §7 therefore defines jitter as a fraction of the fitted image side, default 1/1400.

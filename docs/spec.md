@@ -76,8 +76,13 @@ The knob `chain` selects how K is carried between samples:
   - It matches the reference chain's fidelity: pattern correlation 0.590 vs 0.589 for `image` (experiment 003).
   - It parallelizes over rows. `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, 0, pass) mod 2^22`.
 - **`lane`** (knob `lane_length` = L ≥ 1 pixels, default 16). A stylization and GPU-parallelism option.
-  - Fidelity to the reference pattern grows with L: 0.13 at L = 1, 0.50 at 16, 0.57 at 128, against 0.59 for `row` (experiment 003).
-  - Each lane start needs a warm-up of about 3 pixels before the pattern settles.
+  - Fidelity to the reference pattern grows with L. Pattern correlation is 0.126, 0.210, 0.327, 0.427, 0.500, 0.542, 0.564 and 0.573
+    for L = 1, 2, …, 128, against 0.590 for `row` (experiment 003). The texture amplitude is flat from L = 2. The anisotropy is not:
+    at L = 16 the lag-1 is −23% along rows and +17% along columns, relative to `row`.
+  - Each lane start is a **seam column**. Its structure amplitude is about 50% above the lane's median: 8.2-9.0 vs 5.5-5.7 on the
+    back wall for L = 16…128 (exploratory analysis of experiment 003). Lanes are aligned in global coordinates, so the seams line
+    up across rows and are visible at short L. A deterministic per-row lane offset (`lane_stagger`) is a candidate knob for a
+    later experiment. It is not part of this SPEC.
   - Each row is split into lanes `[j0, j0+L)` with `j0 = L·lane_in_row` in *global* image coordinates; the last lane may be shorter.
   - One chain per (lane, pass), walking columns left to right. `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, lane_in_row, pass) mod 2^22`.
 - **`omp-restart:T`** (oracle only, for experiments). This deterministically emulates the Windows OpenMP build:
@@ -197,9 +202,17 @@ knob `two_sided` is true (the default; Blender surfaces are double-sided). Analy
 **Blender extras** (absent from smallpaint):
 - Point and spot lights are ghost spheres (§5) with lobe `diffuse` of weight 0 and emission `color · energy · emission_scale`. Their
   power is treated as smallpaint emission, independent of radius.
+  - Radiance is linear in emission, so `emission_scale = 1` keeps exact parity with smallpaint: 120 W of radius 0.5 is the
+    reference light.
+  - Blender's default point light (1000 W) is 8.3× the reference emission, and `display_referred` output then clips. Rescaling
+    the cached sums of experiment 002 gives a clip fraction of 0.968 on the reference scene (0.004 at 120 W).
+  - The "Smallpaint Reference" preset and `tools/make_reference_scene.py` therefore set 120 W and r = 0.5. The engine never
+    rescales lights by itself.
 - Area lights are emissive quads (no ghosting) with the same emission mapping.
 - Sun lights are angular disks seen by escaping rays: `dot(normalize(d), sun_dir) ≥ cos(angle/2)`, with radiance
   `color · strength · emission_scale`.
+  - Sun strength (W/m², around 1) and point power (W, around 1000) are three orders of magnitude apart, yet they share
+    `emission_scale`. The sun and area-light unit mappings are provisional. A pre-registered M5 experiment decides them.
 - The world is evaluated on a miss (constant in M3–M5; a node graph from M6). Misses and suns are scaled by `emission_gain` like every emitter.
 
 ## §7 Camera, jitter, film
@@ -218,10 +231,19 @@ jx = rng_signed(seed, PURPOSE_JITTER_X, 0, row, col, pass) · jitter;  jy likewi
 - Note the GUI quirk: `w` (width) scales the *row* term. The reference image is square, so this is harmless.
 
 **Perspective camera** (Blender): built from `calc_matrix_camera` and `matrix_world`.
-- Jitter is a knob in **pixels**: the maximum displacement, uniform in [−jitter, +jitter].
-- Default **2/7 px**, smallpaint's 1/700 image-plane units at the 400 px reference: 400/1400 px.
-- Jitter units measurably change the texture at other resolutions (experiment 004 pilot: structure std 4.11 vs 4.79 at 800 px).
-  Pixels keep the stroke scale tied to the image, as Cycles' pixel filter is.
+- Jitter is the knob `jitter`, a **fraction of the camera's fitted image side** (experiment 006).
+  - The displacement in pixels is uniform in `[−jitter·F, +jitter·F]` on each axis.
+  - F is the image side in pixels along the fitted dimension: Blender `sensor_fit` AUTO uses the larger side,
+    HORIZONTAL the width, VERTICAL the height.
+- Default **1/1400**. That is smallpaint's 1/700 image-plane units, whose image plane spans 2 units across the image, so
+  it is 2/7 px at the 400 px reference.
+- For the smallpaint camera the kernel uses image-plane units, `2·jitter`. This is exact in binary floating point.
+- Why not pixels. Experiment 006 (H3, pre-registered) compared the two units on the row chain across 200, 400 and 800 px:
+  - image-plane jitter keeps the look closer to resolution-independent: median |relative difference| of the texture
+    keys 0.051, against 0.158 for jitter fixed in pixels (difference 0.106, 95% bootstrap interval [0.049, 0.163]);
+  - texture amplitude alone: 0.0096 vs 0.097.
+- Neither unit is exactly invariant (006 H1). The back wall's along-row structure lag differs by up to 36-45% between 200
+  and 800 px.
 
 **Film.**
 - The film accumulates `sum += L` per pixel in pass order.
@@ -248,8 +270,8 @@ equals the reference behaviour unless noted:
 | Sampling | `chain` (Blender default `row`: same fidelity as `image`, 0.590 vs 0.589 pattern correlation, and parallel over rows; experiment 003. The reference uses `image`), `lane_length` (16; only for `chain=lane`, an artistic stroke-length control: correlation 0.13 at L=1 to 0.57 at L=128), `seed`, `seed_per_frame` (false), `passes` |
 | Brush | `spiral_frame`, `spiral_rotation`, `u2_mode`, `k0_phase_lock_bits` (0; when q > 0, K0 ← K0 with its low q bits cleared) |
 | Path | `alpha` (0), `max_depth` (20), `diffuse_gain` (1.0 for Blender albedos; the reference uses 0.1 with smallpaint `cl`), `emission_gain` (2), `continue_after_emitter` (true), `ray_epsilon` (1e-4), `two_sided` (true) |
-| Lights | `emission_scale` (1.0: Blender light power in W is used as smallpaint emission, so a 120 W point light of radius 0.5 is the reference light), `ghost_lights` (true) |
-| Film | `output_mode`, `exposure`, `jitter` (2/7 px, §7) |
+| Lights | `emission_scale` (1.0: Blender light power in W is used as smallpaint emission, so a 120 W point light of radius 0.5 is the reference light; Blender's default 1000 W clips in `display_referred`, §6), `ghost_lights` (true) |
+| Film | `output_mode`, `exposure`, `jitter` (1/1400 of the fitted image side, §7) |
 
 ## §9 Reference scene (GUI)
 

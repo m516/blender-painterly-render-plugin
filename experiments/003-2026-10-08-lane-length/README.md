@@ -252,10 +252,33 @@ H2 is decided by L* and by the power of its tests. Powered threshold: 0.01 / 8 =
 | H2 | some lane length matches row on `all.pattern_corr`; L* = smallest such L | refuted (L* = none) | 8 of 8 lane lengths Holm-rejected against row in the less direction (p_less 7.77e-05 each); powered: min_attainable_p 7.77e-05 ≤ 0.01 / 8 = 1.25e-03; closest, L = 128: rel. diff -0.02832, d -8.352 |
 | H3 | row is indistinguishable from image on the 46-key diffuse family | supported | 0 of 46 keys rejected; min_attainable_p 1.55e-04 ≤ Holm threshold 2.17e-04 (powered); smallest observed p 0.0202 (r5.pattern_corr); largest \|d\| 1.344 (r5.pattern_corr); largest \|rel. diff\| 0.06908 (all.spectral_slope, footnote a; absolute diff -0.003064) |
 
+**Notes (Opus, 2026-10-09).**
+- In Table 3a, the relative difference is (longer − shorter)/|shorter|, not the row-based definition in the Results
+  introduction.
+- In Table 2, `image` has one chain for the whole render, all passes included, not one per pass.
+
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results.
 
-- **H1: supported.** `all.pattern_corr` rises at all 7 adjacent steps. Each step is a Holm-rejected increase (p_greater = 7.77e-05; Holm threshold 1.43e-03 over 7 steps), and none is a Holm-rejected decrease (p_less = 1.000 at every step). The tests are powered (min_attainable_p 7.77e-05). The means rise from 0.1260 at L = 1 to 0.5732 at L = 128. Largest |rel. diff| 0.6666 (lane_1 to lane_2); largest |d| 49.38 (lane_2 to lane_4).
-- **H2: refuted, L* = none.** All 8 lane lengths in {1, 2, 4, 8, 16, 32, 64, 128} are Holm-rejected against row in the less direction (p_less = 7.77e-05 each; powered, since min_attainable_p 7.77e-05 ≤ 1.25e-03). The closest is L = 128, with rel. diff -0.02832 and d -8.352. The anisotropy curve has no verdict (effect sizes only, D4): at L = 16 the mean r4.lag1.x is 0.1554 against 0.2020 for row (rel. diff -0.2306), and the mean r4.lag1.y is 0.2812 against 0.2399 (rel. diff +0.1721).
-- **H3: supported.** 0 of 46 diffuse keys are rejected under Holm at α = 0.01. The comparison is powered (min_attainable_p 1.55e-04 ≤ threshold 2.17e-04), and the smallest observed p is 0.0202 (r5.pattern_corr). Largest |d| 1.344 (r5.pattern_corr). The largest |rel. diff| is on all.spectral_slope (footnote a), so its absolute difference, -0.003064, is the figure to use. For `all.pattern_corr`, row against image gives rel. diff +0.001734 and d 0.5974 (row 0.5899 ± 0.0018, image 0.5889 ± 0.0016).
+**A per-row chain is as good as the reference chain. A finite lane is a stylization knob, not a fidelity knob.**
+
+- **H1 supported.** Fidelity rises monotonically with lane length. Pattern correlation is 0.126, 0.210, 0.327, 0.427,
+  0.500, 0.542, 0.564 and 0.573 for L = 1, 2, …, 128. All 7 steps are significant increases (p = 7.77e-5).
+- **H2 refuted.** No L ≤ 128 matches `row` (L* = none). The closest, L = 128, is 2.8% below row (0.573 vs 0.590,
+  d = −8.4). Lanes cannot replace the row chain at equal fidelity.
+- **H3 supported.** `row` and `image` are indistinguishable: 0 of 46 keys rejected, in a powered family
+  (min_attainable_p 1.55e-4 against a first Holm threshold of 2.17e-4). The smallest p is 0.020, the largest |d| is 1.34,
+  and pattern correlation is 0.5899 vs 0.5889. Restarting each (row, pass) at a hashed K0 costs nothing measurable.
+
+**What lanes change instead.**
+- Texture amplitude is flat from L = 2 on: `r4.structure_std` 5.61-5.87 against row's 5.74.
+- Anisotropy changes. At L = 16, `r4.lag1.x` is −23% and `r4.lag1.y` +17% relative to row.
+- An exploratory per-offset analysis by the milestone review found a seam column at each lane start: about +50%
+  amplitude, aligned across rows. SPEC §3 now says so.
+
+**Decisions.**
+1. `chain = row` is the Blender default (SPEC §3, §8). It parallelizes over rows (1,080 chains per pass at 1080p) with no
+   loss of fidelity.
+2. `lane_length = 16` stays the default of the `lane` chain, as a stroke-shape control.
+3. A deterministic per-row lane offset (`lane_stagger`) is a candidate knob for an M7 experiment.

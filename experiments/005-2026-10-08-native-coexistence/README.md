@@ -125,7 +125,9 @@ later run: the CI coexist job (`.github/workflows/wheels.yml`) and any rerun of 
 - **Coherence rule.** A `GLIBC_`-versioned binding of a name in `ALLOCATOR_FAMILY` is allowed wherever it goes iff the
   allocator is *coherent*. Coherent means that the union of two destination sets has exactly one element:
   - the destinations of the module's allocator-family bindings;
-  - the destinations of `libc.so.6`'s own allocator-family bindings in the same trace, self-bindings included.
+  - the destinations of `libc.so.6`'s own allocator-family bindings in the same process's trace (the `ld.<pid>` file that
+    holds the module's bindings), self-bindings included. Other processes in the run, such as a child `sh`, have their
+    own allocators and do not take part.
   Memory then has one owner, whichever object allocates or frees it. An incoherent allocator makes every
   allocator-family binding of the module a violation.
   - Why libc's binding set, not a symbol-by-symbol match: in the 2026-10-08 trace `libc.so.6` binds `malloc`, `free`,

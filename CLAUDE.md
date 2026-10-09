@@ -32,6 +32,11 @@ Read before working:
    - All C++ code lives between `CCL_NAMESPACE_BEGIN` / `CCL_NAMESPACE_END`, which expand to `namespace painterly`.
    - Format C++ with the repo `.clang-format`.
    - Python is PEP 8 and must be `ruff`-clean. Use type hints on public functions and docstrings that state units and conventions.
+   - Source layout and prefixes (`docs/architecture.md`, "Source layout and naming"):
+     - our C++ lives in `src/painterly/<layer>/` and is included as `painterly/...`;
+     - only `src/cycles/shim/` may shadow an upstream Cycles path;
+     - types under `src/painterly/` are prefixed `Painterly` (or `KernelPainterly` for kernel data), and kernel functions
+       `painterly_`, because vendored Cycles shares the `painterly` namespace.
    - Choose names carefully and keep them consistent across C++, Python and docs. The same concept gets the same word everywhere:
      `chain`, `lane`, `pass`/`passes` (never "spp" in our code), `K`, `k_consumed`, `object_id`, `ghost sphere`, `spiral frame`.
 4. **Environment.**

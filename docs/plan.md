@@ -56,7 +56,11 @@ The core is new C++20 that mirrors Cycles' layout and names: `util/ kernel/ bvh/
 
 - **Copied verbatim from Cycles** (pinned to Blender v5.2.2 `intern/cycles`; all checked candidates are byte-identical to standalone v5.2.0):
   - `util/` math, hash, colour and transform headers.
-  - The typed `kernel/svm/*` node evaluators (104 `SVMNode*` structs; each takes only the stack and a typed node).
+  - The typed `kernel/svm/*` node evaluators: 90 node structs plus 14 trailing data structs. Of the 108 dispatch cases in
+    `svm_eval_nodes`, 43 take only `(stack, node)`, 49 read `ShaderData`, 8 read `KernelGlobals`, and 8 are special. This
+    corrects the plan's earlier "104 structs, stack only": M6 research, 2026-10-09. The generated switch therefore copies
+    upstream `SVM_CASE` bodies verbatim, and painterly uses Cycles' own `kernel/types.h` (`ShaderData`, `KernelData`) for
+    shading.
   - `graph/` reflection.
   - The node `compile()` bodies.
 - **Ported from Blender's sync code:** Blender's node mapping (`intern/cycles/blender/shader.cpp`, Apache-2.0) becomes Python data tables.
@@ -103,23 +107,35 @@ The core is new C++20 that mirrors Cycles' layout and names: `util/ kernel/ bvh/
 ### Repository layout
 ```
 CMakeLists.txt  pyproject.toml (scikit-build-core + nanobind; uv dependency-groups dev/analysis/blender)  Makefile  uv.lock
-src/                       # mirrors Cycles' src/ + Blender's intern/cycles/blender
-  util/  param.h(ustring/TypeDesc shim) task.h(deterministic pool) thread.h(≥2 MB stacks)
-  kernel/ types.h globals.h camera/ geom/ film/ integrator/path.h svm/svm.h svm/closure_painterly.h
-          painterly/{sampler.h, ghost.h, bounce.h}    device/cpu/kernel.cpp
-  bvh/embree.{h,cpp}   graph/(shim glue)   scene/{scene,object,mesh,light,camera,film,integrator,background,image,shader,shader_graph,svm}.{h,cpp}  scene/shader_nodes/<node>.cpp
-  integrator/path_trace.{h,cpp}   # lane scheduler
-  session/{session,buffers}.{h,cpp}
-  blender/python.cpp               # nanobind module _painterly
-  blender/addon/                   # THE EXTENSION (pure Python): blender_manifest.toml __init__.py engine.py properties.py ui.py presets.py operators.py version_update.py
-                                   #   sync/{depsgraph,camera,geometry,light,world,image}.py  sync/shader/{flatten,node_table,export}.py
-  app/smallpaint_oracle.cpp        # reference CLI (like Cycles' src/app)
-  test/                            # doctest unit tests (like Cycles' src/test)
-third_party/cycles/ (vendored verbatim; VENDORED.md path+sha256; patches/)   third_party/smallpaint/ (original sources, MIT)
+src/
+  painterly/                 # OUR ENGINE, Cycles-shaped layers; no path here shadows a vendored header
+    util/                    #   types_double3.h math_double3.h thread_pool.{h,cpp} (deterministic pool)
+    kernel/                  #   header-only, ccl_device: types.h globals.h camera/ geom/ closure/ light/ sample/ integrator/ film/ bvh/
+                             #   M6: svm/ (generated switch from verbatim SVM_CASE fragments) closure/painterly collector
+    bvh/embree.{h,cpp}       #   static, namespaced Embree
+    scene/                   #   PainterlyScene, PainterlyIntegrator (reflected knobs), camera, background, material, mesh, object, device_scene
+    integrator/path_trace.{h,cpp}   # lane scheduler
+    session/{session,buffers}.{h,cpp}
+  cycles/                    # builds vendored Cycles into cycles_util, cycles_graph, (M6) cycles_svm …
+    shim/                    #   headers/sources that shadow upstream Cycles paths (util/log.h, util/param.h, …; M6: scene/scene.h,
+                             #   kernel/device/cpu/globals.h, …). A shimmed path is never also vendored.
+  blender/python.cpp         # nanobind module _painterly
+  blender/addon/             # THE EXTENSION (pure Python): blender_manifest.toml __init__.py engine.py properties.py ui.py presets.py operators.py version_update.py
+                             #   sync/{depsgraph,camera,geometry,light,world,image}.py  sync/shader/{flatten,node_table,export}.py
+  app/smallpaint_oracle.cpp  # reference CLI (like Cycles' src/app)
+  test/                      # doctest unit tests (like Cycles' src/test)
+third_party/cycles/ (vendored verbatim; VENDORED.toml path+sha256; patches/)   third_party/smallpaint/ (original sources, MIT)
 analysis/painterly_analysis/ (JAX metric suite + oracle runner)   tests/ (pytest: core/, blender/, data/reference/, scenes/)
 tools/ (vendor_sync.py, symbol_audit.py, gen_node_registry.py, make_reference_scene.py, fetch_blender.py)
 experiments/  docs/{spec.md, architecture.md, tasks/, artist-guide.md}  .github/workflows/
 ```
+- **Naming (2026-10-09).** Vendored Cycles shares the `painterly` namespace and the include path with our code. So every
+  type under `src/painterly/` is prefixed `Painterly` or `KernelPainterly`, kernel functions are prefixed `painterly_`, and
+  shims live only in `src/cycles/shim/`. Rationale and rules: `docs/architecture.md`, "Source layout and naming".
+  A compile check of the old contracts against Cycles' `kernel/types.h` gave redefinition errors for `KernelData`,
+  `KernelCamera`, `KernelBackground`, `KernelObject`, `Ray`, `CameraType` and `CAMERA_*`. The renamed contracts compile
+  alongside it.
+
 **Rules.**
 - Vendored files are never hand-edited; changes go through `patches/` applied by `vendor_sync.py`.
 - The node registry and kernel switch are **generated** from the directory contents, so node ports only *add* files and parallel tasks never conflict.
@@ -244,7 +260,7 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 |---|---|---|---|
 | T3.1 | `tools/vendor_sync.py` + `third_party/cycles/VENDORED.md` (fetch at the pinned tag, verify sha256, apply patches) | T2.1 | `make vendor-check` |
 | T3.2 | Vendor the `util/` subset; `src/util/{param,task,thread}.h` shims; compile under the renamed namespace | T3.1 | `make build audit` |
-| T3.3 | `kernel/types.h`, `globals.h` (KernelData {Camera, Film, Background, Painterly}, KernelGlobalsCPU spans): **contract written by Opus** | T3.2 | compiles |
+| T3.3 | `painterly/kernel/types.h`, `globals.h` (KernelPainterlyData {Camera, Integrator, Background}, PainterlyGlobalsCPU spans): **contract written by Opus**. Names never collide with vendored Cycles (Repository layout, "Naming") | T3.2 | compiles |
 | T3.4 | `kernel/painterly/sampler.h` (§2, §3 K0) + doctest: equals smallpaint `Halton::next()` replayed for K ≤ 2^23+10 | T3.3 | `make test-cpp` |
 | T3.5 | `kernel/painterly/ghost.h` (§5) + analytic sphere: zero mismatches vs smallpaint `Sphere::intersect` on 10⁵ random rays | T3.3 | `make test-cpp` |
 | T3.6 | `kernel/painterly/bounce.h` (§4, mirror, glass §6) + doctest vs the oracle's functions | T3.4 | `make test-cpp` |
