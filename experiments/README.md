@@ -12,7 +12,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | 003 | 2026-10-08 | lane-length | How long must a chain be? (artist-mode lane length) | final | row ≡ image (0/46 keys) → `chain=row` default; fidelity rises with L (0.13…0.57 at L=1…128 vs 0.59) but no lane matches row; lanes are a stroke-shape knob (anisotropy, seam columns) |
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | final | H1/H1d refuted, H2 supported (jitter units matter), but fixed-pixel filters cannot separate pixel- from image-locking; region-mean trend is an erosion artefact; question answered by 006 |
 | 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | final | Linux: coexists (H1, H2 supported); H3 refuted as registered by 4 allocator bindings to Blender's process-wide TBB malloc proxy, shared coherently with libc; G1 not triggered on Linux, open for macOS/Windows until CI |
-| 006 | 2026-10-09 | jitter-units | Which jitter unit (image-plane or pixel) makes the look independent of resolution, measured with scale-equivariant metrics? | draft | pre-registered; renders running |
+| 006 | 2026-10-09 | jitter-units | Which jitter unit (image-plane or pixel) makes the look independent of resolution, measured with scale-equivariant metrics? | draft | H1 refuted (rejected of 18: image 1/0/2, row 0/0/1); H2 supported (image 7/9, row 9/9); H3 supported (row Δ 0.051 image-plane vs 0.158 pixel, difference CI [0.049, 0.163] excludes 0); H4 refuted (row zero family 5/0/7); H5 refuted (35 of 36 rows) |
 
 ## How to run
 
