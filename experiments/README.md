@@ -8,7 +8,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | # | Date | Slug | Question | Status | Conclusion |
 |---|------|------|----------|--------|------------|
 | 001 | 2026-10-08 | oracle-reproduction | Does the compiled oracle reproduce the reference, and what doesn't matter? | final | Oracle reproduces the reference (means 18/18, texture ρ≈0.99); reference is effectively converged; loop order matters; per-thread restarts change texture slightly |
-| 002 | 2026-10-08 | ingredient-ablation | Which smallpaint ingredients are necessary for the look? | draft | results pending |
+| 002 | 2026-10-08 | ingredient-ablation | Which smallpaint ingredients are necessary for the look? | draft | H1-H4 supported (back wall needs ghosts and unnormalized bounce; spiral and chaining needed for texture; alpha monotone; stop-at-emitter changes means and texture); H5 distinguishable (lights-only ghosting: 45 of 46 keys, back wall 191.5 vs 144.4, pattern_corr 0.005 vs 0.589) |
 | 003 | 2026-10-08 | lane-length | How long must a chain be? (artist-mode lane length) | draft | results pending |
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | draft | not yet (pre-registration only; renders not run) |
 | 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | final | Linux: coexists (H1, H2 supported); H3 refuted as registered by 4 allocator bindings to Blender's process-wide TBB malloc proxy, shared coherently with libc; G1 not triggered on Linux, open for macOS/Windows until CI |

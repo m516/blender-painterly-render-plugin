@@ -185,3 +185,159 @@ blocks 10-18, the first free blocks after 001's block 9. New renders: 144 (9 con
   the `all.*` keys use the union of the diffuse masks, so the pixels set to -1 change no value that is used. Checked on
   the 2-pair smoke at 128 px: the figures are byte-identical, and `results.json` differs from the unrestricted version
   only in `metric_keys` (67 measured keys before, 46 now).
+
+## Results
+
+Source: `results.json` and the `fig_*.png` previews, written by `analyze.py` from the render cache (160 renders: 144 new,
+16 reused from experiment 001). Every number below is in `results.json` or is computed from it.
+
+Set-up, as recorded in `results.json`: 8 pairs per configuration, size 400 px, P = 64 passes, 46 keys in the diffuse
+family, significance 0.01. The smallest attainable p is 1.55e-4 (two-sided) and 7.77e-5 (one-sided). The first Holm
+threshold is 2.17e-4, so every family comparison is powered. Means ± sd are over the 8 pairs (sample sd). The relative
+difference is (mean a − mean b) / |mean b|. Cohen's d uses the pooled sd. A second run of `analyze.py` into a scratch
+out-dir reproduced `results.json` and all 11 `fig_*.png` byte for byte (`cmp`). The largest figure is 403,833 bytes.
+
+Footnote on Cohen's d: the values in the thousands (for example −4409 in H1) reflect the seed-to-seed sd. That sd is
+0.02 to 0.06 grey levels for `r4.luma` in every configuration (table 1). They are not large standardized effects, so
+the text uses the relative difference as the effect size.
+
+### 1. `r4.luma`, `all.pattern_corr` and `r4.structure_std`, mean ± sd over 8 pairs
+
+All rows use size 400 and passes 64. The positive control uses the oracle defaults apart from `chain=image`.
+
+| configuration | option | r4.luma | all.pattern_corr | r4.structure_std |
+|---|---|---|---|---|
+| positive | chain=image | 144.375 ± 0.038 | 0.5889 ± 0.0016 | 5.738 ± 0.071 |
+| ghost_none | ghost=none | 12.935 ± 0.019 | 0.00047 ± 0.00155 | 3.575 ± 0.074 |
+| ghost_lights | ghost=lights | 191.517 ± 0.064 | 0.00491 ± 0.00336 | 5.384 ± 0.073 |
+| alpha_025 | alpha=0.25 | 118.061 ± 0.036 | 0.0798 ± 0.0025 | 4.833 ± 0.046 |
+| alpha_05 | alpha=0.5 | 94.137 ± 0.025 | 0.0339 ± 0.0026 | 4.275 ± 0.066 |
+| alpha_1 | alpha=1.0 | 5.507 ± 0.017 | −0.00249 ± 0.00238 | 1.699 ± 0.042 |
+| u2_independent | u2=independent | 125.989 ± 0.035 | 0.0113 ± 0.0041 | 0.022 ± 0.063 |
+| u2_base3 | u2=base3 | 140.360 ± 0.052 | 0.00950 ± 0.00355 | 1.110 ± 0.542 |
+| per_path_start | chain=lane:1 | 141.631 ± 0.051 | 0.1260 ± 0.0026 | 2.562 ± 0.121 |
+| stop_at_emitter | continue_after_emitter=False | 126.795 ± 0.023 | 0.0964 ± 0.0016 | 9.942 ± 0.071 |
+
+### 2. K draws per pixel per pass
+
+Mean over pixels of `k_consumed / P`, mean ± sd over the 16 renders of each configuration.
+
+| configuration | K per pixel per pass | K minus positive |
+|---|---|---|
+| positive | 16.274 ± 0.0009 | 0 |
+| ghost_none | 18.682 ± 0.0008 | +2.408 |
+| ghost_lights | 19.210 ± 0.0009 | +2.936 |
+| alpha_025 | 15.959 ± 0.0012 | −0.316 |
+| alpha_05 | 15.990 ± 0.0010 | −0.284 |
+| alpha_1 | 19.187 ± 0.0006 | +2.913 |
+| u2_independent | 17.736 ± 0.0012 | +1.462 |
+| u2_base3 | 17.333 ± 0.0013 | +1.059 |
+| per_path_start | 16.213 ± 0.0015 | −0.061 |
+| stop_at_emitter | 5.056 ± 0.0013 | −11.218 |
+
+### 3. Decision table, one row per hypothesis
+
+| H | comparison | test, alpha = 0.01 | deciding numbers | decision |
+|---|---|---|---|---|
+| H1 | ghost_none vs positive; alpha_1 vs positive; r4.luma | one-sided "less" each, not corrected across the two (D3) | p_less = 7.77e-5 for both (min attainable 7.77e-5); p_greater = 1 for both | supported |
+| H2 | u2_independent, u2_base3, per_path_start vs positive; all.pattern_corr | one-sided "less", Holm over 3 | p_less = 7.77e-5 for all three, all Holm-rejected; no "greater" rejected | supported |
+| H3 | positive, alpha_025, alpha_05, alpha_1; r4.luma, three adjacent steps | one-sided "less" per step, Holm over 3 | p_less = 7.77e-5 for all three steps, all Holm-rejected; no "greater" rejected | supported |
+| H4 | stop_at_emitter vs positive; diffuse family, 46 keys | Holm over 46, two-sided permutation | 44 of 46 rejected; 18 of 18 region-mean keys; 24 of 26 texture keys; min attainable p 1.55e-4 < 2.17e-4 | supported |
+| H5 | ghost_lights vs positive; diffuse family, 46 keys | Holm over 46, two-sided permutation | 45 of 46 rejected; min attainable p 1.55e-4 < 2.17e-4 | distinguishable |
+
+### 4. H1 to H3: effect sizes per comparison
+
+Each comparison has one key, so its relative difference and Cohen's d are the largest |rel| and largest |d| of that
+comparison. Each H1 and H2 "less" test has p_greater = 1, and each H3 "greater" p is 1.
+
+| H | a vs b | key | mean a ± sd | mean b ± sd | rel. diff | Cohen d | p_less | min attainable p |
+|---|---|---|---|---|---|---|---|---|
+| H1 | ghost_none vs positive | r4.luma | 12.935 ± 0.019 | 144.375 ± 0.038 | −0.910 | −4409 | 7.77e-5 | 7.77e-5 |
+| H1 | alpha_1 vs positive | r4.luma | 5.507 ± 0.017 | 144.375 ± 0.038 | −0.962 | −4756 | 7.77e-5 | 7.77e-5 |
+| H2 | u2_independent vs positive | all.pattern_corr | 0.0113 ± 0.0041 | 0.5889 ± 0.0016 | −0.981 | −186 | 7.77e-5 | 7.77e-5 |
+| H2 | u2_base3 vs positive | all.pattern_corr | 0.00950 ± 0.00355 | 0.5889 ± 0.0016 | −0.984 | −211 | 7.77e-5 | 7.77e-5 |
+| H2 | per_path_start vs positive | all.pattern_corr | 0.1260 ± 0.0026 | 0.5889 ± 0.0016 | −0.786 | −213 | 7.77e-5 | 7.77e-5 |
+| H3 | alpha_025 vs positive | r4.luma | 118.061 ± 0.036 | 144.375 ± 0.038 | −0.182 | −710 | 7.77e-5 | 7.77e-5 |
+| H3 | alpha_05 vs alpha_025 | r4.luma | 94.137 ± 0.025 | 118.061 ± 0.036 | −0.203 | −762 | 7.77e-5 | 7.77e-5 |
+| H3 | alpha_1 vs alpha_05 | r4.luma | 5.507 ± 0.017 | 94.137 ± 0.025 | −0.942 | −4113 | 7.77e-5 | 7.77e-5 |
+
+### 5. H4 and H5: rejected keys over the diffuse family
+
+| H | comparison | rejected (Holm, alpha = 0.01) | min attainable p | first Holm threshold | largest abs rel. diff (key) | largest abs Cohen d (key) |
+|---|---|---|---|---|---|---|
+| H4 | stop_at_emitter vs positive | 44 of 46 | 1.55e-4 | 2.17e-4 | 69.02 (all.block_rmse) † | 1621 (all.block_rmse) |
+| H5 | ghost_lights vs positive | 45 of 46 | 1.55e-4 | 2.17e-4 | 130.8 (all.block_rmse) † | 1275 (all.block_rmse) |
+
+† `all.block_rmse` has a near-zero positive mean (0.381), so its relative difference is not an effect size. Its absolute
+differences are: H4 +26.27 (26.652 ± 0.012 against 0.381 ± 0.019); H5 +49.80 (50.180 ± 0.052 against 0.381 ± 0.019).
+`all.spectral_slope` has a near-zero mean (−0.044), so its absolute differences are given instead: H4 +0.00037
+(−0.04399 ± 0.00847 against −0.04436 ± 0.00916); H5 −0.381 (−0.425 ± 0.010 against −0.044 ± 0.009).
+
+Keys not rejected. The p-values are raw two-sided permutation p-values. Each has min attainable p 1.55e-4.
+
+| H | key | p | mean a ± sd | mean b ± sd | rel. diff | Cohen d |
+|---|---|---|---|---|---|---|
+| H4 | all.spectral_slope | 0.932 | −0.04399 ± 0.00847 | −0.04436 ± 0.00916 | (absolute diff +0.00037) | 0.042 |
+| H4 | r3.lag1.y | 0.752 | 0.1893 ± 0.0058 | 0.1902 ± 0.0063 | −0.005 | −0.16 |
+| H5 | r5.structure_std | 0.172 | 3.622 ± 0.139 | 3.542 ± 0.069 | +0.023 | 0.73 |
+
+Clip fraction (`all.clip_fraction`): H5 0.07115 ± 0.00074 (ghost_lights) against 0.004338 ± 0.000108 (positive), relative
+difference +15.40. H4 0.01175 ± 0.00014 (stop_at_emitter), relative difference +1.71.
+
+### 6. H5: ratios of ensemble means, ghost_lights / positive
+
+| region | mean R | mean G | mean B |
+|---|---|---|---|
+| 2 | 1.369 | 1.440 | 1.201 |
+| 3 | 1.923 | 1.957 | 1.814 |
+| 4 | 1.296 | 1.332 | 1.356 |
+| 5 | 1.293 | 1.315 | 1.348 |
+| 6 | 1.190 | 1.204 | 1.225 |
+| 7 | 0.786 | 0.728 | 0.718 |
+
+`all.pattern_corr` ratio: 0.0083 (0.00491 / 0.5889). `r4.luma` ratio: 1.327 (191.517 / 144.375).
+
+### 7. Notes
+
+- **ghost_lights and the pattern correlation.** `all.pattern_corr` is 0.00491 ± 0.00336 and `r4.structure_std` is
+  5.384 ± 0.073 against 5.738 ± 0.071 (ratio 0.938). K consumption is 19.210 against 16.274 (+2.936). The card's
+  reading is that the pattern correlation measures agreement with one realization of the texture, so it collapses
+  whenever K consumption changes. Table 2 does not establish this as the general rule. `per_path_start` changes K by
+  −0.061 and still has `all.pattern_corr` 0.1260. `alpha_025` and `alpha_05` change K by −0.316 and −0.284 and have
+  0.0798 and 0.0339. `alpha_1` changes K by +2.913 and has −0.00249. Across the nine variants, `all.pattern_corr` lies
+  between −0.00249 and 0.1260. The K explanation is therefore not tested by these configurations.
+- **Differences from the Hypothesis text.** The Hypothesis cites 193 for the `ghost=lights` back wall (T1.7 card). The
+  measured `r4.luma` is 191.517 ± 0.064, which is 1.483 lower. The Hypothesis cites a research-phase pattern correlation
+  of about 0 to 0.11 for the three H2 variants. The measured `per_path_start` value is 0.1260 ± 0.0026. The measured
+  values are used throughout.
+
+## Conclusion
+
+DRAFT (Haiku) — pending Opus review.
+
+- **H1 supported.** The back wall needs the ghost spheres and the unnormalized bounce. `r4.luma` is 12.935 ± 0.019 with
+  `ghost=none` and 5.507 ± 0.017 with `alpha=1`, against 144.375 ± 0.038 for the positive control (relative differences
+  −0.910 and −0.962). Each one-sided "less" test gives p = 7.77e-5, the minimum attainable, and each "greater" p is 1.
+  The two tests are not corrected for each other (D3).
+- **H2 supported.** The spiral and the chaining are necessary for the texture. `all.pattern_corr` falls from
+  0.5889 ± 0.0016 to 0.0113 ± 0.0041 (`u2=independent`), 0.00950 ± 0.00355 (`u2=base3`) and 0.1260 ± 0.0026
+  (`chain=lane:1`), with relative differences −0.981, −0.984 and −0.786. Holm over the three rejects all three "less" at
+  0.01, and no "greater" is rejected. The `lane:1` value lies above the 0 to 0.11 range that the Hypothesis cites from
+  research runs.
+- **H3 supported.** Alpha is a monotone control of the back wall in this ladder. `r4.luma` goes 144.375 (alpha 0) to
+  118.061 (0.25, relative −0.182), to 94.137 (0.5, relative −0.203), to 5.507 (1, relative −0.942). Each step has
+  p_less = 7.77e-5, and Holm rejects all three.
+- **H4 supported.** Continuing after an emitter hit changes both the region means and the texture. Of 46 keys, 44 are
+  rejected: all 18 region-mean keys, 24 of 26 texture keys, `all.block_rmse` and `all.clip_fraction`. The two not
+  rejected are `all.spectral_slope` (p = 0.932) and `r3.lag1.y` (p = 0.752). K draws fall from 16.274 to 5.056.
+  `r4.luma` falls to 126.795 (relative −0.122), and `r4.structure_std` rises to 9.942 ± 0.071 from 5.738 ± 0.071
+  (relative +0.733).
+- **H5 distinguishable (45 of 46 keys).** H5 defines the verdicts distinguishable, indistinguishable and underpowered, so
+  it carries no supported or refuted label. The back wall is 191.517 ± 0.064 against 144.375 ± 0.038 (ratio 1.327), and
+  `all.pattern_corr` is 0.00491 against 0.5889 (ratio 0.0083). `r4.structure_std` is 5.384 ± 0.073 against
+  5.738 ± 0.071 (relative −0.062, d −4.9): the amplitude is close, and the difference is still rejected. The clip
+  fraction is 0.0712 against 0.0043, a factor of 16.4. The only key not rejected is `r5.structure_std` (p = 0.172). The
+  region-mean ratios range from 0.718 (`r7` B) to 1.957 (`r3` G). No numeric threshold for "most of the look" is applied,
+  as the Hypothesis specifies. The gap is the figures above.
+- **For Opus.** The K-consumption explanation of the `ghost_lights` pattern correlation is not established by these
+  ten configurations (Results, note 1).
