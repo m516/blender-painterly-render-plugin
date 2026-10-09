@@ -18,6 +18,8 @@ add_executable(painterly_tests
   test_math_double3.cpp
   test_kernel_headers.cpp
   test_sampler.cpp
-  test_analytic.cpp)
+  test_analytic.cpp
+  test_camera.cpp
+  smallpaint_camcr_ref.cpp)
 target_link_libraries(painterly_tests PRIVATE doctest::doctest cycles_util cycles_graph)
 add_test(NAME painterly_tests COMMAND painterly_tests)
