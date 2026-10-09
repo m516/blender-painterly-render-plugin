@@ -1,4 +1,4 @@
-# Continuous integration (T0.4): lint, build and test on Linux.
+# Continuous integration (T0.4, T2.10): lint, build and test on Linux; build and unit-test the C++ libraries with MSVC on Windows.
 # The venv's ninja (dev group) is used by `make build`, so no apt packages are installed.
 name: CI
 
@@ -42,3 +42,36 @@ jobs:
 
       - name: Symbol audit
         run: make audit
+
+  # MSVC builds what the wheel compiles (cycles_*, painterly_*, Embree) plus the doctest unit tests, with Ninja so that
+  # Embree compiles in parallel. The module itself is built and audited by wheels.yml.
+  windows:
+    runs-on: windows-2022
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Cache the Embree source
+        id: embree-src
+        uses: actions/cache@v4
+        with:
+          path: .cache/src/embree
+          key: embree-src-${{ hashFiles('cmake/painterly_embree.cmake') }}
+
+      - name: Clone the Embree source
+        if: steps.embree-src.outputs.cache-hit != 'true'
+        shell: bash
+        run: git clone --depth 1 --branch v4.4.1 https://github.com/RenderKit/embree.git .cache/src/embree
+
+      - name: Build the C++ libraries and unit tests with MSVC
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set "VSROOT=%%i"
+          call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+          cmake --version || exit /b 1
+          ninja --version || exit /b 1
+          cmake -S . -B build/msvc -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=ON -DPAINTERLY_BUILD_ORACLE=OFF -DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree || exit /b 1
+          cmake --build build/msvc || exit /b 1
+
+      - name: Run the C++ unit tests
+        run: ctest --test-dir build/msvc --output-on-failure

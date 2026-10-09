@@ -28,6 +28,15 @@ target_compile_definitions(cycles_util PUBLIC
   "CCL_NAMESPACE_BEGIN=namespace painterly {"
   "CCL_NAMESPACE_END=}")
 
+# MSVC: util/guarded_allocator.h:108-134 (#ifdef _MSC_VER) names std::_Container_proxy and std::allocator, but the
+# header includes only <cstddef>, <cstdlib> and <new>. Upstream compiles Cycles with WITH_BLENDER_GUARDEDALLOC
+# (Blender v5.2.2 intern/cycles/CMakeLists.txt:382), so the header's MEM_guardedalloc.h include brings in <memory>
+# (MEM_guardedalloc.h:297) first. We do not link Blender's guardedalloc, so <memory> is force-included instead. The
+# option is PUBLIC because any consumer may include the header before <memory>. GCC and Clang never compile the block.
+if(MSVC)
+  target_compile_options(cycles_util PUBLIC /FImemory)
+endif()
+
 # arm64: upstream's Blender root CMakeLists.txt:1564-1566 defines WITH_SSE2NEON, which lets util/optimization.h
 # select the Neon code path.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|ARM64|aarch64)$")
