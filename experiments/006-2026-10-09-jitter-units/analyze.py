@@ -1,35 +1,28 @@
 """Analysis of experiment 006 (T1.13): which jitter unit makes the look independent of resolution?
 
 Implements the Common definitions and H1 to H5 of ``README.md``, which is the specification.
-Scale-equivariant
-parameters are functions of the rendered side ``s``: the high-pass sigma, the region erosion and
-the structure lag
-are in pixels of that side, and the reference side is ``jobs.REFERENCE_SIDE`` (400).
+
+Scale-equivariant parameters are functions of the rendered side ``s``: the high-pass sigma, the
+region erosion and the structure lag are in pixels of that side, and the reference side is
+``jobs.REFERENCE_SIDE`` (400).
 
 Re-runs from the render cache, so every render must already exist (``jobs.py``). The exception is a
-smoke run
-(``--scale`` above 1): it renders its own small jobs into ``$PAINTERLY_CACHE`` first, and it must
-write to a
-scratch ``--out-dir``. Writes ``results.json``, ``fig_grid.png`` and ``fig_slag_profile.png`` and
-prints the tables.
-It is deterministic: the tests are exact permutation tests, and the H3 bootstrap draws from
-``numpy.random.default_rng(0)``.
+smoke run (``--scale`` above 1): it renders its own small jobs into ``$PAINTERLY_CACHE`` first, and
+it must write to a scratch ``--out-dir``. Writes ``results.json``, ``fig_grid.png`` and
+``fig_slag_profile.png`` and prints the tables. It is deterministic: the tests are exact permutation
+tests, and the H3 bootstrap draws from ``numpy.random.default_rng(0)``.
 
 Figure encodings (no text is drawn; the mapping is also in ``results.json`` under ``figures``):
-- ``fig_grid.png``: pair 0 of each configuration, box-downsampled to 200 px (nearest upscale only
-at smoke scale).
-  Rows: image-plane image chain, pixel image chain, image-plane row chain, pixel row chain, zero
-  jitter. The 400 px
-  member of the pixel rows is ``s400`` (or ``row_s400``), since both units coincide there.
+- ``fig_grid.png``: pair 0 of each configuration, box-downsampled to 200 px (nearest upscale only at
+  smoke scale). Rows: image-plane image chain, pixel image chain, image-plane row chain, pixel row
+  chain, zero jitter. The 400 px member of the pixel rows is ``s400`` (or ``row_s400``), since both
+  units coincide there.
 - ``fig_slag_profile.png``: mean +- sd over pairs of the region-4 structure autocorrelation against
-the image-plane
-  lag k/200 of the side (k = 1, 2, 3). Row 1 is ``slag.x``, row 2 is ``slag.y``. Columns are the
-  native sides 200,
-  400 and 800. Series: solid blue image-plane image chain, dashed blue image-plane row chain, solid
-  red pixel image
-  chain, dashed red pixel row chain, solid green zero jitter image chain. Each panel has its own
-  vertical scale
-  within its row, shared by the three columns.
+  the image-plane lag k/200 of the side (k = 1, 2, 3). Row 1 is ``slag.x``, row 2 is ``slag.y``.
+  Columns are the native sides 200, 400 and 800. Series: solid blue image-plane image chain, dashed
+  blue image-plane row chain, solid red pixel image chain, dashed red pixel row chain, solid green
+  zero jitter image chain. Each panel has its own vertical scale within its row, shared by the
+  three columns.
 """
 
 import argparse
@@ -120,6 +113,15 @@ REUSED_FROM_004 = {
 }
 # Reused from the earlier experiments with their own jobs (checked at full scale only).
 REUSED_FROM_EARLIER = {"s400": ("001", "img64"), "row_s400": ("003", "row")}
+# The configurations behind each Holm-tested decision (README, Hypothesis). H3 and H5 are
+# effect-size decisions without p-values, so they are not listed.
+HYPOTHESIS_CONFIGURATIONS = {
+    "H1-image": ("s200", "s400", "s800"),
+    "H1-row": ("row_s200", "row_s400", "row_s800"),
+    "H2-image": ("s200_px", "s400", "s800_px"),
+    "H2-row": ("row_s200_px", "row_s400", "row_s800_px"),
+    "H4": ("j0_s200", "j0_s400", "j0_s800"),
+}
 
 # Rows of fig_grid.png (README, Analysis): image-plane, pixel, row image-plane, row pixel, zero.
 GRID_LAYOUT = (
@@ -219,8 +221,8 @@ def _pixels(exact: Fraction, side: int, quantity: str, scale: int, notes: list[s
     """An exact scaled quantity as an integer number of pixels.
 
     At full scale it must already be an integer, or RuntimeError is raised. At smoke scale it is
-    rounded to the
-    nearest integer of at least 1, and the rounding is recorded in ``notes`` (README, Commands).
+    rounded to the nearest integer of at least 1, and the rounding is recorded in ``notes``
+    (README, Commands).
     """
     if exact.denominator == 1:
         return exact.numerator
@@ -232,13 +234,12 @@ def _pixels(exact: Fraction, side: int, quantity: str, scale: int, notes: list[s
 
 
 def side_params(side: int, reference: int, scale: int, notes: list[str]) -> SideParams:
-    """The parameters at rendered side ``side``, with ``s0 = reference`` (README, Common
-    definitions).
+    """The parameters at rendered side ``side``, with reference side ``s0 = reference``.
 
-    ``sigma(s) = (9 / sqrt(12)) * s / s0``. The 9 / sqrt(12) is the standard deviation of a uniform
-    box of width 9,
-    the plan's 9-px box. ``erosion(s) = (9 // 2) * s // s0`` and ``lag(s) = s // 200``, asserted
-    exact at full scale.
+    The README's Common definitions give ``sigma(s) = (9 / sqrt(12)) * s / s0``. The 9 / sqrt(12)
+    is the standard deviation of a uniform box of width 9, the plan's 9-px box. Also
+    ``erosion(s) = (9 // 2) * s // s0`` and ``lag(s) = s // 200``, which are asserted exact at full
+    scale.
     """
     sigma = (metrics.HIGHPASS_SIZE / math.sqrt(12.0)) * side / reference
     erosion_numerator = (metrics.HIGHPASS_SIZE // 2) * side
@@ -259,8 +260,7 @@ def side_params(side: int, reference: int, scale: int, notes: list[str]) -> Side
         for k in PROFILE_LAGS
     )
     # side // 4 is the default upper radius of radial_spectral_slope, so the band is valid at every
-    # size. At full
-    # scale it equals SPECTRAL_F_MAX at every native side.
+    # size. At full scale it equals SPECTRAL_F_MAX at every native side.
     spectral_f_max = min(SPECTRAL_F_MAX, side // 4)
     if scale == 1 and spectral_f_max != SPECTRAL_F_MAX:
         raise RuntimeError(f"spectral band at side {side} is not f_max = {SPECTRAL_F_MAX}")
@@ -298,12 +298,9 @@ def _check_design(
     """The README's design, checked on the jobs (Method table). Raises RuntimeError on any mismatch.
 
     Each configuration has its expected options and one block of consecutive seeds at its block. No
-    seed is shared
-    between configurations. A reused configuration has the option set and seeds of its source. At
-    full scale a seed
-    of an earlier experiment is reused only with an identical option set, and the new
-    configurations use no seed of
-    an earlier experiment.
+    seed is shared between configurations. A reused configuration has the option set and seeds of
+    its source. At full scale a seed of an earlier experiment is reused only with an identical
+    option set, and the new configurations use no seed of an earlier experiment.
     """
     if set(ensembles) != set(TABLE):
         raise RuntimeError(f"ENSEMBLES must hold {sorted(TABLE)}, got {sorted(ensembles)}")
@@ -387,12 +384,10 @@ def _pair_values(
     """The metric values of one pair of half renders: (scaled, fixed, profile).
 
     ``scaled`` holds the texture family T and the estimation-only keys at the scaled erosion
-    ``params.erosion``.
-    ``fixed`` holds the region means at 004's fixed erosion (H5). ``profile`` holds the region-4
-    structure
-    autocorrelation of fig_slag_profile at ``params.profile_lag``. The halves are ``a`` and ``b``.
-    The summed display
-    ``ab8`` is used for the means and the spectral slope, as in experiment 004.
+    ``params.erosion``. ``fixed`` holds the region means at 004's fixed erosion (H5). ``profile``
+    holds the region-4 structure autocorrelation of fig_slag_profile at ``params.profile_lag``. The
+    halves are ``a`` and ``b``. The summed display ``ab8`` is used for the means and the spectral
+    slope, as in experiment 004.
     """
     a8 = smallpaint_display(a.sum, PASSES)
     b8 = smallpaint_display(b.sum, PASSES)
@@ -482,8 +477,7 @@ def _compare(
     runs: Mapping[str, list[dict]], a: str, b: str, alpha: float, keys: Mapping[str, list[str]]
 ) -> dict[str, Any]:
     """One comparison ``a`` vs ``b``: Holm on the texture family T with the power guard, plus the
-    effect summaries of
-    T and the estimation-only keys (README, Significance and Estimation)."""
+    effect summaries of T and the estimation-only keys (README, Significance and Estimation)."""
     record = report.family_test(runs[a], runs[b], keys["texture"], alpha)
     effects = {
         **record["effect_summary"],
@@ -502,9 +496,8 @@ def _compare(
 
 def _no_difference(tests: Sequence[dict[str, Any]]) -> str:
     """H1 and H4: refuted iff some key is Holm-rejected in some comparison. Supported iff none is
-    and every
-    comparison is powered. Otherwise inconclusive, because an underpowered comparison cannot
-    reject."""
+    and every comparison is powered. Otherwise inconclusive, because an underpowered comparison
+    cannot reject."""
     if any(test["rejected_keys"] for test in tests):
         return "refuted"
     if all(test["powered"] for test in tests):
@@ -558,9 +551,8 @@ def _unit_pairs(prefix: str, unit: str) -> list[tuple[str, str]]:
 
 def _delta(means: Mapping[str, np.ndarray], pairs: Sequence[tuple[str, str]]) -> np.ndarray:
     """Delta of H3: the median over the texture keys and the two pairs of |rel_diff|, where
-    rel_diff is
-    ``(mean_a - mean_b) / |mean_b|`` as in ``ensemble.effect_summary``. Leading axes of ``means``
-    are kept."""
+    rel_diff is ``(mean_a - mean_b) / |mean_b|`` as in ``ensemble.effect_summary``. Leading axes of
+    ``means`` are kept."""
     rel = [np.abs((means[a] - means[b]) / np.abs(means[b])) for a, b in pairs]
     return np.median(np.concatenate(rel, axis=-1), axis=-1)
 
@@ -569,9 +561,8 @@ def _h3(runs, keys, prefix: str) -> dict[str, Any]:
     """H3: the jitter unit that makes the look resolution independent, on one chain (README, H3).
 
     The statistic Delta is computed per unit. Pairs are resampled within each configuration for the
-    95% percentile
-    intervals. The decision is made on the row chain only: supported iff Delta_image-plane <
-    Delta_pixel.
+    95% percentile intervals. The decision is made on the row chain only: supported iff
+    Delta_image-plane < Delta_pixel.
     """
     texture = keys["texture"]
     names = sorted({name for unit in UNITS for pair in _unit_pairs(prefix, unit) for name in pair})
@@ -635,8 +626,7 @@ def _h5(scaled_runs, fixed_runs, control_keys: Sequence[str]) -> dict[str, Any]:
     """H5: the scaled erosion, not the renderer, explains the region-mean trend.
 
     Supported iff for every region-mean key and both adjacent pairs, |rel_diff| with the scaled
-    erosion is smaller
-    than with the fixed erosion. There are no p-values (README, H5).
+    erosion is smaller than with the fixed erosion. There are no p-values (README, H5).
     """
     rows: list[dict[str, Any]] = []
     for a, b in (("s200", "s400"), ("s400", "s800")):
@@ -671,8 +661,7 @@ def _h5(scaled_runs, fixed_runs, control_keys: Sequence[str]) -> dict[str, Any]:
 
 def _preview(img8: np.ndarray) -> np.ndarray:
     """A PREVIEW_SIDE x PREVIEW_SIDE tile. A side that divides PREVIEW_SIDE is box-averaged to it,
-    and a smaller side
-    is repeated (smoke scale only). Display only."""
+    and a smaller side is repeated (smoke scale only). Display only."""
     side = img8.shape[0]
     if side >= PREVIEW_SIDE and side % PREVIEW_SIDE == 0:
         return report.block_preview(img8, side // PREVIEW_SIDE)
@@ -766,8 +755,7 @@ def _profile_points(profile_runs: Sequence[dict], axis: str) -> list[tuple[float
 
 def _slag_profile_figure(profile: Mapping[str, list[dict]]) -> np.ndarray:
     """fig_slag_profile.png: the region-4 structure autocorrelation against the image-plane lag,
-    for each direction
-    (rows), native side (columns) and series (PROFILE_SERIES)."""
+    for each direction (rows), native side (columns) and series (PROFILE_SERIES)."""
     width = LEFT_MARGIN + len(PROFILE_SIDES) * CELL_W
     height = TOP_MARGIN + 2 * (PANEL_H + ROW_GAP) + LEGEND_H
     canvas = np.full((height, width, 3), 255, dtype=np.uint8)
@@ -905,11 +893,10 @@ def main(argv: list[str] | None = None) -> None:
         scaled_runs[name], fixed_runs[name], profile_runs[name], digests[name] = (
             _measure_configuration(name, ensembles[name], object_ids[name], params[name], measured)
         )
-    # Replicate check: the 2 * pairs renders of a configuration must be distinct. The oracle's
-    # output
-    # depends on the seed only through the jitter, the U2 draw (--u2 independent) and the lane K0
-    # (lane and row chains). A zero-jitter image-chain configuration with the default --u2 same
-    # therefore repeats one render.
+    # Replicate check: the 2 * pairs renders of a configuration should be distinct. The oracle's
+    # output depends on the seed only through the jitter, the U2 draw (--u2 independent) and the
+    # lane K0 (lane and row chains). A zero-jitter image-chain configuration with the default
+    # --u2 same therefore repeats one render. The check reports this; it does not stop the run.
     replicates = {
         name: {"renders": len(digest_list), "distinct": len(set(digest_list))}
         for name, digest_list in digests.items()
@@ -940,6 +927,16 @@ def main(argv: list[str] | None = None) -> None:
         "H4": h4["decision"],
         "H5": h5["decision"],
     }
+    # A Holm-tested decision is not interpretable if one of its configurations has replicates that
+    # repeat a render. The exact pair test then compares identical pairs, so the smallest attainable
+    # p-value (README, Power) rejects every key whose two configurations differ at all. The decision
+    # is still written as the README's rule defines it, and this flag marks it.
+    degenerate = {name for name, c in replicates.items() if c["distinct"] < c["renders"]}
+    not_interpretable = {
+        hypothesis: sorted(set(names) & degenerate)
+        for hypothesis, names in HYPOTHESIS_CONFIGURATIONS.items()
+    }
+    not_interpretable = {hyp: names for hyp, names in not_interpretable.items() if names}
 
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1012,6 +1009,10 @@ def main(argv: list[str] | None = None) -> None:
             "H5": h5,
         },
         "decisions": decisions,
+        "decisions_not_interpretable": {
+            hypothesis: {"configurations": names, "decision": decisions[hypothesis]}
+            for hypothesis, names in not_interpretable.items()
+        },
         "summary": _summary_table(scaled_runs, keys["texture"] + keys["estimation"]),
         "summary_fixed_erosion": _summary_table(fixed_runs, keys["erosion_control"]),
         "figures": {
@@ -1076,7 +1077,12 @@ def main(argv: list[str] | None = None) -> None:
     print(f"H5 erosion: {h5['decision']}; failing: {len(h5['failing'])} of {len(h5['rows'])}")
     for item in h5["failing"]:
         print(f"    fails: {item}")
-    print("decisions:", decisions)
+    print("decisions (README rule):", decisions)
+    for hypothesis, names in not_interpretable.items():
+        print(
+            f"NOT INTERPRETABLE {hypothesis} ({decisions[hypothesis]} by the README rule): "
+            f"configurations {names} have replicates that repeat a render (see the WARNING lines)"
+        )
     print(
         f"wrote {out_dir / 'results.json'}, {out_dir / 'fig_grid.png'} and "
         f"{out_dir / 'fig_slag_profile.png'}"
