@@ -49,7 +49,6 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
 # valid for CPython >= 3.12. The Embree source is cloned to .cache/src/embree by .github/workflows/wheels.yml, and the
 # build compiles it from that local copy. CMake turns a relative untyped `-D` PATH value into an absolute one against
 # the working directory, which is the project root under the build backend, so the relative path is the same on every
-# platform. The path is relative to the project root, where the build backend runs, so it is the same on every
 # platform. Compiled objects are never cached. Only cibuildwheel reads this table, so local builds fetch Embree.
 [tool.cibuildwheel]
 build = "cp313-*"

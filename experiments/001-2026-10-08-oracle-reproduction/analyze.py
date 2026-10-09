@@ -66,6 +66,8 @@ def _masked_var(x, mask) -> float:
     return float(jnp.sum(jnp.where(m, (values - mean) ** 2, 0.0)) / n)
 
 
+# Kept local rather than report.format_number: experiment 001 is final, and its printed tables and
+# committed outputs are frozen byte for byte (T1.11, T1.15).
 def _fmt(value, spec: str) -> str:
     return "undefined" if value is None else format(value, spec)
 
