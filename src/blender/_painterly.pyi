@@ -26,7 +26,7 @@ class SocketInfo(TypedDict):
     type: Literal["boolean", "int", "uint", "float", "enum", "vector"]
     # bool | int | float | str (enum identifier) | tuple[float, float, float] (vector)
     default: object
-    enum_items: list[str]  # empty unless type == "enum"; identifiers in kernel enum order
+    enum_items: list[str]  # empty unless type == "enum"; identifiers in C++ enum value order
     min: float | None
     max: float | None
     soft_min: float | None
@@ -61,7 +61,7 @@ class Scene:
         material: int,
         intersection: Literal["ghost", "exact"] = "ghost",
         object_id: int = -1,
-        # (axis, cos_half_angle, blend)
+        # (axis, cos_half_angle, blend); axis: unit vector (normalized by the caller)
         spot: tuple[tuple[float, float, float], float, float] | None = None,
     ) -> int: ...
     def add_plane(

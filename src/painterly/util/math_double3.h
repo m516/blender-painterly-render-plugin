@@ -5,7 +5,7 @@
 
 #pragma once
 
-/* double3 arithmetic with smallpaint `Vec` semantics (smallpaint_painterly.cpp:42-54).
+/* double3 arithmetic with smallpaint `Vec` semantics (smallpaint_painterly.cpp:43-55).
  * Each comment shows the smallpaint expression being reproduced. */
 
 #include <cmath>

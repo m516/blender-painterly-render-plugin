@@ -5,9 +5,9 @@
 
 #pragma once
 
-/* Kernel data layout: written by scene/ (device_update), read by kernel/. Mirrors the role of
- * Cycles' kernel/types.h, at painterly scale. Plain-old-data only: no STL, no virtuals, no
- * allocation, so that the kernel stays portable to GPU devices later. */
+/* Kernel data layout: written by painterly/scene/ (device_update), read by painterly/kernel/.
+ * Mirrors the role of Cycles' kernel/types.h, at painterly scale. Plain-old-data only: no STL, no
+ * virtuals, no allocation, so that the kernel stays portable to GPU devices later. */
 
 #include "painterly/util/types_double3.h"
 #include "util/types.h"
@@ -112,8 +112,11 @@ struct KernelPainterlyCamera {
    * by PainterlyScene::device_update. PAINTERLY_CAMERA_SMALLPAINT: image-plane units, 2 * jitter
    * (reference 1/700). Perspective/orthographic: raster pixels, jitter * fitted side. */
   double jitter;
-  /* Perspective/orthographic only, row-major. Raster point (col + 0.5 + jx, row + 0.5 + jy, 0, 1)
-   * maps to camera space; camera_to_world is a 3x4 affine (Blender camera: -Z forward, +Y up). */
+  /* Row-major. Perspective/orthographic: raster point (col + 0.5 + jx, row + 0.5 + jy, 0, 1) maps
+   * to camera space through raster_to_camera; camera_to_world is a 3x4 affine (Blender camera:
+   * -Z forward, +Y up). PAINTERLY_CAMERA_SMALLPAINT: rays use neither matrix (SPEC §7);
+   * camera_to_world holds the rotation M_s->cam^T with zero translation (SPEC §1), so that
+   * spiral_frame `camera` gives F = R(spiral_rotation). */
   double raster_to_camera[16];
   double camera_to_world[12];
 };
@@ -133,7 +136,8 @@ struct KernelPainterlyIntegrator {
   int continue_after_emitter; /* SPEC §6, boolean. */
   double ray_epsilon;         /* Parametric self-intersection epsilon (smallpaint eps 1e-4,
                                  painterly.cpp:39). */
-  int two_sided;          /* SPEC §6: triangle shading normals face the incoming ray (boolean). */
+  int two_sided; /* SPEC §6: triangle shading normals face the incoming ray (boolean); the glass
+                    lobe always gets the unflipped normal. */
   double spiral_frame[9]; /* Row-major F (SPEC §1). */
 };
 
@@ -159,8 +163,8 @@ struct KernelPainterlyData {
 
 /* One painterly path's result. */
 struct PainterlyPathResult {
-  double3 radiance; /* L for this sample (smallpaint `c`). */
-  uint64_t k_draws; /* Diffuse draws consumed (SPEC §2). */
+  double3 radiance;    /* L for this sample (smallpaint `c`). */
+  uint64_t k_consumed; /* Diffuse draws consumed by this path (SPEC §2). */
 };
 
 CCL_NAMESPACE_END

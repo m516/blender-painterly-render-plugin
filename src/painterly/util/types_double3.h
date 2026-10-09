@@ -10,7 +10,7 @@
  * Cycles uses float3. The painterly kernel uses double3 so that analytic scenes reproduce
  * smallpaint_oracle bit for bit (SPEC §6 "Evaluation order"). Every operation below matches the
  * arithmetic of smallpaint's `Vec`
- * (third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp:42-54), operand order
+ * (third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp:43-55), operand order
  * included. Never "simplify" these into fused or reordered forms. */
 
 #include "util/defines.h"

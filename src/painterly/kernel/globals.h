@@ -6,7 +6,7 @@
 #pragma once
 
 /* Read-only view of the device scene for one render, the counterpart of Cycles'
- * PainterlyGlobalsCPU. Built by scene/ (PainterlyDeviceScene) and passed by const
+ * KernelGlobalsCPU. Built by painterly/scene/ (PainterlyDeviceScene) and passed by const
  * reference/pointer. */
 
 #include "painterly/kernel/types.h"

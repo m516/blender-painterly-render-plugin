@@ -149,8 +149,8 @@ hit iff t_sphere > eps                       # Scene::intersect, painterly.cpp:1
   - With a == 1 the expression equals the original bit for bit, apart from `/(2a)` vs `/2`, which agree when a = 1.
 - **Blender.**
   - Point and spot lights are ghost spheres with `r = shadow_soft_size`; r = 0 is allowed and still produces the cone.
-  - Spot lights multiply their emission by Blender's spot cone falloff, evaluated at the direction from the centre to the
-    *true* hit direction.
+  - Spot lights multiply their emission by Blender's spot cone falloff, evaluated at the direction `normalize(P − c)` from
+    the *true* centre c to the hit point P (the sphere normal above).
   - Ghost spheres are intersected by brute force outside any BVH, because ghost radii are unbounded.
 
 ## §6 Path
@@ -163,8 +163,8 @@ The path follows `trace()` (`painterly.cpp:189-239`).
 - On a hit the path first adds emission, `L = 0 + (E·emission_gain)` per channel, with reference `emission_gain = 2`
   (`painterly.cpp:200`). Then it continues by the material type:
   - **Diffuse:** §4.
-  - **Mirror:** `cost = dot(d, N); d ← normalize(d − N·(2·cost))`; then `L += L_child` (`painterly.cpp:213-219`).
-  - **Glass** (`painterly.cpp:221-238`).
+  - **Mirror:** `cost = dot(d, N); d ← normalize(d − N·(2·cost))`; then `L += L_child` (`painterly.cpp:214-220`).
+  - **Glass** (`painterly.cpp:222-238`).
     - `n = ior`. If `dot(N, d) > 0`, then `N ← −N` and `n ← 1/n`. Then `n ← 1/n` unconditionally.
     - `cost1 = −dot(N, d); cost2 = 1 − n²(1 − cost1²)`.
     - If `cost2 > 0`: `d ← normalize(d·n + N·(n·cost1 − sqrt(cost2)))` and `L += L_child`.
@@ -194,8 +194,10 @@ A material is a list of lobes plus an emission colour.
 - Selection never touches K.
 - M6 evaluates Blender node graphs per hit into the same lobe list.
 
-**Triangles.** Triangle shading normals use interpolated corner normals, or the geometric normal. They face the incoming ray when the
-knob `two_sided` is true (the default; Blender surfaces are double-sided). Analytic primitives keep smallpaint's normals.
+**Triangles.** Triangle shading normals use interpolated corner normals, or the geometric normal. When the knob `two_sided` is true
+(the default; Blender surfaces are double-sided), the diffuse, mirror and transparent lobes use that normal flipped to face the
+incoming ray. The glass lobe always gets the unflipped normal (as authored), because its `dot(N, d) > 0` test decides whether the
+ray leaves the medium. Analytic primitives keep smallpaint's normals.
 
 **Self-intersection.** The knob `ray_epsilon` is smallpaint's `eps`, parametric along d. The default is 1e-4 (`painterly.cpp:39`).
 
@@ -206,8 +208,9 @@ knob `two_sided` is true (the default; Blender surfaces are double-sided). Analy
     reference light.
   - Blender's default point light (1000 W) is 8.3× the reference emission, and `display_referred` output then clips. Rescaling
     the cached sums of experiment 002 gives a clip fraction of 0.968 on the reference scene (0.004 at 120 W).
-  - The "Smallpaint Reference" preset and `tools/make_reference_scene.py` therefore set 120 W and r = 0.5. The engine never
-    rescales lights by itself.
+  - `tools/make_reference_scene.py` therefore sets 120 W and r = 0.5. The "Smallpaint Reference" preset touches no lights:
+    it renders the built-in reference scene (`reference_scene = True`), which carries smallpaint's own emission. The engine
+    never rescales lights by itself.
 - Area lights are emissive quads (no ghosting) with the same emission mapping.
 - Sun lights are angular disks seen by escaping rays: `dot(normalize(d), sun_dir) ≥ cos(angle/2)`, with radiance
   `color · strength · emission_scale`.
@@ -242,8 +245,15 @@ jx = rng_signed(seed, PURPOSE_JITTER_X, 0, row, col, pass) · jitter;  jy likewi
   - image-plane jitter keeps the look closer to resolution-independent: median |relative difference| of the texture
     keys 0.051, against 0.158 for jitter fixed in pixels (difference 0.106, 95% bootstrap interval [0.049, 0.163]);
   - texture amplitude alone: 0.0096 vs 0.097.
-- Neither unit is exactly invariant (006 H1). The back wall's along-row structure lag differs by up to 36-45% between 200
-  and 800 px.
+- With image-plane jitter, 400 and 800 px are indistinguishable: 0 of 18 texture keys differ, in both chains and also with
+  zero jitter. Departures appear only against 200 px:
+  - the floor's amplitude, up to −7%;
+  - the back wall's along-row autocorrelation, −0.07 to −0.09 (006 H1, H4).
+  Jitter fixed in pixels changes 9 of 18 keys between 400 and 800 px (006 H2).
+- Units are always named. Here `1/1400` is a fraction of the fitted side. The oracle's `--jitter` and the smallpaint camera
+  use image-plane units, so `2·jitter`.
+- The jitter footprint is a stroke-softness control: zero jitter raises the back wall's structure amplitude by 34% at
+  400 px (006). It does not decide resolution independence.
 
 **Film.**
 - The film accumulates `sum += L` per pixel in pass order.

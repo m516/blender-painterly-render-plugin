@@ -11,7 +11,8 @@ Spend this whole slot auditing quality, not adding features.
 - **Organization.** The source layout and naming rules in `docs/architecture.md`:
   - our code under `src/painterly/<layer>/`, shims only under `src/cycles/shim/`;
   - `Painterly`/`KernelPainterly` type prefixes and `painterly_` kernel function prefixes;
-  - dependency direction `painterly/util ← painterly/kernel ← {painterly/bvh, painterly/scene} ← painterly/integrator ← painterly/session ← blender`, with no upward includes.
+  - dependency direction `painterly/util ← painterly/kernel ← painterly/bvh ← {painterly/integrator, painterly/scene} ← painterly/session ← blender` (`painterly/integrator` and `painterly/scene` never include each other), with no upward includes
+    except the one the architecture allows: the kernel's Embree call, `painterly/kernel/bvh/bvh.h` → `painterly/bvh/embree.h`.
 - **Duplication** that should be shared, and abstractions that are not pulling their weight.
 - **CLAUDE.md rule 2.** No magic numbers, thresholds or heuristic conditionals without a knob or a citation.
 - **Comments.** Every smallpaint-reproducing expression cites its line. No stale or misleading comments.

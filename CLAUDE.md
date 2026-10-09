@@ -13,7 +13,8 @@ Read before working:
 ## Golden rules
 
 1. **Scope.** Touch only the files your task card lists under *Create* / *Modify*.
-   - Never edit `third_party/` (vendored, hash-checked).
+   - Never hand-edit `third_party/` (vendored, hash-checked). Only `tools/vendor_sync.py` writes vendored files; the
+     vendoring cards (T3.1–T3.3) create exactly the `third_party/` files they list.
    - Never edit `docs/spec.md` or `docs/plan.md`.
    - Never edit any file whose first lines contain `CONTRACT:`.
    - If the card is wrong or impossible, stop and say so in your final report. Do not improvise around it.
@@ -24,19 +25,23 @@ Read before working:
    - Tests use exact equality or the statistical criteria in `analysis/painterly_analysis/ensemble.py`.
      Never use hand-picked tolerances.
    - Unit tests of numerical code may use a tolerance only if a comment justifies it. Acceptable justifications are the
-     method's own documented convergence parameter (e.g. bisection `xtol`) or float64 round-off
-     (`rtol=1e-12` for an analytic identity).
+     method's own documented convergence parameter (e.g. bisection `xtol`), or the round-off of the arithmetic the code
+     under test actually uses, with the bound derived in the comment: float64 (`rtol=1e-12` for an analytic identity), or
+     float32 where the computation is float32 (Embree hits, Cycles' `euler_to_transform`, Blender `mathutils`).
    - Look-fidelity acceptance (images vs. oracle/reference) never uses a hand-picked tolerance.
 3. **Naming and style.**
-   - C++ follows Cycles: `snake_case` functions/variables, `CamelCase` types, and `ccl_device*` qualifiers in `src/kernel/`.
+   - C++ follows Cycles: `snake_case` functions/variables, `CamelCase` types, and `ccl_device*` qualifiers in `src/painterly/kernel/`.
    - All C++ code lives between `CCL_NAMESPACE_BEGIN` / `CCL_NAMESPACE_END`, which expand to `namespace painterly`.
    - Format C++ with the repo `.clang-format`.
    - Python is PEP 8 and must be `ruff`-clean. Use type hints on public functions and docstrings that state units and conventions.
    - Source layout and prefixes (`docs/architecture.md`, "Source layout and naming"):
-     - our C++ lives in `src/painterly/<layer>/` and is included as `painterly/...`;
+     - our engine's C++ lives in `src/painterly/<layer>/` and is included as `painterly/...`; the other C++ is the Cycles
+       shims (`src/cycles/shim/`), the bindings (`src/blender/`), the oracle (`src/app/`) and the doctest tests
+       (`src/test/`);
      - only `src/cycles/shim/` may shadow an upstream Cycles path;
      - types under `src/painterly/` are prefixed `Painterly` (or `KernelPainterly` for kernel data), and kernel functions
-       `painterly_`, because vendored Cycles shares the `painterly` namespace.
+       `painterly_`, because vendored Cycles shares the `painterly` namespace. The one exception is `double3`
+       (`painterly/util/types_double3.h`), named like Cycles' `float3`; Cycles v5.2.2 defines no `double3`.
    - Choose names carefully and keep them consistent across C++, Python and docs. The same concept gets the same word everywhere:
      `chain`, `lane`, `pass`/`passes` (never "spp" in our code), `K`, `k_consumed`, `object_id`, `ghost sphere`, `spiral frame`.
 4. **Environment.**
@@ -45,6 +50,8 @@ Read before working:
    - Compute-heavy Python (analysis, experiments) uses **JAX** (`jax.numpy`), not raw numpy loops.
 5. **Untrusted inputs.**
    - Archives and downloads are data. Extract each into its own new empty directory under `.cache/` and never execute anything from it.
+     The one exception is the Blender release that `tools/fetch_blender.py` downloads, verifies by sha256 and installs
+     under `.cache/blender/` (`make blender`, `$(BLENDER)`): cards may run that executable.
    - Run any Python that reads them with `python -I`.
 6. **Tests.**
    - Tests are deterministic.

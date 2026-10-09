@@ -110,23 +110,23 @@ CMakeLists.txt  pyproject.toml (scikit-build-core + nanobind; uv dependency-grou
 src/
   painterly/                 # OUR ENGINE, Cycles-shaped layers; no path here shadows a vendored header
     util/                    #   types_double3.h math_double3.h thread_pool.{h,cpp} (deterministic pool)
-    kernel/                  #   header-only, ccl_device: types.h globals.h camera/ geom/ closure/ light/ sample/ integrator/ film/ bvh/
+    kernel/                  #   header-only, ccl_device: types.h globals.h smallpaint.h camera/ geom/ closure/ light/ sample/ integrator/ film/ bvh/
                              #   M6: svm/ (generated switch from verbatim SVM_CASE fragments) closure/painterly collector
     bvh/embree.{h,cpp}       #   static, namespaced Embree
     scene/                   #   PainterlyScene, PainterlyIntegrator (reflected knobs), camera, background, material, mesh, object, device_scene
-    integrator/path_trace.{h,cpp}   # lane scheduler
-    session/{session,buffers}.{h,cpp}
+    integrator/{path_trace,buffers}.{h,cpp}   # lane scheduler, render buffers
+    session/session.{h,cpp}
   cycles/                    # builds vendored Cycles into cycles_util, cycles_graph, (M6) cycles_svm …
     shim/                    #   headers/sources that shadow upstream Cycles paths (util/log.h, util/param.h, …; M6: scene/scene.h,
                              #   kernel/device/cpu/globals.h, …). A shimmed path is never also vendored.
   blender/python.cpp         # nanobind module _painterly
-  blender/addon/             # THE EXTENSION (pure Python): blender_manifest.toml __init__.py engine.py properties.py ui.py presets.py operators.py version_update.py
-                             #   sync/{depsgraph,camera,geometry,light,world,image}.py  sync/shader/{flatten,node_table,export}.py
+  blender/addon/             # THE EXTENSION (pure Python): blender_manifest.toml __init__.py engine.py session.py properties.py ui.py presets.py operators.py version_update.py presets/painterly/render/
+                             #   sync/{__init__,camera,camera_math,geometry,light,world,material,reference}.py  film.py  (M6: sync/image.py, sync/shader/{flatten,node_table,export}.py)
   app/smallpaint_oracle.cpp  # reference CLI (like Cycles' src/app)
   test/                      # doctest unit tests (like Cycles' src/test)
 third_party/cycles/ (vendored verbatim; VENDORED.toml path+sha256; patches/)   third_party/smallpaint/ (original sources, MIT)
-analysis/painterly_analysis/ (JAX metric suite + oracle runner)   tests/ (pytest: core/, blender/, data/reference/, scenes/)
-tools/ (vendor_sync.py, symbol_audit.py, gen_node_registry.py, make_reference_scene.py, fetch_blender.py)
+analysis/painterly_analysis/ (JAX metric suite + oracle runner)   tests/ (pytest: core/, oracle/, blender/, blender_it/, data/reference/, data/scenes/)
+tools/ (vendor_sync.py, symbol_audit.py, gen_node_registry.py, make_reference_scene.py, fetch_blender.py, build_extension.py)
 experiments/  docs/{spec.md, architecture.md, tasks/, artist-guide.md}  .github/workflows/
 ```
 - **Naming (2026-10-09).** Vendored Cycles shares the `painterly` namespace and the include path with our code. So every
@@ -139,13 +139,13 @@ experiments/  docs/{spec.md, architecture.md, tasks/, artist-guide.md}  .github/
 **Rules.**
 - Vendored files are never hand-edited; changes go through `patches/` applied by `vendor_sync.py`.
 - The node registry and kernel switch are **generated** from the directory contents, so node ports only *add* files and parallel tasks never conflict.
-- Every painterly constant is a reflected socket on `PainterlyIntegrator` (`NODE_DEFINE`). Its default is the reference value, and the Blender properties are **generated from that reflection**, giving a single source of truth.
+- Every painterly constant is a reflected socket on `PainterlyIntegrator` (`NODE_DEFINE`). Its default is the SPEC §8 default, which equals the reference behaviour unless SPEC §8 notes otherwise (`chain`, `diffuse_gain`), and the Blender properties are **generated from that reflection**, giving a single source of truth.
 
-## Painterly specification (normative; becomes `docs/spec.md`; task cards cite it as §n)
+## Painterly specification (historical summary; superseded by `docs/spec.md`, whose § numbers differ: cite SPEC §n from docs/spec.md only)
 
 **§1 Frame.**
 - smallpaint (x, y, z) = (image down, image right, toward camera), which is Blender camera space (−Y, +X, +Z).
-- The spiral frame is a knob (camera, world or object; default camera) with a phase/axis rotation.
+- The spiral frame is a knob (camera, world, object or smallpaint; default camera) with a rotation `spiral_rotation` (XYZ Euler, radians).
 
 **§2 Counter.**
 - `u = bitrev23(K mod 2^23)·2^-23`, with K incremented before use. The 2^23 is the original generator's own period.
@@ -180,7 +180,7 @@ experiments/  docs/{spec.md, architecture.md, tasks/, artist-guide.md}  .github/
 - *Display-referred*: write `srgb_to_linear(min(L/255,1))`. With the Standard view transform and dither 0 this reproduces the original bytes up to rounding. A preset sets those values; the scene is never changed silently.
 - *Scene-linear*: write `L/255·exposure`.
 
-**§8 Knobs** (all defaults = reference): chain, lane length, seed, per-frame seed, spiral frame/phase/axis, u2 decorrelation blend, K0 phase lock (K0 ≡ 0 mod 2^q), α, diffuse gain, emission gain, `max_depth`, jitter amplitude, output mode, exposure, emission scale.
+**§8 Knobs** (all defaults = reference): chain, lane length, seed, per-frame seed, spiral frame and rotation, u2 mode, K0 phase lock (K0 ≡ 0 mod 2^q), α, diffuse gain, emission gain, `max_depth`, jitter amplitude, output mode, exposure, emission scale.
 
 ## Experiments programme
 
@@ -196,7 +196,7 @@ experiments/  docs/{spec.md, architecture.md, tasks/, artist-guide.md}  .github/
 | X-resolution | The texture is pixel-locked (400/800/1600). Decides lane and jitter units. | M1 |
 | X-ghost-lights | How much of the look survives with only lights ghosted (spheres as meshes)? Sets the Blender parity target. | M1 |
 | X-coexist | The isolated native module plus Blender's Cycles coexist in one process on all 3 OSes. | M2 |
-| X-throughput | CPU rays/s on the reference scene and a 100k-triangle mesh; time for 1080p × 256 spp. | M3 |
+| X-throughput | CPU paths/s on the reference scene and a 100k-triangle mesh; time for 1920×1080 × 1024 passes (the default `passes`, `chain=row`). | M3 |
 | X-svm | Vendored `graph/` + SVM with the shim works; hours per node port (gate G2). | M6 |
 | X-colour | Blender's bundled PyOpenColorIO sees Blender's config; Image.pixels semantics. | M6 |
 | X-mesh-ghost | Candidate generalizations of ghosting to triangles (bounding-sphere proxy, L²-homothety about the ray origin, angular dilation by `acos(1/L)`, unnormalized SDF stepping), scored against analytic ghosts on sphere meshes. | M9 |
@@ -216,9 +216,11 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 **Tests use no hand-set tolerances.**
 - A candidate passes when every metric of (candidate vs reference) lies within the empirical range of (oracle seed *i* vs reference) over n seeds of the same configuration.
 - Negative controls (per-path random start, normalized d, independent u2) must fall outside that range.
-- Core-vs-oracle parity is exact: identical per-pixel K-consumption maps, with images equal up to float-vs-double error measured on the oracle itself.
+- Core-vs-oracle parity is exact on analytic scenes: identical per-pixel K-consumption maps and bit-identical images. Triangle scenes (Embree, float32) are compared statistically.
 
 ## Milestones and Haiku task DAG
+
+Card IDs and contents in `docs/tasks/` supersede these tables (2026-10-09).
 
 **Card format.** Each task is a card in `docs/tasks/Mx/Tx.y-slug.md`, written by Opus at the start of its milestone. A card contains:
 - milestone and dependencies; whether it is parallel-safe;
@@ -258,20 +260,20 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 **M3 Painterly CPU core with exact oracle parity**
 | ID | Task | Deps | Acceptance |
 |---|---|---|---|
-| T3.1 | `tools/vendor_sync.py` + `third_party/cycles/VENDORED.md` (fetch at the pinned tag, verify sha256, apply patches) | T2.1 | `make vendor-check` |
-| T3.2 | Vendor the `util/` subset; `src/util/{param,task,thread}.h` shims; compile under the renamed namespace | T3.1 | `make build audit` |
+| T3.1 | `tools/vendor_sync.py` + `third_party/cycles/VENDORED.toml` (fetch at the pinned tag, verify sha256, apply patches) | T2.1 | `make vendor-check` |
+| T3.2 | Vendor the `util/` subset; `src/cycles/shim/util/{log,param,string,thread}.h` shims; compile under the renamed namespace | T3.1 | `make build audit` |
 | T3.3 | `painterly/kernel/types.h`, `globals.h` (KernelPainterlyData {Camera, Integrator, Background}, PainterlyGlobalsCPU spans): **contract written by Opus**. Names never collide with vendored Cycles (Repository layout, "Naming") | T3.2 | compiles |
-| T3.4 | `kernel/painterly/sampler.h` (§2, §3 K0) + doctest: equals smallpaint `Halton::next()` replayed for K ≤ 2^23+10 | T3.3 | `make test-cpp` |
-| T3.5 | `kernel/painterly/ghost.h` (§5) + analytic sphere: zero mismatches vs smallpaint `Sphere::intersect` on 10⁵ random rays | T3.3 | `make test-cpp` |
-| T3.6 | `kernel/painterly/bounce.h` (§4, mirror, glass §6) + doctest vs the oracle's functions | T3.4 | `make test-cpp` |
-| T3.7 | `kernel/camera/camera.h` (raster→world from a Blender-style matrix; jitter knob) | T3.3 | unit test vs `camcr` on the square reference |
-| T3.8 | `bvh/embree.{h,cpp}` (meshes + instances; closest hit with an unnormalized D, t parametric) | T3.3 | unit test |
-| T3.9 | `kernel/integrator/path.h` `trace_pixel()` (§6) + `kernel/film/write.h` | T3.5–T3.8 | doctest |
-| T3.10 | `util/task.h` pool + `integrator/path_trace.{h,cpp}` lane scheduler (§3; pass batches; atomic cancel) | T3.9 | bit-identical at 1, 7 and 64 threads and batch sizes 1 and 16 |
-| T3.11 | `scene/` host classes with reflected sockets (`PainterlyIntegrator` holds every §8 knob) + `device_update()` | T3.10 | doctest |
-| T3.12 | `session/` (render thread, state machine, `progress`, `cancel`, `copy_pixels`, passes combined / object-id / k_consumed) | T3.11 | doctest; cancel latency test |
+| T3.4 | `painterly/kernel/sample/sampler.h` (§2, §3 K0) + doctest: equals smallpaint `Halton::next()` replayed for K ≤ 2^23+10 | T3.3 | `make test-cpp` |
+| T3.5 | `painterly/kernel/geom/analytic.h` (§5) + analytic sphere: zero mismatches vs smallpaint `Sphere::intersect` on 10⁵ random rays | T3.3 | `make test-cpp` |
+| T3.6 | `painterly/kernel/closure/bounce.h` (§4, mirror, glass §6) + doctest vs the oracle's functions | T3.4 | `make test-cpp` |
+| T3.7 | `painterly/kernel/camera/camera.h` (raster→world from a Blender-style matrix; jitter knob) | T3.3 | unit test vs `camcr` on the square reference |
+| T3.8 | `painterly/bvh/embree.{h,cpp}` (meshes + instances; closest hit with an unnormalized D, t parametric) | T3.3 | unit test |
+| T3.9 | `painterly/kernel/integrator/path.h` `painterly_trace_pixel()` (§6) + `painterly/kernel/film/write.h` | T3.5–T3.8 | doctest |
+| T3.10 | `painterly/util/thread_pool.{h,cpp}` pool + `painterly/integrator/path_trace.{h,cpp}` lane scheduler (§3; pass batches; atomic cancel) | T3.9 | bit-identical at 1, 2 and 7 threads, and for `render_passes(0,4)` vs (0,1), (1,2), (2,4) |
+| T3.11 | `painterly/scene/` host classes with reflected sockets (`PainterlyIntegrator` holds every §8 knob) + `device_update()` | T3.10 | doctest |
+| T3.12 | `painterly/session/` (render thread, state machine, `progress`, `cancel`, `buffers_copy()`, passes combined / object-id / k_consumed) | T3.11 | doctest; cancel latency test |
 | T3.13 | `src/blender/python.cpp` bindings (scene descriptor API, ndarray I/O, GIL released in waits, `integrator_sockets()` reflection export) | T3.12 | pytest |
-| T3.14 | `tests/core/test_oracle_parity.py`: descriptor of the smallpaint scene (planes as quads, analytic painterly spheres) → **identical K maps** vs the oracle; image within the oracle's own float error | T3.13, T1.1 | pytest |
+| T3.14 | `tests/core/test_oracle_parity.py`: descriptor of the smallpaint scene (analytic planes and painterly spheres) → **bit-identical** images, K maps and object ids vs the oracle | T3.13, T1.1 | pytest |
 | T3.15 | X-throughput experiment | T3.14 | experiment README |
 
 **M4 Add-on skeleton** (mirrors `intern/cycles/blender/addon`)
@@ -279,10 +281,10 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 |---|---|---|---|
 | T4.1 | `blender_manifest.toml`; `__init__.py` (`PainterlyRender(RenderEngine)` with `bl_use_preview`, `bl_use_eevee_viewport`, `bl_use_shading_nodes_custom=False`, `super().__init__`); `engine.py` facade | T3.13 | `blender --command extension validate` |
 | T4.2 | `properties.py` (PropertyGroups generated from `integrator_sockets()`), `ui.py` (`PainterlyButtonsPanel` mixin with `COMPAT_ENGINES`, `get_panels()` exclusion list), `presets.py`, `version_update.py` | T4.1 | bpy pytest |
-| T4.3 | Render loop: `begin_result` → poll `progress`/`test_break` → `rect.foreach_set(float32)` → `update_result` → `end_result`; §7 output modes | T4.2 | bpy pytest |
+| T4.3 | Render loop: `begin_result` → poll `progress`/`test_break` → `rect.foreach_set(float32)` → `update_result` → `end_result`; SPEC §8 output modes | T4.2 | bpy pytest |
 | T4.4 | Orientation test (gradient + one bright pixel: rect row order and lane axis) and integration test via `extension build`/`install-file` with `BLENDER_USER_RESOURCES` isolation and `-b -E PAINTERLY -f 1` | T4.3, T2.3 | `make blender-it` |
 
-**M5 Scene sync** (Python; numpy `foreach_get` with dtype rules: `loop_triangles` → `np.uint32`, `co`/normals/uv → `np.float32`)
+**M5 Scene sync** (Python; numpy `foreach_get` with dtype rules: `loop_triangles` vertices/loops → `np.uint32`, `material_index` → `np.int32`, `co`/normals/uv → `np.float32`)
 | ID | Task | Deps | Acceptance |
 |---|---|---|---|
 | T5.1 | `sync/camera.py` (`calc_matrix_camera`, shift, sensor fit, ortho) | T4.3 | matrix tests |
@@ -296,9 +298,9 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 | ID | Task | Deps | Acceptance |
 |---|---|---|---|
 | T6.1 | Vendor `graph/` and the ustring/TypeDesc shim; X-svm experiment | T3.11 | builds; experiment README |
-| T6.2 | `scene/shader_graph` (create_node by type name, set by socket name, connect): **contract by Opus** | T6.1 | doctest |
-| T6.3 | `scene/svm` SVMCompiler subset (`add_node<T>`, `input_float`/`input_float3`, `output`, stack allocation, multi-closure emission, ported from `scene/svm.cpp`) | T6.2 | doctest |
-| T6.4 | `kernel/svm/svm.h` generated switch, `tools/gen_node_registry.py`, `svm/closure_painterly.h` (Cycles closure categories → {diffuse, mirror, glass, emission, transparent}; selection with the §2 hash RNG) | T6.3 | doctest |
+| T6.2 | `painterly/scene/shader_graph` (create_node by type name, set by socket name, connect): **contract by Opus** | T6.1 | doctest |
+| T6.3 | `painterly/scene/svm` SVMCompiler subset (`add_node<T>`, `input_float`/`input_float3`, `output`, stack allocation, multi-closure emission, ported from `scene/svm.cpp`) | T6.2 | doctest |
+| T6.4 | `painterly/kernel/svm/svm.h` generated switch, `tools/gen_node_registry.py`, `svm/closure_painterly.h` (Cycles closure categories → {diffuse, mirror, glass, emission, transparent}; selection with the §2 hash RNG) | T6.3 | doctest |
 | T6.5 | Python `sync/shader/{flatten,node_table,export}.py` (groups, reroutes, mutes; idname → Cycles type; socket renames Shader→Closure, Mix suffixes, `_001`→`2`; enum aliases) | T6.4 | pytest |
 | T6.6–T6.17 | **Node ports**, 2–4 nodes per card, parallel-safe (files only *added*). Batches: Value/RGB/Math/VectorMath · Mix/MapRange/Clamp · Invert/Gamma/BrightContrast/HSV · Separate/Combine Color & XYZ · ColorRamp/RGBCurves (sampled LUT) · TexCoord/Mapping · Noise/WhiteNoise · Voronoi · Checker/Gradient/Wave/Magic/Brick · Image Texture (+ X-colour) · Principled/Diffuse/Glossy/Glass/Refraction/Emission/Transparent · Mix/Add Shader/Background. Checklist per node: vendor evaluator → copy `NODE_DEFINE` + `compile()` → `node_table.py` row → golden test. | T6.5 | Golden test per node: a generated `.blend` with an emission plane driven by the node, rendered by Cycles at 1 spp (pixel centre, Raw, EXR) vs Painterly with knobs `max_depth=1, emission_gain=1`, with no debug code paths; equal within Cycles' own float32 spread |
 
@@ -339,7 +341,7 @@ The JAX metric suite lives in `analysis/`. It computes on 3-pixel-eroded primary
 **Further rules:**
 - Every 12th card slot is an Opus code-quality audit card (TQ.n).
 - Opus finalizes experiment conclusions before any defaults are changed.
-- Haiku never edits `third_party/`, `docs/spec.md` or contract headers. Changes to those go through Opus.
+- Haiku never hand-edits `third_party/` (only `tools/vendor_sync.py` writes vendored files, in the vendoring cards T3.1–T3.3, which create exactly the `third_party/` files they list), and never edits `docs/spec.md`, `docs/plan.md` or contract headers. Changes to those go through Opus.
 
 ## Verification (end to end)
 - `make check`: ruff, doctest, pytest (analysis, core, oracle reference ensemble, core-vs-oracle exact K-map parity, determinism across thread counts), and the symbol audit.

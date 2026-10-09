@@ -35,10 +35,11 @@ namespace and one include path. Three rules keep them apart:
      code compiles without OIIO, TBB, OCIO or glog. Each starts with `Shim: replaces Cycles <path> …`.
    - A shimmed path is never also vendored (`tests/core/test_shims.py`).
    - `src/cycles/CMakeLists.txt` builds the vendored code into `cycles_*` libraries. Their public include order is
-     `src/cycles/shim`, `third_party/cycles`, `third_party`, `src`.
+     `src/cycles/shim`, `third_party/cycles`, `third_party/cycles/sse2neon`, `src`.
 2. **Types.** Every type defined under `src/painterly/` carries the prefix `Painterly` (host, integrator, session), or
    `KernelPainterly` (kernel device data, as Cycles' `Kernel*`). Kernel globals are `PainterlyGlobalsCPU`, passed as
-   `PainterlyGlobals`, as Cycles passes `KernelGlobals`.
+   `PainterlyGlobals`, as Cycles passes `KernelGlobals`. The one exception is `double3` (`painterly/util/types_double3.h`), named
+   like Cycles' `float3`; Cycles v5.2.2 defines no `double3`.
 3. **Kernel functions** carry the prefix `painterly_`. Enumerators carry a domain prefix that Cycles does not use
    (`CHAIN_`, `LOBE_`, `PURPOSE_`, …), or `PAINTERLY_` where Cycles does (`PAINTERLY_CAMERA_PERSPECTIVE`).
 
@@ -50,9 +51,15 @@ in the same translation units as the painterly kernel. The research behind this 
 the SVM include closure is 149 files, and 49 of 108 evaluator cases read `ShaderData`.
 
 ## Dependency direction
-`painterly/util ← painterly/kernel ← {painterly/bvh, painterly/scene} ← painterly/integrator ← painterly/session ← blender`.
+`painterly/util ← painterly/kernel ← painterly/bvh ← {painterly/integrator, painterly/scene} ← painterly/session ← blender`.
+`painterly/integrator` and `painterly/scene` never include each other: `PainterlyScene::device_update()` hands the integrator
+plain kernel data.
 Every painterly library links `cycles_util`, and `painterly/scene` also links `cycles_graph`.
-- The kernel never includes `scene/` or STL headers.
+- `painterly/kernel/` never includes `painterly/scene/` or any other host layer.
+- The one exception is the kernel's Embree call: `painterly/kernel/bvh/bvh.h` calls `painterly/bvh/embree.h`, as Cycles'
+  `kernel/device/cpu/bvh.h` calls Embree.
+- `PainterlyRenderBuffers` lives in `painterly/integrator/buffers.h`, next to `PainterlyPathTrace`, which fills it, so the
+  integrator never includes `painterly/session/`.
 - `PainterlyScene::device_update()` is the only bridge. It produces `KernelPainterlyData` plus arrays
   (`painterly/kernel/types.h`, `painterly/kernel/globals.h`).
 
