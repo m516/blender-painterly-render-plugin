@@ -64,8 +64,8 @@ ALLOWED_DYLIBS_MACOS = frozenset({"/usr/lib/libSystem.B.dylib", "/usr/lib/libc++
 # Mach-O imports: `nm -m` marks a flat-namespace lookup "(dynamically looked up)". Such a name binds
 # to the first image in the process that defines it, so only Python C-API names (from the
 # interpreter) may be looked up that way.
-MACHO_DYNAMIC_PATTERN = re.compile(r"\s(?P<name>\S+) \(dynamically looked up\)")
-MACHO_PYTHON_API_PATTERN = re.compile(r"^_+Py")
+DYNAMIC_LOOKUP_PATTERN_MACOS = re.compile(r"\s(?P<name>\S+) \(dynamically looked up\)")
+PYTHON_API_PATTERN_MACOS = re.compile(r"^_+Py")
 
 # PE import names are case-insensitive, so they are compared in lower case.
 # python3.dll is the stable-ABI import library's DLL. kernel32.dll is the Windows base library.
@@ -127,7 +127,7 @@ def _run(command: list[str]) -> str:
     return completed.stdout
 
 
-def _parse_nm(output: str) -> list[tuple[str, str]]:
+def _nm_symbols(output: str) -> list[tuple[str, str]]:
     """(type, name) per nm line. The name is the last field, minus any @version suffix."""
     symbols = []
     for line in output.splitlines():
@@ -137,7 +137,7 @@ def _parse_nm(output: str) -> list[tuple[str, str]]:
     return symbols
 
 
-def _parse_undefined_elf(output: str) -> list[tuple[str, str]]:
+def _nm_undefined_elf(output: str) -> list[tuple[str, str]]:
     """(name, version) per undefined symbol of `nm -D --undefined-only`.
 
     `memcpy@GLIBC_2.14` splits at the first '@'. A second leading '@' (`memcpy@@GLIBC_2.14`) is
@@ -186,7 +186,7 @@ def _elf_import_violations(imports: list[tuple[str, str]]) -> list[str]:
 
 
 def _audit_elf(path: Path) -> list[Check]:
-    exports = _parse_nm(_run(["nm", "-D", "--defined-only", str(path)]))
+    exports = _nm_symbols(_run(["nm", "-D", "--defined-only", str(path)]))
     defined = {name for _, name in exports}
     export_check = Check(
         "exports",
@@ -201,10 +201,10 @@ def _audit_elf(path: Path) -> list[Check]:
         [f"{lib} is not allowed" for lib in needed if lib not in ALLOWED_NEEDED_LINUX],
     )
 
-    imports = _parse_undefined_elf(_run(["nm", "-D", "--undefined-only", str(path)]))
+    imports = _nm_undefined_elf(_run(["nm", "-D", "--undefined-only", str(path)]))
     import_check = Check(
         "imports",
-        "imports: only glibc-versioned, Python C-API or toolchain weak hooks",
+        "only glibc-versioned, Python C-API or toolchain weak hooks",
         _elf_import_violations(imports),
     )
     return [export_check, dependency_check, import_check]
@@ -224,16 +224,16 @@ def _macho_import_violations(output: str) -> list[str]:
 
     Every dynamically looked-up symbol must be a Python C-API symbol.
     """
-    names = sorted({match.group("name") for match in MACHO_DYNAMIC_PATTERN.finditer(output)})
+    names = sorted({match.group("name") for match in DYNAMIC_LOOKUP_PATTERN_MACOS.finditer(output)})
     return [
         f"{name}: flat-namespace lookup would bind into the host process"
         for name in names
-        if not MACHO_PYTHON_API_PATTERN.match(name)
+        if not PYTHON_API_PATTERN_MACOS.match(name)
     ]
 
 
 def _audit_macho(path: Path) -> list[Check]:
-    exports = _parse_nm(_run(["nm", "-gU", str(path)]))
+    exports = _nm_symbols(_run(["nm", "-gU", str(path)]))
     defined = {name for _, name in exports}
     export_check = Check(
         "exports",
@@ -250,7 +250,7 @@ def _audit_macho(path: Path) -> list[Check]:
 
     import_check = Check(
         "imports",
-        "imports: dynamically looked-up symbols must be Python C-API symbols",
+        "dynamically looked-up symbols must be Python C-API symbols",
         _macho_import_violations(_run(["nm", "-m", "-u", str(path)])),
     )
     return [export_check, dependency_check, import_check]

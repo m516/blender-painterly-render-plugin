@@ -186,17 +186,17 @@ def test_macho_python_symbol_passes_and_rtc_symbol_fails() -> None:
 
 
 def test_elf_undefined_symbols_keep_their_versions() -> None:
-    imports = audit._parse_undefined_elf(NM_UNDEFINED_ELF)
+    imports = audit._nm_undefined_elf(NM_UNDEFINED_ELF)
     assert ("memcpy", "GLIBC_2.14") in imports
     assert ("PyLong_FromLong", "") in imports
     assert ("__cxa_pure_virtual", "") in imports
-    assert audit._parse_undefined_elf("                 U memcpy@@GLIBC_2.14\n") == [
+    assert audit._nm_undefined_elf("                 U memcpy@@GLIBC_2.14\n") == [
         ("memcpy", "GLIBC_2.14")
     ]
 
 
 def test_elf_imports_allow_glibc_python_and_weak_hooks_only() -> None:
-    violations = audit._elf_import_violations(audit._parse_undefined_elf(NM_UNDEFINED_ELF))
+    violations = audit._elf_import_violations(audit._nm_undefined_elf(NM_UNDEFINED_ELF))
     assert violations == [
         "__cxa_pure_virtual: not glibc-versioned, a Python C-API symbol or a toolchain weak hook"
     ]
@@ -204,7 +204,7 @@ def test_elf_imports_allow_glibc_python_and_weak_hooks_only() -> None:
 
 def test_elf_import_with_a_non_glibc_version_fails() -> None:
     violations = audit._elf_import_violations(
-        audit._parse_undefined_elf("                 U _Znwm@GLIBCXX_3.4\n")
+        audit._nm_undefined_elf("                 U _Znwm@GLIBCXX_3.4\n")
     )
     assert violations == [
         "_Znwm@GLIBCXX_3.4: not glibc-versioned, a Python C-API symbol or a toolchain weak hook"

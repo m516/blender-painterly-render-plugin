@@ -69,19 +69,8 @@ FetchContent_Declare(
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(embree)
 
-# Interface target. The ISA libraries exist only when their ISA is enabled, so TARGET_NAME_IF_EXISTS is used.
-# Embree's README asks for the ISA libraries in increasing ISA order, and CMake orders the static link line.
+# Interface target. Embree's static target carries its internal libraries as dependencies.
 add_library(painterly_embree INTERFACE)
 target_include_directories(painterly_embree INTERFACE "${embree_SOURCE_DIR}/include")
-target_link_libraries(painterly_embree INTERFACE
-  embree
-  $<TARGET_NAME_IF_EXISTS:embree_sse42>
-  $<TARGET_NAME_IF_EXISTS:embree_avx>
-  $<TARGET_NAME_IF_EXISTS:embree_avx2>
-  $<TARGET_NAME_IF_EXISTS:embree_avx512>
-  tasking
-  sys
-  math
-  simd
-  lexers)
+target_link_libraries(painterly_embree INTERFACE embree)
 add_library(painterly::embree ALIAS painterly_embree)

@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/dev/_deps
-          key: fetchcontent-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}
 
       - name: Create the project environment
         run: make env
@@ -39,3 +39,6 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Symbol audit
+        run: make audit

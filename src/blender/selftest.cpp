@@ -13,6 +13,31 @@ RTC_NAMESPACE_USE
 
 CCL_NAMESPACE_BEGIN
 
+namespace {
+
+// Reads the device's Embree error, releases geom, scene and device if non-null, then throws. A
+// free function rather than a lambda: [[noreturn]] appertains to the function type, which Clang
+// rejects on a lambda's declarator.
+[[noreturn]] void release_and_throw(RTCDevice device,
+                                    RTCScene scene,
+                                    RTCGeometry geom,
+                                    const std::string &what)
+{
+  const RTCError error = rtcGetDeviceError(device);
+  if (geom) {
+    rtcReleaseGeometry(geom);
+  }
+  if (scene) {
+    rtcReleaseScene(scene);
+  }
+  if (device) {
+    rtcReleaseDevice(device);
+  }
+  throw std::runtime_error(what + ", Embree error " + std::to_string(error));
+}
+
+}  // namespace
+
 SelftestResult selftest_embree()
 {
   SelftestResult result{};
@@ -30,21 +55,11 @@ SelftestResult selftest_embree()
   RTCScene scene = rtcNewScene(device);
   RTCGeometry geom = rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-  // Every failure below releases the geometry, scene and device, then throws with the Embree
-  // error.
-  const auto fail = [&](const std::string &what) [[noreturn]] {
-    const RTCError error = rtcGetDeviceError(device);
-    rtcReleaseGeometry(geom);
-    rtcReleaseScene(scene);
-    rtcReleaseDevice(device);
-    throw std::runtime_error(what + ", Embree error " + std::to_string(error));
-  };
-
   // One triangle with vertices (0,0,0), (1,0,0), (0,1,0).
   float *vertices = static_cast<float *>(rtcSetNewGeometryBuffer(
       geom, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, 3 * sizeof(float), 3));
   if (!vertices) {
-    fail("rtcSetNewGeometryBuffer (vertex) failed");
+    release_and_throw(device, scene, geom, "rtcSetNewGeometryBuffer (vertex) failed");
   }
   const float vertex_data[9] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
   std::copy(vertex_data, vertex_data + 9, vertices);
@@ -52,7 +67,7 @@ SelftestResult selftest_embree()
   unsigned *indices = static_cast<unsigned *>(rtcSetNewGeometryBuffer(
       geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, 3 * sizeof(unsigned), 1));
   if (!indices) {
-    fail("rtcSetNewGeometryBuffer (index) failed");
+    release_and_throw(device, scene, geom, "rtcSetNewGeometryBuffer (index) failed");
   }
   indices[0] = 0;
   indices[1] = 1;
