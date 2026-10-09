@@ -280,7 +280,9 @@ def _print_family(title: str, test: dict, verdict: str) -> None:
 
 
 def _fmt_largest(largest: dict | None) -> str:
-    # Not report.format_number: this prints the key of the largest effect as well as its value.
+    # Frozen: experiment 002's outputs are final, so this copy stays as it is. It prints the same
+    # text as report.format_largest. Not report.format_number: this prints the key of the largest
+    # effect as well as its value.
     if largest is None:
         return "n/a"
     return f"{largest['value']:.4g} ({largest['key']})"

@@ -255,8 +255,7 @@ P = 64 passes, full scale (`"smoke": false`). A second run into a scratch `--out
 
 Conventions and notes:
 - Means ± sd are over the 8 pairs (sample sd, ddof 1). The texture family T has 18 keys: `r{r}.structure_std`,
-  `r{r}.slag.x` and `r{r}.slag.y` for the six measured regions 2 to 7. Region 8 is empty after erosion at every side
-  (`regions.absent`).
+  `r{r}.slag.x` and `r{r}.slag.y` for the six measured regions 2 to 7. Region 8 (the front plane) is absent from the object-id map at every side: it is behind the camera (`regions.absent`).
 - For a comparison "a vs b": `rel. diff` = (mean a − mean b)/|mean b|, `abs. diff` = mean a − mean b, and Cohen's d =
   (mean a − mean b)/pooled sd (`ensemble.effect_summary`).
 - σ is the standard deviation of a continuous 9-px box (the discrete 9-tap box has 2.582 px). At 400 px it is the
@@ -328,24 +327,24 @@ Measured regions: [2, 3, 4, 5, 6, 7]; absent from the object-id map: [8]; droppe
 
 **Table 2. Every comparison: Holm rejections of 18 texture keys and effect maxima**
 
-| hypothesis | chain | comparison | α (per comparison) | rejected of 18 | min_attainable_p | first Holm threshold | largest \|rel\| texture (abs. diff) | largest \|d\| texture | largest \|rel\| all keys (abs. diff) | largest \|d\| all keys |
+| hypothesis | chain | comparison | α (per comparison) | rejected of 18 | min_attainable_p | first Holm threshold | largest-magnitude rel (abs diff), texture | largest-magnitude d, texture | largest-magnitude rel (abs diff), all keys | largest-magnitude d, all keys |
 |---|---|---|---:|---:|---:|---:|---|---|---|---|
-| H1 | image | s200 vs s400 | 0.003333 | 1 | 1.55e-04 | 1.85e-04 | r3.slag.y +1.314 (+0.04958) | r3.structure_std +4.365 | r7.spectral_slope +13.21 (+0.1863) | r4.spectral_slope +7.805 |
+| H1 | image | s200 vs s400 | 0.003333 | 1 | 1.55e-04 | 1.85e-04 | r3.slag.y +1.314 (+0.04958) | r3.structure_std -4.365 | r7.spectral_slope +13.21 (+0.1863) | r4.spectral_slope +7.805 |
 | H1 | image | s400 vs s800 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r6.slag.x +2.217 (+0.01843) | r4.structure_std +1.865 | r6.slag.x +2.217 (+0.01843) | r4.mean.B +9.944 |
-| H1 | image | s200 vs s800 | 0.003333 | 2 | 1.55e-04 | 1.85e-04 | r6.slag.x +1.563 (+0.01299) | r3.structure_std +6.439 | r7.spectral_slope +2.831 (+0.2662) | r4.spectral_slope +12.54 |
-| H1 | row | row_s200 vs row_s400 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r2.slag.y +1.417 (+0.08322) | r5.structure_std +2.124 | r2.spectral_slope +5.44 (+0.2363) | r4.spectral_slope +6.028 |
+| H1 | image | s200 vs s800 | 0.003333 | 2 | 1.55e-04 | 1.85e-04 | r6.slag.x +1.563 (+0.01299) | r3.structure_std -6.439 | r7.spectral_slope +2.831 (+0.2662) | r4.spectral_slope +12.54 |
+| H1 | row | row_s200 vs row_s400 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r2.slag.y +1.417 (+0.08322) | r5.structure_std -2.124 | r2.spectral_slope +5.44 (+0.2363) | r4.spectral_slope +6.028 |
 | H1 | row | row_s400 vs row_s800 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r6.slag.x +1.27 (+0.006557) | r4.slag.y +1.399 | r6.slag.x +1.27 (+0.006557) | r4.mean.G +7.157 |
-| H1 | row | row_s200 vs row_s800 | 0.003333 | 1 | 1.55e-04 | 1.85e-04 | r3.slag.y +2.242 (+0.06111) | r4.slag.x +3.106 | r7.spectral_slope +3.185 (+0.2763) | r4.spectral_slope +12.14 |
-| H2 | image | s200_px vs s400 | 0.005 | 7 | 1.55e-04 | 2.78e-04 | r6.slag.x +8.269 (+0.08369) | r6.structure_std +10.29 | r7.spectral_slope +8.858 (+0.1249) | r6.structure_std +10.29 |
-| H2 | image | s800_px vs s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x +1.689 (-0.01709) | r4.structure_std +9.006 | r7.spectral_slope +5.238 (-0.07384) | r4.structure_std +9.006 |
-| H2 | row | row_s200_px vs row_s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x +6.041 (+0.07079) | r3.structure_std +10.42 | r6.slag.x +6.041 (+0.07079) | r3.structure_std +10.42 |
-| H2 | row | row_s800_px vs row_s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x +0.7856 (-0.009206) | r3.structure_std +13.5 | r2.spectral_slope +1.805 (-0.07839) | r3.structure_std +13.5 |
-| H4 | row | row_j0_s200 vs row_j0_s400 | 0.003333 | 5 | 1.55e-04 | 1.85e-04 | r5.slag.x +13.34 (-0.008989) | r3.structure_std +7.339 | r2.spectral_slope +32.77 (+0.2554) | r4.spectral_slope +8.995 |
-| H4 | row | row_j0_s400 vs row_j0_s800 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r6.slag.x +10.67 (-0.01205) | r5.structure_std +2.695 | r6.slag.x +10.67 (-0.01205) | r3.mean.R +8.73 |
-| H4 | row | row_j0_s200 vs row_j0_s800 | 0.003333 | 7 | 1.55e-04 | 1.85e-04 | r2.slag.y +4.069 (-0.1833) | r3.structure_std +9.699 | r2.slag.y +4.069 (-0.1833) | r4.spectral_slope +14.22 |
-| footprint | row | row_j0_s200 vs row_s200 | none (estimation) | none (estimation) | none | none | r2.slag.y +1.974 (-0.2802) | r6.structure_std +18.64 | r2.slag.y +1.974 (-0.2802) | r6.structure_std +18.64 |
-| footprint | row | row_j0_s400 vs row_s400 | none (estimation) | none (estimation) | none | none | r6.slag.x +1.932 (-0.02264) | r3.structure_std +29.76 | r6.slag.x +1.932 (-0.02264) | r3.structure_std +29.76 |
-| footprint | row | row_j0_s800 vs row_s800 | none (estimation) | none (estimation) | none | none | r6.slag.x +0.7813 (-0.004032) | r6.structure_std +88.98 | r6.slag.x +0.7813 (-0.004032) | r6.structure_std +88.98 |
+| H1 | row | row_s200 vs row_s800 | 0.003333 | 1 | 1.55e-04 | 1.85e-04 | r3.slag.y +2.242 (+0.06111) | r4.slag.x -3.106 | r7.spectral_slope +3.185 (+0.2763) | r4.spectral_slope +12.14 |
+| H2 | image | s200_px vs s400 | 0.005 | 7 | 1.55e-04 | 2.78e-04 | r6.slag.x +8.269 (+0.08369) | r6.structure_std -10.29 | r7.spectral_slope +8.858 (+0.1249) | r6.structure_std -10.29 |
+| H2 | image | s800_px vs s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x -1.689 (-0.01709) | r4.structure_std +9.006 | r7.spectral_slope -5.238 (-0.07384) | r4.structure_std +9.006 |
+| H2 | row | row_s200_px vs row_s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x +6.041 (+0.07079) | r3.structure_std -10.42 | r6.slag.x +6.041 (+0.07079) | r3.structure_std -10.42 |
+| H2 | row | row_s800_px vs row_s400 | 0.005 | 9 | 1.55e-04 | 2.78e-04 | r6.slag.x -0.7856 (-0.009206) | r3.structure_std +13.5 | r2.spectral_slope -1.805 (-0.07839) | r3.structure_std +13.5 |
+| H4 | row | row_j0_s200 vs row_j0_s400 | 0.003333 | 5 | 1.55e-04 | 1.85e-04 | r5.slag.x -13.34 (-0.008989) | r3.structure_std -7.339 | r2.spectral_slope +32.77 (+0.2554) | r4.spectral_slope +8.995 |
+| H4 | row | row_j0_s400 vs row_j0_s800 | 0.003333 | 0 | 1.55e-04 | 1.85e-04 | r6.slag.x -10.67 (-0.01205) | r5.structure_std -2.695 | r6.slag.x -10.67 (-0.01205) | r3.mean.R -8.73 |
+| H4 | row | row_j0_s200 vs row_j0_s800 | 0.003333 | 7 | 1.55e-04 | 1.85e-04 | r2.slag.y -4.069 (-0.1833) | r3.structure_std -9.699 | r2.slag.y -4.069 (-0.1833) | r4.spectral_slope +14.22 |
+| footprint | row | row_j0_s200 vs row_s200 | none (estimation) | none (estimation) | none | none | r2.slag.y -1.974 (-0.2802) | r6.structure_std +18.64 | r2.slag.y -1.974 (-0.2802) | r6.structure_std +18.64 |
+| footprint | row | row_j0_s400 vs row_s400 | none (estimation) | none (estimation) | none | none | r6.slag.x -1.932 (-0.02264) | r3.structure_std +29.76 | r6.slag.x -1.932 (-0.02264) | r3.structure_std +29.76 |
+| footprint | row | row_j0_s800 vs row_s800 | none (estimation) | none (estimation) | none | none | r6.slag.x -0.7813 (-0.004032) | r6.structure_std +88.98 | r6.slag.x -0.7813 (-0.004032) | r6.structure_std +88.98 |
 
 **Table 3. Rejected keys of H1 (image plane and row), with the relative difference and p-value**
 
@@ -432,8 +431,10 @@ Figures (each ≤ 1 MB; the figures draw no text, and their encodings are record
 - `fig_grid_image_plane.png` (297,996 bytes), `fig_grid_pixel.png` (297,893), `fig_grid_row_image_plane.png` (298,080),
   `fig_grid_row_pixel.png` (297,606), `fig_grid_zero.png` (303,285), `fig_grid_row_zero.png` (299,275). Each has three
   200-px tiles, pair 0 of the configurations of its row, in the order 200, 400, 800 px.
-- `fig_slag_profile.png` (8,757 bytes): the region-4 structure autocorrelation `slag` against image-plane lag k/200 of the
+- `fig_slag_profile.png` (9,140 bytes): the region-4 structure autocorrelation `slag` against image-plane lag k/200 of the
   side (k = 1, 2, 3), mean ± sd over the pairs, for `slag.x` (top row) and `slag.y` (bottom row).
+
+`fig_slag_profile.png` shows the row-chain zero family, and its values are in `results.json` `slag_profile`.
 
 ## Conclusion
 

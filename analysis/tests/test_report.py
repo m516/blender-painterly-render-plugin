@@ -52,6 +52,16 @@ def test_largest_abs_cohen_d_uses_the_cohen_field() -> None:
     assert report.largest_abs_cohen_d({"x": {"cohen_d": None}}) is None
 
 
+def test_format_largest_is_value_then_key_with_spec_and_n_a_for_none() -> None:
+    entry = {"key": "r4.slag.x", "value": 0.123456}
+    # The default spec is ".4g", the spec of the printed tables of experiments 002 and 006.
+    assert report.format_largest(entry) == "0.1235 (r4.slag.x)"
+    assert report.format_largest(entry, ".2f") == "0.12 (r4.slag.x)"
+    assert report.format_largest({"key": "k", "value": 2.5}, ".2f") == "2.50 (k)"
+    # None (no defined effect) prints "n/a", the text of the former _largest_text in 006.
+    assert report.format_largest(None) == "n/a"
+
+
 def test_pair_test_separated_two_sided_and_one_sided() -> None:
     test = report.pair_test(HIGH, LOW, "k", "two-sided", 0.01)
     assert test["p_value"] == SEPARATED

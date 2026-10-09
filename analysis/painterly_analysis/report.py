@@ -242,6 +242,20 @@ def format_number(value: float | None, spec: str) -> str:
     return "n/a" if value is None else format(value, spec)
 
 
+def format_largest(entry: Mapping[str, Any] | None, spec: str = ".4g") -> str:
+    """A largest-effect entry as ``"<value> (<key>)"``, the value formatted with ``spec``.
+
+    ``entry`` is ``{"key", "value"}``, as ``largest_abs_rel_diff`` and
+    ``largest_abs_cohen_d`` return it, so its value is a magnitude. ``spec`` is a format spec, as
+    in ``format_number``. None, which means that no effect is defined, gives ``"n/a"``.
+    Experiment 006 prints its largest effects with this function. Experiment 002 keeps its own
+    ``_fmt_largest``, which prints the same text, because 002's outputs are final.
+    """
+    if entry is None:
+        return "n/a"
+    return f"{format(entry['value'], spec)} ({entry['key']})"
+
+
 def _reject_non_finite(value: Any, where: str) -> None:
     if isinstance(value, Mapping):
         for key, item in value.items():

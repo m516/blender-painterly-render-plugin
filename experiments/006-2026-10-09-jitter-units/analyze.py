@@ -23,9 +23,9 @@ Figure encodings (no text is drawn; the mapping is also in ``results.json`` unde
 - ``fig_slag_profile.png``: mean +- sd over pairs of the region-4 structure autocorrelation against
   the image-plane lag k/200 of the side (k = 1, 2, 3). Row 1 is ``slag.x``, row 2 is ``slag.y``.
   Columns are the native sides 200, 400 and 800. Series: solid blue image-plane image chain, dashed
-  blue image-plane row chain, solid red pixel image chain, dashed red pixel row chain, solid green
-  zero jitter image chain. Each panel has its own vertical scale within its row, shared by the
-  three columns.
+  blue image-plane row chain, solid red pixel image chain, dashed red pixel row chain, dashed green
+  zero jitter row chain. Each panel has its own vertical scale within its row, shared by the
+  three columns. The values plotted are in results.json under ``slag_profile``.
 """
 
 import argparse
@@ -152,7 +152,9 @@ GRID_LAYOUT = (
 # The sides of the jitter-footprint comparisons row_j0_sN vs row_sN (amendment 1).
 FOOTPRINT_SIDES = (200, 400, 800)
 # (label, RGB colour, dashed, {native side: configuration name}) of each series of
-# fig_slag_profile.png.
+# fig_slag_profile.png. The zero-jitter series is the row chain's, since H4 rests on it (README,
+# amendment 1). The image-chain zero family is one deterministic render per side, so it separates
+# no noise.
 PROFILE_SERIES = (
     ("image-plane, image chain", (31, 119, 180), False, {200: "s200", 400: "s400", 800: "s800"}),
     (
@@ -169,10 +171,10 @@ PROFILE_SERIES = (
         {200: "row_s200_px", 400: "row_s400", 800: "row_s800_px"},
     ),
     (
-        "zero jitter, image chain",
+        "zero jitter, row chain",
         (44, 160, 44),
-        False,
-        {200: "j0_s200", 400: "j0_s400", 800: "j0_s800"},
+        True,
+        {200: "row_j0_s200", 400: "row_j0_s400", 800: "row_j0_s800"},
     ),
 )
 PROFILE_SIDES = (200, 400, 800)
@@ -875,14 +877,38 @@ def _slag_profile_figure(profile: Mapping[str, list[dict]]) -> np.ndarray:
     return canvas
 
 
+def _slag_profile_record(
+    profile: Mapping[str, list[dict]], params: Mapping[str, SideParams]
+) -> dict[str, Any]:
+    """The values plotted in fig_slag_profile.png, for citation (results.json ``slag_profile``).
+
+    For each series of PROFILE_SERIES, native side and direction: ``mean`` and ``sd`` (sample sd,
+    ddof 1, over the pairs) at each lag index of ``k``. ``lag_px`` gives the image-plane lag of each
+    k in pixels of that side. Every list is parallel to ``k``.
+    """
+    series = []
+    for label, _color, dashed, names in PROFILE_SERIES:
+        sides: dict[str, Any] = {}
+        for side in PROFILE_SIDES:
+            name = names[side]
+            entry: dict[str, Any] = {
+                "configuration": name,
+                "lag_px": list(params[name].profile_lag),
+            }
+            for axis in ("x", "y"):
+                points = _profile_points(profile[name], axis)
+                entry[axis] = {
+                    "mean": [mean for _k, mean, _sd in points],
+                    "sd": [sd for _k, _mean, sd in points],
+                }
+            sides[str(side)] = entry
+        series.append({"label": label, "dashed": dashed, "sides": sides})
+    return {"region": PROFILE_REGION, "k": list(PROFILE_LAGS), "series": series}
+
+
 # --------------------------------------------------------------------------------------------------
 # Output
 # --------------------------------------------------------------------------------------------------
-
-
-def _largest_text(entry: Mapping[str, Any] | None) -> str:
-    """A largest-effect entry (``{"key", "value"}``) as ``value (key)``, or ``n/a``."""
-    return "n/a" if entry is None else f"{entry['value']:.4g} ({entry['key']})"
 
 
 def _print_comparison(test: Mapping[str, Any], say: Callable[[str], None]) -> None:
@@ -893,14 +919,16 @@ def _print_comparison(test: Mapping[str, Any], say: Callable[[str], None]) -> No
         f"min_attainable_p={test['min_attainable_p']:.3g} "
         f"threshold={test['holm_first_threshold']:.3g}"
     )
-    say(
-        f"    all keys: largest |rel|={_largest_text(test['largest_abs_rel_diff'])} "
-        f"largest |d|={_largest_text(test['largest_abs_cohen_d'])}"
+    all_keys = (
+        f"largest |rel|={report.format_largest(test['largest_abs_rel_diff'])} "
+        f"largest |d|={report.format_largest(test['largest_abs_cohen_d'])}"
     )
-    say(
-        f"    texture keys: largest |rel|={_largest_text(test['largest_abs_rel_diff_texture'])} "
-        f"largest |d|={_largest_text(test['largest_abs_cohen_d_texture'])}"
+    texture = (
+        f"largest |rel|={report.format_largest(test['largest_abs_rel_diff_texture'])} "
+        f"largest |d|={report.format_largest(test['largest_abs_cohen_d_texture'])}"
     )
+    say(f"    all keys: {all_keys}")
+    say(f"    texture keys: {texture}")
     if rejected:
         say(f"    rejected keys: {rejected}")
 
@@ -1135,6 +1163,7 @@ def main(argv: list[str] | None = None) -> None:
                 ],
             },
         },
+        "slag_profile": _slag_profile_record(profile_runs, params),
     }
     report.write_results_json(out_dir / "results.json", results)
 
@@ -1192,8 +1221,8 @@ def main(argv: list[str] | None = None) -> None:
         entry = footprint[str(side)]
         say(
             f"jitter footprint {entry['comparison']} (estimation only): texture keys largest "
-            f"|rel|={_largest_text(entry['largest_abs_rel_diff_texture'])} "
-            f"|d|={_largest_text(entry['largest_abs_cohen_d_texture'])}"
+            f"|rel|={report.format_largest(entry['largest_abs_rel_diff_texture'])} "
+            f"|d|={report.format_largest(entry['largest_abs_cohen_d_texture'])}"
         )
     say(
         f"wrote {out_dir / 'results.json'}, the grid files fig_grid_<row>.png and "
