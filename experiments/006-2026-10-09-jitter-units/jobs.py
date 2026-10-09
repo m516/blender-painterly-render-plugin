@@ -1,7 +1,8 @@
 """Render jobs of experiment 006: which jitter unit makes the look independent of resolution?
 
-Thirteen configurations, each an ensemble of 8 pairs with P = 64 passes (README, Method). The scene
-and ghost are the oracle defaults (``scene=gui``, ``ghost=all``), so they are left implicit.
+Sixteen configurations (thirteen pre-registered, three added by amendment 1), each an ensemble of
+8 pairs with P = 64 passes (README, Method). The scene and ghost are the oracle defaults
+(``scene=gui``, ``ghost=all``), so they are left implicit.
 
 Three jitter families:
 - image-plane: the oracle default 1/700 at every size (not passed, so the cache keys equal 004's);
@@ -9,7 +10,8 @@ Three jitter families:
 - zero: jitter 0.
 
 Seven configurations reuse 004's cached option sets and seed blocks. The six new ones take blocks
-33-38, the first free blocks after 004's last block (32), so every seed is globally unique.
+33-38 and the three of amendment 1 take blocks 39-41, the first free blocks after 004's last
+block (32), so every seed is globally unique.
 
 ``build_ensembles(pairs, scale)`` divides every size by ``scale``. The experiment uses ``scale=1``.
 Other values exist only so that ``analyze.py`` can be validated on a smaller subset.
@@ -65,6 +67,11 @@ DESIGN: dict[str, tuple[int, dict[str, object], int]] = {
     "j0_s200": (200, {"jitter": 0.0}, 36),
     "j0_s400": (400, {"jitter": 0.0}, 37),
     "j0_s800": (800, {"jitter": 0.0}, 38),
+    # Amendment 1 before analysis (README): the image chain with jitter 0 does not depend on the
+    # seed, so H4 uses the row chain, whose hashed K0 makes the replicates independent.
+    "row_j0_s200": (200, {"chain": "row", "jitter": 0.0}, 39),
+    "row_j0_s400": (400, {"chain": "row", "jitter": 0.0}, 40),
+    "row_j0_s800": (800, {"chain": "row", "jitter": 0.0}, 41),
 }
 
 

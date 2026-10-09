@@ -197,3 +197,52 @@ committed outputs.
     image family / pixel family / row image-plane / row pixel / zero family.
   - `fig_slag_profile.png`: the structure autocorrelation `slag` against image-plane lag (1/200, 2/200 and 3/200 of the
     side) per family and chain, for region r4 (the back wall), means ± sd over pairs.
+
+### Amendments before analysis (Opus, 2026-10-09)
+
+The T1.13 smoke run found a design defect in H4 before any full-scale analysis. The milestone reviewer then ran the
+original design once at full scale, exploratorily. These amendments were written after that run:
+- they do not change the rules or verdicts of H1, H2, H3 or H5;
+- H4's replacement family below had not been rendered when they were written.
+
+1. **H4 is decided on a row-chain zero family.**
+   - With `chain=image` and `u2=same`, the seed enters a render only through the jitter (SPEC §2, `PURPOSE_JITTER_*`;
+     the image chain starts at K = 0). With jitter 0, every seed therefore renders the same image. The reviewer's run
+     found 1 distinct render among 16 for each `j0_*` configuration.
+   - The two halves of a pair are then identical, so `cov₀` is the plain variance and no noise is separated. Every
+     permutation test also reaches its floor, so H4 as registered is not interpretable.
+   - H4 uses three new configurations instead: `row_j0_s200`, `row_j0_s400` and `row_j0_s800` (`chain=row`, `jitter=0`,
+     blocks 39, 40 and 41, seeds 624-671).
+     - The row chain's `K0 = rng_u32(seed, PURPOSE_LANE_K0, 0, row, 0, pass) mod 2^22` (SPEC §3) makes replicates
+       independent with no jitter.
+     - Comparisons and rule as registered: (200, 400), (400, 800) and (200, 800) on T, each at 0.01/3.
+   - The image-chain `j0_*` family stays in the design, estimation only. Report its number of distinct renders, and the
+     metrics of its single deterministic render at each size with no noise correction.
+   - Estimation only, no verdict: `row_j0_sN` vs `row_sN` at each size, i.e. the effect of the jitter footprint at a fixed
+     chain and size.
+   - A consequence for reading H1-image and H2-image, and every image-chain ensemble in 001-004: their seed-to-seed
+     "noise" is entirely the variation between jitter realizations. Their "structure" is the part of the texture that all
+     jitter realizations share.
+2. **Figures.** The 5 × 3 grid at 200 px per tile is 1.49 MB, over the 1 MB limit. It becomes one file per family row, three
+   200 px tiles each:
+   - `fig_grid_image_plane.png`
+   - `fig_grid_pixel.png`
+   - `fig_grid_row_image_plane.png`
+   - `fig_grid_row_pixel.png`
+   - `fig_grid_zero.png` (image-chain `j0_*`)
+   - `fig_grid_row_zero.png`
+   The layout is recorded in `results.json`.
+3. **Smoke runs.** At `--scale > 1`, every decision line printed is prefixed `SMOKE (code check only): `, and `results.json`
+   holds `"smoke": true`.
+4. **Added estimation, decisions unchanged.**
+   - Every comparison also reports `largest_abs_rel_diff_texture` and `largest_abs_cohen_d_texture` over the 18 T keys
+     only, because near-zero spectral slopes dominate the all-key maxima.
+   - H3 also reports Δ_u by key class (`structure_std` keys only and `slag` keys only), as `delta_by_class`.
+5. **Wording.** `σ(s₀) = 9/√12 = 2.598 px` is the standard deviation of a *continuous* 9-px box. A discrete 9-tap box has
+   2.582 px. The definition `σ(s) = (9/√12)·s/s₀` stands as registered.
+
+| name | size | chain | jitter (image-plane) | block (seeds) | source |
+|---|---|---|---|---|---|
+| `row_j0_s200` | 200 | row | 0 | 39 (624-639) | new (amendment 1) |
+| `row_j0_s400` | 400 | row | 0 | 40 (640-655) | new (amendment 1) |
+| `row_j0_s800` | 800 | row | 0 | 41 (656-671) | new (amendment 1) |
