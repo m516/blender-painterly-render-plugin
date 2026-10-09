@@ -22,6 +22,7 @@ add_executable(painterly_tests
   test_camera.cpp
   test_bounce.cpp
   test_bvh.cpp
+  test_path.cpp
   smallpaint_camcr_ref.cpp)
 target_link_libraries(painterly_tests PRIVATE doctest::doctest cycles_util cycles_graph painterly_bvh)
 add_test(NAME painterly_tests COMMAND painterly_tests)
