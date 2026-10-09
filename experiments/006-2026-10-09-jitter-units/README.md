@@ -437,44 +437,177 @@ Figures (each ≤ 1 MB; the figures draw no text, and their encodings are record
 
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results. Ranges marked "(Table 1)" are
+computed from its means.
 
-Verdicts under the registered rules and the README's amendments. Numbers are from the Results tables (Tables 2 to 6).
+**The converged texture lives on the image plane, so jitter must be defined there too. With image-plane jitter, 400 and
+800 px are indistinguishable on all 18 texture keys in both chains. Jitter fixed in pixels changes 9 of 18 between the
+same sizes. Every departure from resolution independence involves the 200 px renders.**
 
-- **H1 refuted, image plane and row.**
-  - H1-image rejects 1, 0 and 2 of 18 keys for (200, 400), (400, 800) and (200, 800). min_attainable_p is 1.55e-4 in each
-    comparison, against a first Holm threshold of 1.85e-4 (α = 0.01/3).
-  - H1-row rejects 0, 0 and 1 of 18 (min_attainable_p 1.55e-4 in each).
-  - The four rejections are `r3.structure_std` (image, (200, 400): rel −0.0735, d −4.37; image, (200, 800): rel −0.0738,
-    d −6.44) and `r4.slag.x` (image, (200, 800): rel −0.449, abs −0.0924, d −2.69; row, (200, 800): rel −0.360, abs −0.0737,
-    d −3.11). Each has p = 1.55e-4, the attainable floor (Table 3).
-  - The rejections do not concentrate on `r4.slag.x`: two of the four are `r3.structure_std` and two are `r4.slag.x`.
-- **H2 supported, image plane and row.**
-  - H2-image rejects 7 of 18 keys (s200_px vs s400) and 9 of 18 (s800_px vs s400) at α = 0.005. min_attainable_p is
-    1.55e-4, against a first threshold of 2.78e-4.
-  - H2-row rejects 9 of 18 (row_s200_px vs row_s400) and 9 of 18 (row_s800_px vs row_s400), at the same α and thresholds.
-  - Each of the four comparisons rejects at least one key (Table 4).
-- **H3 supported (decision on the row chain).**
-  - Δ_image-plane = 0.0513, 95% CI [0.0460, 0.1127]. Δ_pixel = 0.1578, 95% CI [0.1412, 0.2281]. Δ_image-plane < Δ_pixel, so
-    the rule supports H3.
-  - Δ_pixel − Δ_image-plane = 0.1064, 95% CI [0.0489, 0.1632]. The interval excludes 0, and the bootstrap fraction above 0
-    is 1.0 (Table 5).
-  - By class, the row chain gives Δ_image-plane 0.0096 vs Δ_pixel 0.0965 for `structure_std` keys, and 0.1199 vs 0.2739 for
-    `slag` keys. The image-chain result is the same in direction (no decision): 0.0648 [0.0378, 0.0967] vs 0.1627
-    [0.1532, 0.2156], with difference 0.0979 [0.0703, 0.1560], which also excludes 0.
-  - The README's rule then changes SPEC §7 to image-plane units. This draft does not edit SPEC; that is for Opus.
-- **H4 refuted (row-chain zero family, amendment 1).**
-  - row_j0_s200 vs row_j0_s400 rejects 5 of 18 keys. row_j0_s400 vs row_j0_s800 rejects 0 of 18 (min_attainable_p 1.55e-4).
-    row_j0_s200 vs row_j0_s800 rejects 7 of 18. The first threshold is 1.85e-4.
-  - The rule refutes H4 on any rejection, and the registered reading is that the jitter footprint is needed.
-  - Zero jitter gives a larger row-chain amplitude: `r4.structure_std` = 7.1760 ± 0.0767 (row_j0_s400) vs 5.3561 ± 0.0891
-    (row_s400) (Table 1).
-- **H5 refuted.**
-  - 35 of 36 rows (18 keys × the pairs (200, 400) and (400, 800)) have a smaller |rel. diff| with the scaled erosion. For
-    example, `r3.mean.B` at (200, 400): fixed 0.06875, scaled 0.00008752 (Table 6).
-  - The failing row is `r5.mean.R` at (400, 800): scaled 0.001257 vs fixed 0.000829. Under the rule, one failing row
-    refutes H5.
-- **Estimation, no verdict.** The image-chain zero family has 1 distinct render among 16 at each size (Table 7), so its
-  pairs are identical and it has no p-values. Its first render separates no noise (`noise_separated` false).
-  The jitter footprint (row_j0_sN vs row_sN, Table 2, footprint rows) changes texture keys by up to |rel| 1.974 at 200 px
-  (r2.slag.y), 1.932 at 400 px and 0.781 at 800 px (r6.slag.x), with |d| up to 88.98 (r6.structure_std at 800 px).
+**Verdicts**
+- **H1 refuted as registered** (image chain 1, 0 and 2 of 18 keys; row chain 0, 0 and 1). **Every rejection involves 200 px.**
+  - (400, 800) rejects 0 of 18 in both chains.
+    - The smallest p is 0.00264 (image, `r4.structure_std`) and 0.0124 (row), against a first Holm threshold of 1.85e-4.
+    - The six `structure_std` keys differ by −0.0030 to +0.0207 (image) and −0.0044 to +0.0137 (row) (Table 1).
+    - The largest |d| on T is 1.87 (image) and 1.40 (row).
+  - The rejected keys are:
+    - the floor's amplitude at 200 px, image chain: `r3.structure_std` rel −0.0735 vs 400 px and −0.0738 vs 800 px,
+      d −4.37 and −6.44;
+    - the back wall's along-row autocorrelation, 200 vs 800 px: `r4.slag.x` abs −0.0924 (image) and −0.0737 (row). The
+      relative values, −0.449 and −0.360, are fractions of a small autocorrelation (0.21 at 800 px).
+  - Every key rejected at (200, 400) is rejected again at (200, 800).
+  - How to read a rejection. With three comparisons, the first Holm threshold (1.85e-4) admits only the smallest attainable
+    p (1.55e-4). A key is therefore rejected only when all 8 pairs at one size lie beyond all 8 at the other. The test
+    flags any consistent shift, however small, and the effect sizes say how large it is.
+  - The one key still trending between 400 and 800 px is `r4.slag.x`: +0.026 (row), +0.016 (image) and +0.020 (zero
+    jitter), none rejected. From 200 to 400 px the steps were +0.048, +0.076 and +0.040, so each doubling shrinks the
+    step by a factor of 1.8 to 4.6 (Table 1).
+- **H2 supported** (image 7 and 9 of 18, row 9 and 9).
+  - The deciding contrast is at 800 px, which is free of the 200 px issue.
+    - Jitter fixed in pixels is 1/2800 of the side there. Against 400 px, every `structure_std` key rises by +0.0798 to
+      +0.1075 (row; image +0.0835 to +0.1072), and 9 of 18 keys reject in both chains.
+    - With image-plane jitter, the same size pair rejects 0.
+  - At 200 px, pixel jitter is 1/700 of the side and lowers `structure_std` by 0.0960 to 0.1515 (row).
+- **H3 supported** (the decision statistic, row chain).
+  - Δ_image-plane = 0.0513 [0.0460, 0.1127] and Δ_pixel = 0.1578 [0.1412, 0.2281].
+  - The difference is 0.1064 [0.0489, 0.1632]: it excludes 0, and its bootstrap fraction above 0 is 1.0.
+  - By key class: amplitude alone 0.0096 vs 0.0965; autocorrelation 0.1199 vs 0.2739.
+  - Image chain (no decision): 0.0648 vs 0.1627, difference 0.0979 [0.0703, 0.1560].
+  - Key by key, image-plane jitter gives the smaller |rel| in 29 of 36 key × size-pair cells for the row chain (image
+    chain 30 of 36), including all 12 `structure_std` cells.
+    - `r4.slag.x` is the exception in both row size pairs. The pixel-unit footprint is larger at 200 px and smaller at
+      800 px, so it moves this key against its rise with size: 0.1834 vs 0.1310 at 200 px, and 0.1671 vs 0.2047 at 800 px.
+  - The percentile intervals of a median of |rel| are skewed upward: resampling adds noise to every difference before the
+    absolute value is taken. That does not affect the sign of the difference.
+- **H4 refuted as registered** (row chain, zero jitter: 5, 0 and 7 of 18), **but not for the registered reason.**
+  - The registered reading of a refutation was "the jitter footprint is needed for image-locking". The rejections do not
+    show that. They have H1's signature: all 12 involve 200 px.
+  - (400, 800) rejects 0 of 18: smallest p 9.32e-4, largest |d| 2.69. Without a footprint, 400 and 800 px are still
+    indistinguishable.
+  - What zero jitter changes about the size dependence:
+    - **A larger 200 px departure.** It has 12 rejections, against 1 for the jittered row family. `structure_std` at
+      200 vs 400 px is −0.0357 to −0.0991 in five regions, against −0.0040 to −0.0469 with jitter (Table 1).
+    - **A small amplitude drift between 400 and 800 px.** `structure_std` is lower at 400 px in all six regions (rel −0.0100
+      to −0.0333), none rejected. The drift shrinks with size: `r4.structure_std` goes 6.788 → 7.176 → 7.273 (+0.388, then
+      +0.097). The step ratio is 4.0 to 5.5 in r3, r4 and r6.
+  - The footprint's own effect is large at every size (footprint rows of Table 2, and Table 1).
+    - Removing it raises `structure_std` by +0.213 to +0.440 (d 7.6 to 89.0). The 1/1400 footprint therefore removes 32-52%
+      of the structure variance.
+    - It also lowers the short-lag autocorrelation. At 400 px, `r4.structure_std` is 7.176 ± 0.077 vs 5.356 ± 0.089,
+      `r4.slag.x` 0.080 vs 0.179 and `r6.slag.y` 0.180 vs 0.397.
+- **H5 refuted as registered, by one row of 36. The erosion still explains 004's trend.**
+  - Every region-mean key agrees within |rel| 0.0030 across sizes with e(s) ∝ s (largest `r2.mean.B`, (200, 400)). With
+    004's fixed 4 px erosion, |rel| reaches 0.0688 (`r3.mean.B`).
+  - The failing row is `r5.mean.R` (red wall, red channel) at (400, 800).
+    - Scaled 0.00126 vs fixed 0.00083: 0.19 vs 0.13 grey levels on a mean of 151 (d 2.60 vs 1.74).
+    - The fixed value is the smallest of all 36 fixed values (the next is 0.00214). This key has no erosion trend to
+      remove, so the rule compared two residuals of under a fifth of a grey level. It is not evidence against the erosion
+      explanation.
+  - A real residual remains with the scaled erosion, up to |d| 9.94 between 400 and 800 px (`r4.mean.B`). It is a rel
+    difference of 0.0016.
+- **Estimation.**
+  - The image chain with zero jitter is one deterministic render per size (1 distinct render of 16, Table 7). That chain
+    takes its seed only through the jitter, so it has no noise to separate and gets no verdict.
+  - With jitter, the image and row chains have the same structure amplitude at 400 px (`r4.structure_std` 5.3556 vs
+    5.3561), consistent with 003's row ≈ image.
+
+**What they mean together**
+1. **The image plane sets the stroke scale, not the K stride.**
+   - The K stream advances once per pixel, so going from 400 to 800 px doubles the K steps per unit of image.
+   - If the K stride set the stroke scale, the autocorrelation at a fixed fraction of the side would fall when the side
+     doubles. It does not: between 400 and 800 px, 0 of 18 keys change in all three families.
+   - With a fixed camera, image-plane locking and scene locking are the same thing. This experiment does not separate them.
+2. **The jitter footprint shapes the texture but does not lock it.**
+   - The footprint averages each pixel's paths over an image-plane square of half-width jitter × side. It lowers the
+     amplitude and raises the short-range correlation, so the strokes get softer.
+   - Its effect (d up to 89) is far larger than anything resolution does between 400 and 800 px.
+   - A footprint fixed in pixels is a different softening at every size (H2). A footprint fixed on the image plane is the
+     same softening at every size (H3).
+   - A sub-pixel footprint (±2/7 px at 400 px) removes 44% of the back wall's structure variance. So either most of the
+     zero-jitter texture sits at sub-pixel scales, or jitter also acts through the chain, since moved hit points change K
+     consumption. This experiment cannot tell which (hypotheses below).
+3. **200 px is too coarse for this scene.**
+   - All 16 rejections in H1 and H4 involve 200 px.
+     - With jitter (H1), the keys concerned belong to the floor and the back wall. The back wall is the farthest surface
+       and the floor is foreshortened, so their texture should be the finest on the image plane.
+     - Without jitter (H4), the departure is larger and reaches the amplitude of up to five of the six regions. The
+       zero-jitter amplitude also converges with size.
+   - Both observations fit undersampling. At 200 px the pixel pitch equals the lag, so the grid is coarse for sub-pixel
+     texture, and the footprint removes some of that detail before it is sampled. This is a hypothesis, tested below.
+4. **What is covered.**
+   - Every texture key is noise-corrected. It measures the part of the texture that independent seeds share, i.e. the
+     converged look.
+   - The seed-dependent part was removed by design and was not tested. 001 found that part dominates the visible texture
+     at low pass counts.
+
+**Decisions**
+1. **SPEC §7 is confirmed.**
+   - Jitter is a fraction of the camera's fitted image side, default 1/1400. That is smallpaint's 1/700 image-plane units,
+     2/7 px at 400 px.
+   - The deciding numbers are H3 (row Δ 0.0513 vs 0.1578, difference interval [0.0489, 0.1632]) and the 800 px contrast
+     (0 of 18 keys with image-plane jitter vs 9 of 18 with pixel jitter, in both chains).
+   - One passage of §7 is replaced. It reads "Neither unit is exactly invariant (006 H1). The back wall's along-row
+     structure lag differs by up to 36-45% between 200 and 800 px." It becomes: "With image-plane jitter, 400 and 800 px
+     are indistinguishable (0 of 18 texture keys, both chains). Departures appear only against 200 px: the floor's
+     amplitude (up to −7%) and the back wall's along-row autocorrelation (−0.07 to −0.09)."
+   - Always name the unit. In SPEC §7, "1/1400" is a fraction of the side. 004's `s800_j1400` and 006's `s800_px` use
+     1/1400 *image-plane units*, which is 1/2800 of the side. The oracle's `--jitter` stays in image-plane units
+     (SPEC §7, `2·jitter`).
+2. **Jitter is documented as an artist knob for stroke softness (M7).**
+   - Measured points, row chain, `r4.structure_std`:
+     - 7.273, 5.783 and 5.284 at 800 px, for 0, 1/2800 and 1/1400 of the side;
+     - 6.788, 5.316 and 4.842 at 200 px, for 0, 1/1400 and 1/700.
+   - Most of the change is near 0. At 800 px, the first 1/2800 of the side gives 75% of the drop to 1/1400.
+   - Resolution independence holds at both jitter values tested between 400 and 800 px (0 and 1/1400). Changing the knob
+     changes the look without making it depend on size.
+   - The dose-response experiment below sets the knob's range and scale, not this one.
+   - Two cautions go into the knob's description:
+     - with `chain=image`, jitter 0 makes `seed` irrelevant (Table 7);
+     - the region masks are eroded away from edges, so these metrics say nothing about edge aliasing at small jitter.
+3. **Cross-resolution acceptance** (M3 on) uses scale-equivariant metrics, with high-pass σ, erosion and lag all
+   proportional to the side, and sides of at least 400 px. This holds until the 200 px departure is explained. Expect
+   200 px previews to show a slightly different floor and back wall.
+4. **Analysis practice.**
+   - Region means compared across sizes use the scaled erosion e(s) = 4·s/400.
+   - Pre-registrations do not decide on strict per-key dominance (H5's rule) without a noise floor.
+   - Complete-separation tests are paired with an effect statistic, as H3 was.
+   - A mechanism hypothesis gets the contrast that separates its readings. Here that was (400, 800) on its own, or the
+     zero-jitter family against the jittered one. A rule of "any rejection anywhere" does not separate them.
+
+**Hypotheses for later work**
+- **Image-locking holds above 800 px.**
+  - Derived from: 400 vs 800 rejects 0 of 18 in three families, and Blender renders are usually larger than 800 px.
+  - Test: a row-chain 1600 px family, 8 pairs per configuration, at jitter 1/1400 and at 0. At 1600 px, σ = 10.39 px,
+    e = 16 px and τ = 8 px.
+  - Comparisons (400, 800), (800, 1600) and (400, 1600) on T at 0.01/3 per family. Supported iff no key is rejected.
+  - Secondary, zero family: the 800 → 1600 step of `structure_std` is smaller than the 400 → 800 step in each of r3-r7,
+    as it was one doubling earlier. Likewise for the `r4.slag.x` step in both families.
+- **The 200 px departure is undersampling.**
+  - If it is, a footprint as wide as a 200 px pixel removes it.
+  - Test: row chain, jitter 1/400 of the side (±0.5 px at 200 px, ±2 px at 800 px), (200, 800) on T at 0.01. Supported
+    iff 0 of 18 keys are rejected. 006 rejects 1 at 1/1400 and 7 at 0.
+  - If rejections remain, the departure comes from the chain. An oracle-only chain that walks columns then shows whether
+    the `r4.slag.x` deficit follows the chain's direction or the scene's.
+- **Jitter acts only by averaging over its footprint.**
+  - If so, a 400 px render at jitter 1/800 of the side (±0.5 px, the whole pixel) has the same texture as a zero-jitter
+    1600 px render averaged over 4×4 blocks.
+  - Test: T at 0.01, supported iff 0 of 18 keys are rejected. A lower native amplitude would mean jitter also mixes the K
+    state, so the knob is not a pure blur.
+  - The test needs an oracle option that draws the 400 px jitter from the same 16 sub-pixel offsets. The two sides then
+    differ only in the chain.
+- **Jitter dose-response, for the M7 knob range.**
+  - Prediction from 006: `structure_std` falls strictly with jitter in every region, `slag.y` rises on the walls (r4, r5
+    and r6), and the steps shrink as jitter grows.
+  - Test: row chain, 400 px, jitter 0, 1/5600, 1/2800, 1/1400, 1/700 and 1/350 of the side. Compare adjacent pairs on T
+    with one-sided permutation tests, Holm across keys and pairs.
+- **The seed-dependent texture is pixel-locked.**
+  - Derived from: the K stride is per pixel, while the shared structure is image-locked (point 1 above).
+  - Test: re-analyse 006's cached renders, with no new renders. The difference of two half renders, hp_a − hp_b, is pure
+    noise. Compare its autocorrelation at fixed pixel lags and at lags proportional to the side, across 200, 400 and 800 px.
+  - Pixel-locked iff the fixed-pixel lags agree (0 rejections) and the proportional lags do not. That decides whether
+    low-pass-count renders depend on resolution even though the converged look does not.
+- **Lane length belongs on the image plane too (M7).**
+  - `lane_length` is in pixels, so `chain=lane` places its seam columns L px apart. On the image plane that spacing halves
+    at every doubling of the side.
+  - Test: an H3-style Δ comparison, L fixed in pixels vs L ∝ side, at 200, 400 and 800 px, with the seam-column amplitude
+    as a key.

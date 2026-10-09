@@ -139,6 +139,13 @@ later run: the CI coexist job (`.github/workflows/wheels.yml`) and any rerun of 
 - **Control sensitivity.** `bindings.json` reports `control_specific_violations`: the control's violations minus the
   main run's, compared by (symbol, version, destination basename). `run.sh` requires at least one for each applicable
   control. A control that only repeats the main run's violations then no longer counts as sensitive.
+- **Check of the rule (T2.8, 2026-10-09).** `bindings.py` implements both rules (`--rule registered|coherent`). On a
+  copy of the 2026-10-08 `out/`:
+  - `--rule registered` reproduces the recorded run: 4 violations, coverage 249/249.
+  - `--rule coherent` gives 0 violations, coverage 249/249, `allocator.coherent` true and `allocator.processes`
+    `["ld.30094"]`.
+  - With `--baseline`: C1 has 1 control-specific violation (`__cxa_pure_virtual` → `libstdc++.so.6`) and C2 has 119.
+  This is a check of the rule, as the Conclusion's decision 3 announced. It is not a re-scoring of the 2026-10-08 run.
 
 ## Results
 
@@ -254,7 +261,7 @@ They are not a leak of Blender's C++ or Cycles state:
   module's `strdup` goes to libc, which allocates through the same proxy.
 - The plan's isolation threats are absent. The module makes no binding to `libembree4`, `libtbb`, `libstdc++` or any
   `ccl::` symbol. The instrument would see such a binding: C1 adds exactly one (`__cxa_pure_virtual` to
-  `libstdc++.so.6`), and C2 adds 118.
+  `libstdc++.so.6`), and C2 adds 119 by the per-key comparison of the later-runs amendment.
 
 **What G1 means.** G1 asks whether the module can run inside Blender's process. H1 and H2 say it can. The only bindings
 outside the allowed set are to an allocator the whole process already shares, so an out-of-process render server would
