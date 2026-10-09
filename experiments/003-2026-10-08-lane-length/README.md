@@ -150,3 +150,107 @@ renders: 128 (8 configurations x 16). Reused: 32 (`image` from block 0, `lane_1`
 - **D3 (decision rules not stated on the card).** The card says "refuted iff" for H1 and gives no rule for "supported".
   The rules above are fixed here. H2 has no card rule either: it is decided by L* and the power of its tests.
 - **D4 (anisotropy).** The card's H2 anisotropy claim has no test, so it has no verdict (see H2).
+
+## Results
+
+Source: `results.json`, written by `analyze.py` from the render cache (160 renders, `jobs.py`). Each configuration is 8 pairs at 400 px with P = 64 passes, measured over the 46 diffuse keys. Means ± sd are over the 8 pairs (sample sd, ddof 1). `rel. diff` = (mean − row mean) / |row mean|, and `Cohen's d` = (mean − row mean) / pooled sd. The figure is `fig_grid.png` (273,274 bytes).
+
+**Table 1a. all.pattern_corr and r4.structure_std, mean ± sd over 8 pairs**
+
+| configuration | chains per pass (1920×1080) | all.pattern_corr | rel. diff vs row | Cohen's d vs row | r4.structure_std | rel. diff vs row | Cohen's d vs row |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| image | 1 | 0.5889 ± 0.0016 | -0.001731 | -0.5974 | 5.738 ± 0.071 | -4.579e-06 | -0.0003171 |
+| row | 1,080 | 0.5899 ± 0.0018 | 0 (reference) | 0 (reference) | 5.738 ± 0.093 | 0 (reference) | 0 (reference) |
+| lane_1 | 2,073,600 | 0.1260 ± 0.0026 | -0.7863 | -204.2 | 2.562 ± 0.121 | -0.5535 | -29.46 |
+| lane_2 | 1,036,800 | 0.2101 ± 0.0020 | -0.6439 | -198 | 5.615 ± 0.060 | -0.02146 | -1.569 |
+| lane_4 | 518,400 | 0.3266 ± 0.0027 | -0.4464 | -115.2 | 5.771 ± 0.065 | +0.005816 | +0.4148 |
+| lane_8 | 259,200 | 0.4266 ± 0.0020 | -0.2769 | -84.67 | 5.869 ± 0.070 | +0.0228 | +1.589 |
+| lane_16 | 129,600 | 0.5002 ± 0.0021 | -0.1521 | -45.52 | 5.777 ± 0.112 | +0.006801 | +0.3787 |
+| lane_32 | 64,800 | 0.5415 ± 0.0022 | -0.08204 | -23.62 | 5.729 ± 0.087 | -0.001652 | -0.105 |
+| lane_64 | 32,400 | 0.5637 ± 0.0008 | -0.04444 | -18.41 | 5.714 ± 0.064 | -0.004121 | -0.2951 |
+| lane_128 | 16,200 | 0.5732 ± 0.0022 | -0.02832 | -8.352 | 5.689 ± 0.039 | -0.008477 | -0.6809 |
+
+**Table 1b. r4.lag1.x and r4.lag1.y, mean ± sd over 8 pairs**
+
+| configuration | r4.lag1.x | rel. diff vs row | Cohen's d vs row | r4.lag1.y | rel. diff vs row | Cohen's d vs row |
+|---|---:|---:|---:|---:|---:|---:|
+| image | 0.2033 ± 0.0091 | +0.006081 | +0.175 | 0.2412 ± 0.0073 | +0.005246 | +0.1942 |
+| row | 0.2020 ± 0.0040 | 0 (reference) | 0 (reference) | 0.2399 ± 0.0056 | 0 (reference) | 0 (reference) |
+| lane_1 | 0.0907 ± 0.0066 | -0.5512 | -20.42 | 0.0859 ± 0.0085 | -0.642 | -21.42 |
+| lane_2 | -0.1888 ± 0.0053 | -1.935 | -83.56 | 0.3550 ± 0.0033 | +0.4793 | +25.16 |
+| lane_4 | 0.0382 ± 0.0030 | -0.811 | -46.1 | 0.3413 ± 0.0068 | +0.4225 | +16.38 |
+| lane_8 | 0.1267 ± 0.0046 | -0.3729 | -17.52 | 0.3179 ± 0.0068 | +0.325 | +12.57 |
+| lane_16 | 0.1554 ± 0.0071 | -0.2306 | -8.08 | 0.2812 ± 0.0059 | +0.1721 | +7.195 |
+| lane_32 | 0.1755 ± 0.0043 | -0.1314 | -6.362 | 0.2619 ± 0.0045 | +0.09142 | +4.33 |
+| lane_64 | 0.1916 ± 0.0047 | -0.05175 | -2.406 | 0.2505 ± 0.0059 | +0.04388 | +1.843 |
+| lane_128 | 0.1902 ± 0.0042 | -0.05862 | -2.873 | 0.2553 ± 0.0051 | +0.06381 | +2.877 |
+
+**Table 2. Chains per pass at 1920 × 1080**
+
+| configuration | chains per pass |
+|---|---:|
+| image | 1 |
+| row | 1,080 |
+| lane_1 | 2,073,600 |
+| lane_2 | 1,036,800 |
+| lane_4 | 518,400 |
+| lane_8 | 259,200 |
+| lane_16 | 129,600 |
+| lane_32 | 64,800 |
+| lane_64 | 32,400 |
+| lane_128 | 16,200 |
+
+The chains are read from `results.json` (`chains_per_pass_1920x1080`). They were not recomputed from SPEC §3, because the file holds them.
+
+**Table 3a. H1, adjacent steps of all.pattern_corr (Holm over 7 steps at α = 0.01)**
+
+| step (shorter → longer) | mean ± sd (longer) | p_less | p_greater | Holm (greater) | Holm (less) | min_attainable_p | rel. diff | Cohen's d | diff |
+|---|---:|---:|---:|---|---|---:|---:|---:|---:|
+| lane_1->lane_2 | 0.2101 ± 0.0020 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.6666 | +35.81 | +0.08402 |
+| lane_2->lane_4 | 0.3266 ± 0.0027 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.5548 | +49.38 | +0.1165 |
+| lane_4->lane_8 | 0.4266 ± 0.0020 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.3061 | +42.21 | +0.09998 |
+| lane_8->lane_16 | 0.5002 ± 0.0021 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.1726 | +35.65 | +0.07364 |
+| lane_16->lane_32 | 0.5415 ± 0.0022 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.0826 | +18.98 | +0.04132 |
+| lane_32->lane_64 | 0.5637 ± 0.0008 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.04096 | +13.06 | +0.02218 |
+| lane_64->lane_128 | 0.5732 ± 0.0022 | 1.000 | 7.77e-05 | rejected | not rejected | 7.77e-05 | +0.01687 | +5.8 | +0.009511 |
+
+H1 `p_less` is the one-sided p-value for a decrease, and `p_greater` for an increase. `Holm` is applied at α = 0.01 over the 7 steps, separately to each direction.
+
+**Table 3b. H2, each lane length against row on all.pattern_corr (Holm over 8 at α = 0.01)**
+
+| L | mean ± sd | p_less (lane_L vs row) | Holm rejected (less) | min_attainable_p | rel. diff vs row | Cohen's d vs row |
+|---:|---:|---:|---|---:|---:|---:|
+| 1 | 0.1260 ± 0.0026 | 7.77e-05 | rejected | 7.77e-05 | -0.7863 | -204.2 |
+| 2 | 0.2101 ± 0.0020 | 7.77e-05 | rejected | 7.77e-05 | -0.6439 | -198 |
+| 4 | 0.3266 ± 0.0027 | 7.77e-05 | rejected | 7.77e-05 | -0.4464 | -115.2 |
+| 8 | 0.4266 ± 0.0020 | 7.77e-05 | rejected | 7.77e-05 | -0.2769 | -84.67 |
+| 16 | 0.5002 ± 0.0021 | 7.77e-05 | rejected | 7.77e-05 | -0.1521 | -45.52 |
+| 32 | 0.5415 ± 0.0022 | 7.77e-05 | rejected | 7.77e-05 | -0.08204 | -23.62 |
+| 64 | 0.5637 ± 0.0008 | 7.77e-05 | rejected | 7.77e-05 | -0.04444 | -18.41 |
+| 128 | 0.5732 ± 0.0022 | 7.77e-05 | rejected | 7.77e-05 | -0.02832 | -8.352 |
+
+H2 is decided by L* and by the power of its tests. Powered threshold: 0.01 / 8 = 1.25e-03.
+
+**Table 3c. H3, row against image on the 46-key diffuse family (Holm at α = 0.01)**
+
+| comparison | keys | rejected | min_attainable_p | Holm first threshold | smallest observed p (key) | largest \|rel. diff\| (key) | largest \|Cohen's d\| (key) | powered |
+|---|---:|---:|---:|---:|---|---|---|---|
+| row vs image | 46 | 0 | 1.55e-04 | 2.17e-04 | 0.0202 (r5.pattern_corr) | 0.06908 (all.spectral_slope, see footnote) | 1.344 (r5.pattern_corr) | True |
+
+^a `all.spectral_slope` has a near-zero mean (row -0.04743 ± 0.01059, image -0.04436 ± 0.00916), so its relative difference (-0.06908) is not a meaningful effect size. Its absolute difference, row minus image, is -0.003064, with Cohen's d -0.3095.
+
+**Table 4. Decision table (one row per hypothesis)**
+
+| hypothesis | claim | decision | deciding numbers (results.json) |
+|---|---|---|---|
+| H1 | `all.pattern_corr` does not fall as L grows (7 adjacent steps, Holm at α = 0.01) | supported | significant increases 7 of 7 (p_greater 7.77e-05 each); significant decreases 0 of 7 (p_less 1.000 each); powered: min_attainable_p 7.77e-05 ≤ 0.01 / 7 = 1.43e-03; largest \|rel. diff\| 0.6666 (lane_1->lane_2); largest \|d\| 49.38 (lane_2->lane_4) |
+| H2 | some lane length matches row on `all.pattern_corr`; L* = smallest such L | refuted (L* = none) | 8 of 8 lane lengths Holm-rejected against row in the less direction (p_less 7.77e-05 each); powered: min_attainable_p 7.77e-05 ≤ 0.01 / 8 = 1.25e-03; closest, L = 128: rel. diff -0.02832, d -8.352 |
+| H3 | row is indistinguishable from image on the 46-key diffuse family | supported | 0 of 46 keys rejected; min_attainable_p 1.55e-04 ≤ Holm threshold 2.17e-04 (powered); smallest observed p 0.0202 (r5.pattern_corr); largest \|d\| 1.344 (r5.pattern_corr); largest \|rel. diff\| 0.06908 (all.spectral_slope, footnote a; absolute diff -0.003064) |
+
+## Conclusion
+
+DRAFT (Haiku) — pending Opus review.
+
+- **H1: supported.** `all.pattern_corr` rises at all 7 adjacent steps. Each step is a Holm-rejected increase (p_greater = 7.77e-05; Holm threshold 1.43e-03 over 7 steps), and none is a Holm-rejected decrease (p_less = 1.000 at every step). The tests are powered (min_attainable_p 7.77e-05). The means rise from 0.1260 at L = 1 to 0.5732 at L = 128. Largest |rel. diff| 0.6666 (lane_1 to lane_2); largest |d| 49.38 (lane_2 to lane_4).
+- **H2: refuted, L* = none.** All 8 lane lengths in {1, 2, 4, 8, 16, 32, 64, 128} are Holm-rejected against row in the less direction (p_less = 7.77e-05 each; powered, since min_attainable_p 7.77e-05 ≤ 1.25e-03). The closest is L = 128, with rel. diff -0.02832 and d -8.352. The anisotropy curve has no verdict (effect sizes only, D4): at L = 16 the mean r4.lag1.x is 0.1554 against 0.2020 for row (rel. diff -0.2306), and the mean r4.lag1.y is 0.2812 against 0.2399 (rel. diff +0.1721).
+- **H3: supported.** 0 of 46 diffuse keys are rejected under Holm at α = 0.01. The comparison is powered (min_attainable_p 1.55e-04 ≤ threshold 2.17e-04), and the smallest observed p is 0.0202 (r5.pattern_corr). Largest |d| 1.344 (r5.pattern_corr). The largest |rel. diff| is on all.spectral_slope (footnote a), so its absolute difference, -0.003064, is the figure to use. For `all.pattern_corr`, row against image gives rel. diff +0.001734 and d 0.5974 (row 0.5899 ± 0.0018, image 0.5889 ± 0.0016).
