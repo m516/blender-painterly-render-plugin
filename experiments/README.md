@@ -11,7 +11,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | 002 | 2026-10-08 | ingredient-ablation | Which smallpaint ingredients are necessary for the look? | draft | results pending |
 | 003 | 2026-10-08 | lane-length | How long must a chain be? (artist-mode lane length) | draft | results pending |
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | draft | not yet (pre-registration only; renders not run) |
-| 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | draft | H1 and H2 supported (exact selftest in Blender, 20/20 renders equal). H3 refuted: 4 violating bindings, all allocator symbols (`malloc`, `free`, `realloc`, `posix_memalign`) bound to Blender's bundled `libtbbmalloc_proxy.so.2`; coverage 249/249; controls 5 and 122 violations |
+| 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | final | Linux: coexists (H1, H2 supported); H3 refuted as registered by 4 allocator bindings to Blender's process-wide TBB malloc proxy, shared coherently with libc; G1 not triggered on Linux, open for macOS/Windows until CI |
 
 ## How to run
 

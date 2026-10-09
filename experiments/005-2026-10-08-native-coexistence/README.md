@@ -114,6 +114,30 @@ These amendments were made after the hypotheses above were pre-registered and be
    access, so `run.sh` and the Makefile's `BLENDER` default never download. Only `make blender` downloads, and it sends
    the honest tool User-Agent required by CLAUDE.md, "Network notes".
 
+### Amendment for later runs (Opus, 2026-10-09, after the 2026-10-08 run)
+
+This amendment does not change the verdicts of the 2026-10-08 run recorded below. It replaces Amendment 4 for every
+later run: the CI coexist job (`.github/workflows/wheels.yml`) and any rerun of `run.sh`.
+
+- **Allocator family.** `ALLOCATOR_FAMILY` is the set of names that glibc lets a replacement allocator interpose
+  (glibc manual, §3.2.5 "Replacing malloc"): `malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`,
+  `malloc_usable_size`, `memalign`, `posix_memalign`, `pvalloc`, `valloc`.
+- **Coherence rule.** A `GLIBC_`-versioned binding of a name in `ALLOCATOR_FAMILY` is allowed wherever it goes iff the
+  allocator is *coherent*. Coherent means that the union of two destination sets has exactly one element:
+  - the destinations of the module's allocator-family bindings;
+  - the destinations of `libc.so.6`'s own allocator-family bindings in the same trace, self-bindings included.
+  Memory then has one owner, whichever object allocates or frees it. An incoherent allocator makes every
+  allocator-family binding of the module a violation.
+  - Why libc's binding set, not a symbol-by-symbol match: in the 2026-10-08 trace `libc.so.6` binds `malloc`, `free`,
+    `calloc` and `realloc` to the proxy, but has no binding of `posix_memalign` at all. A symbol-by-symbol rule would
+    therefore flag the module's `posix_memalign`, even though its memory is released by the module's `free`, which goes
+    to the same proxy.
+- **glibc objects.** `GLIBC_PROVIDER` also accepts `libpthread.so.0`, `libdl.so.2`, `librt.so.1`, `libutil.so.1` and
+  `libresolv.so.2`. These are separate glibc objects on hosts with glibc older than 2.34.
+- **Control sensitivity.** `bindings.json` reports `control_specific_violations`: the control's violations minus the
+  main run's, compared by (symbol, version, destination basename). `run.sh` requires at least one for each applicable
+  control. A control that only repeats the main run's violations then no longer counts as sensitive.
+
 ## Results
 
 Run with `experiments/005-2026-10-08-native-coexistence/run.sh` on this machine. `run.sh` exited 1, because H3 is
@@ -206,21 +230,43 @@ trace that missed bindings: coverage is complete in the main run and in both con
 
 ## Conclusion
 
-DRAFT (Haiku) — pending Opus review.
+Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results.
 
-- **H1: supported.** `_painterly` imports inside Blender 5.2.2. Its selftest equals the venv selftest exactly, in the
-  plain run and the traced run, with `tasking_system` 0.
-- **H2: supported.** 20 alternating Cycles renders and selftests complete in both Blender runs (exit 0). Every
-  selftest equals the first.
-- **H3: refuted.** The module makes 4 violating bindings, all to Blender's bundled `libtbbmalloc_proxy.so.2`: `malloc`,
-  `free`, `realloc` and `posix_memalign`. Coverage is complete (249 of 249). The instrument is sensitive: C1 gives 5
-  violations (applicable: Blender's process defines `__cxa_pure_virtual`) and C2 gives 122.
+**`_painterly` coexists with Blender 5.2.2's Cycles on Linux. Gate G1 is not triggered there, and the module stays
+in-process.**
 
-Coexistence works in the sense of H1 and H2: the module loads, its selftest is exact, and Cycles renders run alongside it.
-The isolation claim (`docs/plan.md`, "Isolation from Blender's own libraries"; the T2.2 audit allows only glibc-versioned,
-Python C-API and toolchain weak imports) is refuted on Linux for the allocator: Blender's bundled TBB malloc proxy
-interposes the module's `malloc`, `free`, `realloc` and `posix_memalign`. The T2.3 card's Goal says that if coexistence
-does not work, the experiment shows exactly how it fails, which triggers gate G1 in `docs/plan.md`. This run shows that
-failure mode. The interposition is process-wide: 84 other objects in the same process, including `libc.so.6`, bind the
-same allocator symbols to that proxy (Results, "Scope of the allocator binding"). Whether it triggers G1, and whether
-the allocator binding is fixed in the module or accepted, are for the Opus review.
+- **H1 supported.** The module imports in Blender, and its selftest equals the venv selftest exactly, in both the plain
+  and the traced run (`tasking_system` 0, `t` 0.4999999701976776).
+- **H2 supported.** 20 of 20 alternating Cycles renders and selftests complete in both runs, every selftest equals the
+  first, and both runs exit 0.
+- **H3 refuted as registered.** There are 4 violating bindings, with coverage 249 of 249: `malloc`, `free`, `realloc`
+  and `posix_memalign` @GLIBC_2.2.5, all bound to `lib/libtbbmalloc_proxy.so.2`. The pre-registered rule counts
+  those as violations, and the verdict stands.
+
+**What the refutation means.** The four bindings are glibc's supported allocator replacement (glibc manual §3.2.5).
+They are not a leak of Blender's C++ or Cycles state:
+- The proxy is a `NEEDED` entry of the `blender` executable, so it interposes the allocator for the whole process.
+  `libc.so.6` itself binds `malloc`, `free`, `calloc` and `realloc` to it, as do 84 other objects.
+- I re-read the trace for this conclusion. The module's four allocator bindings and libc's four go to one destination,
+  in the main run and in both controls. Memory therefore has one owner, wherever it is allocated or freed. The
+  module's `strdup` goes to libc, which allocates through the same proxy.
+- The plan's isolation threats are absent. The module makes no binding to `libembree4`, `libtbb`, `libstdc++` or any
+  `ccl::` symbol. The instrument would see such a binding: C1 adds exactly one (`__cxa_pure_virtual` to
+  `libstdc++.so.6`), and C2 adds 118.
+
+**What G1 means.** G1 asks whether the module can run inside Blender's process. H1 and H2 say it can. The only bindings
+outside the allowed set are to an allocator the whole process already shares, so an out-of-process render server would
+remove no risk that in-process rendering carries.
+
+**Decisions.**
+1. G1 for Linux: not triggered.
+2. G1 for macOS and Windows: open until the CI coexist job (T2.4, T2.7) passes on those runners.
+3. Later runs use the allocator-coherence rule ("Amendment for later runs"), which was fixed before any later run.
+   T2.8 tests the expectation that the rule counts the 2026-10-08 trace as 0 violations. That is a check of the rule,
+   not a re-scoring of this run.
+4. The audit (`tools/symbol_audit.py`) keeps treating `malloc` and friends as plain glibc imports. Interposition is a
+   property of the host process, and only a binding trace can see it.
+
+**Hypothesis for later work.** Blender's macOS build has no ELF interposition. Two-level namespaces bind each import
+to the library it was linked against. The CI run should therefore show 0 allocator violations there, without the
+coherence rule. The Windows module, linked with the static CRT (`/MT`), imports only from `python3.dll` and `kernel32.dll`. That is the audit's allowlist, so the allocator question does not arise there.
