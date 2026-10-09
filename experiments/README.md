@@ -12,6 +12,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | 003 | 2026-10-08 | lane-length | How long must a chain be? (artist-mode lane length) | draft | results pending |
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | draft | not yet (pre-registration only; renders not run) |
 | 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | final | Linux: coexists (H1, H2 supported); H3 refuted as registered by 4 allocator bindings to Blender's process-wide TBB malloc proxy, shared coherently with libc; G1 not triggered on Linux, open for macOS/Windows until CI |
+| 006 | 2026-10-09 | jitter-units | Which jitter unit (image-plane or pixel) makes the look independent of resolution, measured with scale-equivariant metrics? | draft | pre-registered; renders running |
 
 ## How to run
 
