@@ -1,0 +1,150 @@
+# Stable-ABI wheels (T2.4). The wheels job builds, audits and smoke-tests one wheel per platform with cibuildwheel. The
+# coexist job then runs the native-coexistence experiment (005) in Blender 5.2.2 on the same OS, which is the input to gate G1.
+name: Wheels
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+env:
+  BLENDER_VERSION: "5.2.2"
+  # The experiment directory that holds coexist.py, bindings.py and out/ (the explicit form of experiments/005-*).
+  EXP_DIR: experiments/005-2026-10-08-native-coexistence
+
+jobs:
+  wheels:
+    name: wheels (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # Only the Embree source is cached. cibuildwheel compiles it inside each build, so no object file is reused.
+      - name: Cache the Embree source
+        id: embree-src
+        uses: actions/cache@v4
+        with:
+          path: .cache/src/embree
+          key: embree-src-${{ hashFiles('cmake/painterly_embree.cmake') }}
+
+      - name: Clone the Embree source
+        if: steps.embree-src.outputs.cache-hit != 'true'
+        shell: bash
+        run: git clone --depth 1 --branch v4.4.1 https://github.com/RenderKit/embree.git .cache/src/embree
+
+      - name: Build, audit and smoke-test the wheels
+        uses: pypa/cibuildwheel@v4.3.0
+
+      - name: Upload the wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  coexist:
+    name: coexist (${{ matrix.os }})
+    needs: wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: windows-2022
+            platform: windows-x64
+          - os: macos-14
+            platform: macos-arm64
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download the wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}
+          path: wheel
+
+      # Verifies the release against its sha256 and installs it under .cache/blender/. fetch.log keeps the path line and
+      # the Windows python3.dll report. A MISSING line means that python3.dll is not next to Blender's Python.
+      - name: Fetch Blender 5.2.2
+        shell: bash
+        run: |
+          python tools/fetch_blender.py --version "$BLENDER_VERSION" --platform "${{ matrix.platform }}" 2>&1 | tee fetch.log
+          blender_exe=$(sed -n "s/^Blender $BLENDER_VERSION executable: //p" fetch.log | tr -d '\r')
+          if grep -q MISSING fetch.log; then
+            echo "::error::python3.dll is not next to Blender's Python on ${{ matrix.platform }}; an abi3 module cannot load"
+            exit 1
+          fi
+          echo "BLENDER_EXE=$blender_exe" >> "$GITHUB_ENV"
+
+      # Extracts the one _painterly* module from the wheel into a directory, which coexist.py then imports from.
+      - name: Extract _painterly from the wheel
+        shell: bash
+        run: |
+          python -I - wheel/*.whl "$RUNNER_TEMP/painterly-module" <<'PY'
+          import pathlib
+          import sys
+          import zipfile
+
+          if len(sys.argv) != 3:
+              sys.exit("expected exactly one wheel in wheel/")
+          wheel, dest = sys.argv[1], pathlib.Path(sys.argv[2])
+          dest.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(wheel) as archive:
+              modules = [n for n in archive.namelist() if "/" not in n and n.startswith("_painterly")]
+              if len(modules) != 1:
+                  sys.exit(f"{wheel}: expected one _painterly* module at the wheel root, found {modules}")
+              print(archive.extract(modules[0], dest))
+          PY
+          echo "MODULE_DIR=$RUNNER_TEMP/painterly-module" >> "$GITHUB_ENV"
+
+      - name: Run the coexistence experiment in Blender
+        shell: bash
+        run: |
+          "$BLENDER_EXE" -b --factory-startup --python-exit-code 1 --python "$EXP_DIR/coexist.py" -- "$MODULE_DIR"
+
+      # Linux only: a second run under LD_BIND_NOW=1 with the loader's binding trace, then the H3 instrument. The plain
+      # run's result is kept as coexist_plain.json and the traced one as coexist_traced.json.
+      - name: Trace the coexistence run and scan its bindings (Linux)
+        if: matrix.platform == 'linux-x64'
+        shell: bash
+        run: |
+          OUT="$EXP_DIR/out"
+          cp "$OUT/coexist.json" "$OUT/coexist_plain.json"
+          LD_BIND_NOW=1 LD_DEBUG=bindings LD_DEBUG_OUTPUT="$OUT/ld" \
+            "$BLENDER_EXE" -b --factory-startup --python-exit-code 1 --python "$EXP_DIR/coexist.py" -- "$MODULE_DIR"
+          mv "$OUT/coexist.json" "$OUT/coexist_traced.json"
+          python -I "$EXP_DIR/bindings.py" "$OUT" --module "$(ls "$MODULE_DIR"/_painterly*.so)"
+          echo "H3 violations (linux-x64): $(cat "$OUT/bindings_summary.txt")" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the coexistence results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coexist-${{ matrix.os }}
+          path: |
+            experiments/005-2026-10-08-native-coexistence/out/coexist*.json
+            experiments/005-2026-10-08-native-coexistence/out/bindings*.json
+            experiments/005-2026-10-08-native-coexistence/out/bindings_summary.txt
+          if-no-files-found: warn

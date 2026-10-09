@@ -43,3 +43,31 @@ line-length = 100
 target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
+
+# Wheels (T2.4). cibuildwheel builds one CPython 3.13 wheel per platform; the abi3 tag (wheel.py-api above) makes it
+# valid for CPython >= 3.12. The Embree source is cloned to .cache/src/embree by .github/workflows/wheels.yml, and the
+# build compiles it from that local copy. CMAKE_ARGS is the only channel that reaches CMake through scikit-build-core:
+# CMake ignores FETCHCONTENT_SOURCE_DIR_* environment variables, and cibuildwheel does not expand {project} in
+# environment values. The path is relative to the project root, where the build backend runs, so it is the same on
+# every platform. Compiled objects are never cached. Only cibuildwheel reads this table, so local builds fetch Embree.
+[tool.cibuildwheel]
+build = "cp313-*"
+skip = "*-musllinux* *-win32 *_i686"
+build-verbosity = 1
+environment = { CMAKE_ARGS = "-DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree" }
+test-requires = ["pytest>=8"]
+# The selftest criterion of tests/core/test_import.py (T2.5), then the symbol audit of the installed module. The path
+# is passed as a raw string so that Windows backslashes survive the Python string literal.
+test-command = "python -m pytest {project}/tests/core/test_import.py -q && python -c \"import subprocess, sys, _painterly; subprocess.run([sys.executable, r'{project}/tools/symbol_audit.py', _painterly.__file__], check=True)\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+archs = ["x86_64"]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.macos]
+archs = ["arm64"]
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0", CMAKE_ARGS = "-DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree" }
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

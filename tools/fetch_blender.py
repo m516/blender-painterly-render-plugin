@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Fetch a verified Blender release into .cache/ and print the path of its executable.
 
-Usage: fetch_blender.py [--version 5.2.2] [--platform linux-x64] [--print-path-only]
+Usage: fetch_blender.py [--version 5.2.2] [--platform PLATFORM] [--print-path-only]
+PLATFORM is linux-x64, macos-arm64 or windows-x64.
 
 Steps. Each step is skipped when its work is already done, so a second run downloads nothing:
 
 1. Download https://download.blender.org/release/Blender{major.minor}/
-   blender-{v}-{platform}.tar.xz into .cache/blender/, together with blender-{v}.sha256
-   from the same release directory.
-2. Verify the tarball's sha256 against its line in blender-{v}.sha256. A mismatch
+   blender-{v}-{platform}{archive} into .cache/blender/, together with blender-{v}.sha256
+   from the same release directory. The archive is .tar.xz (linux-x64), .dmg (macos-arm64)
+   or .zip (windows-x64).
+2. Verify the archive's sha256 against its line in blender-{v}.sha256. A mismatch
    deletes the download and fails.
-3. Extract to .cache/blender/blender-{v}-{platform}/ through a new empty staging
-   directory.
-4. Print the absolute path of the blender executable.
+3. Install to .cache/blender/blender-{v}-{platform}/ through a new empty staging directory:
+   extract the tarball or the zip, or copy Blender.app out of the mounted disk image.
+4. Windows only: report whether python3.dll ships next to Blender's bundled python.exe. An
+   abi3 module needs it. Each such line goes to stderr, and a line containing MISSING means
+   that the module cannot be imported from that interpreter.
+5. Print the absolute path of the Blender executable.
 
 Status messages go to stderr, so make shows download progress. The path goes to stdout:
 as "Blender {v} executable: <path>", or as "<path>" alone with --print-path-only. That flag
@@ -25,12 +30,15 @@ urllib User-Agent (CLAUDE.md, "Network notes").
 
 import argparse
 import hashlib
+import plistlib
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +47,20 @@ CACHE_DIR = REPO_ROOT / ".cache" / "blender"
 RELEASE_URL = "https://download.blender.org/release"
 DEFAULT_VERSION = "5.2.2"
 DEFAULT_PLATFORM = "linux-x64"
-# Tarball builds only. The Windows and macOS releases are not .tar.xz archives.
-PLATFORMS = ("linux-x64",)
+PLATFORMS = ("linux-x64", "macos-arm64", "windows-x64")
+# The release archive of each platform, as a suffix of blender-{v}-{platform}.
+ARCHIVE_SUFFIX = {"linux-x64": ".tar.xz", "macos-arm64": ".dmg", "windows-x64": ".zip"}
+# Where the executable sits inside the install directory blender-{v}-{platform}/.
+EXECUTABLE_IN_INSTALL = {
+    "linux-x64": Path("blender"),
+    "macos-arm64": Path("Blender.app") / "Contents" / "MacOS" / "Blender",
+    "windows-x64": Path("blender.exe"),
+}
+# The macOS bundle name on the disk image.
+MACOS_APP_NAME = "Blender.app"
+# Windows: the stable-ABI DLL that an abi3 module imports, and the interpreter that ships beside it.
+PYTHON3_DLL = "python3.dll"
+PYTHON_EXE = "python.exe"
 # Socket timeout in seconds for each network read. It does not change any downloaded byte.
 NETWORK_TIMEOUT_S = 120
 # I/O buffer in bytes for downloads and hashing. It does not change any downloaded byte.
@@ -99,17 +119,104 @@ def _listed_sha256(sha_file: Path, filename: str) -> str | None:
     return None
 
 
-def _extract(tarball: Path, install_name: str) -> None:
-    """Extract tarball to CACHE_DIR/install_name, staging in a new empty directory first."""
-    _log(f"extracting {tarball.name}")
+def _extract_tarball(archive: Path, staging: Path) -> None:
+    """Extract a .tar.xz archive into staging."""
+    _log(f"extracting {archive.name}")
+    # filter="data" refuses absolute paths, links that leave the directory and device files.
+    with tarfile.open(archive, mode="r:xz") as tar:
+        tar.extractall(staging, filter="data")
+
+
+def _extract_zip(archive: Path, staging: Path) -> None:
+    """Extract a .zip archive into staging. ZipFile drops absolute paths and ".." members."""
+    _log(f"extracting {archive.name}")
+    with zipfile.ZipFile(archive) as zipped:
+        zipped.extractall(staging)
+
+
+def _copy_app_from_dmg(image: Path, app_dir: Path) -> None:
+    """Copy Blender.app from the disk image into app_dir, which must not exist yet.
+
+    The image is attached read-only without a Finder window, and it is always detached again.
+    """
+    _log(f"attaching {image.name}")
+    attached = subprocess.run(
+        ["hdiutil", "attach", "-nobrowse", "-readonly", "-plist", str(image)],
+        capture_output=True,
+        check=False,
+    )
+    if attached.returncode != 0:
+        detail = attached.stderr.decode("utf-8", errors="replace").strip()
+        raise FetchError(f"hdiutil attach {image.name} failed: {detail}")
+    mount_points = [
+        entity["mount-point"]
+        for entity in plistlib.loads(attached.stdout).get("system-entities", [])
+        if "mount-point" in entity
+    ]
+    if not mount_points:
+        raise FetchError(f"hdiutil attach {image.name} mounted no volume")
+    mount = Path(mount_points[0])
+    try:
+        source = mount / MACOS_APP_NAME
+        if not source.is_dir():
+            raise FetchError(f"{image.name} does not contain {MACOS_APP_NAME}")
+        shutil.copytree(source, app_dir, symlinks=True)
+    finally:
+        detached = subprocess.run(
+            ["hdiutil", "detach", str(mount)], capture_output=True, check=False
+        )
+        if detached.returncode != 0:
+            _log(f"warning: hdiutil detach {mount} failed; the volume stays mounted")
+
+
+def _check_version(version: str) -> None:
+    if not SEMVER.match(version):
+        raise FetchError(f"version must look like 5.2.2, not {version!r}")
+
+
+def _report_python3_dll(install_dir: Path) -> None:
+    """Report whether python3.dll sits next to each python.exe that the install ships.
+
+    An abi3 module imports python3.dll, so a missing DLL means the coexist job cannot import
+    _painterly. Each line goes to stderr. A line containing MISSING is the failure signal.
+    """
+    interpreters = sorted(install_dir.rglob(PYTHON_EXE))
+    if not interpreters:
+        _log(f"python3.dll: MISSING, no {PYTHON_EXE} under {install_dir}")
+        return
+    elsewhere = sorted(install_dir.rglob(PYTHON3_DLL))
+    for interpreter in interpreters:
+        dll = interpreter.parent / PYTHON3_DLL
+        if dll.is_file():
+            _log(f"python3.dll: present next to {interpreter}")
+        else:
+            found = f"; found at {elsewhere[0]}" if elsewhere else "; not found in the install"
+            _log(f"python3.dll: MISSING next to {interpreter}{found}")
+
+
+def executable_path(version: str, platform: str) -> Path:
+    """Where fetch() installs the executable. It does no I/O, so --print-path-only is offline."""
+    _check_version(version)
+    return CACHE_DIR / f"blender-{version}-{platform}" / EXECUTABLE_IN_INSTALL[platform]
+
+
+def _install(archive: Path, platform: str, install_name: str) -> None:
+    """Install archive as CACHE_DIR/install_name, staging in a new empty directory first."""
     staging = Path(tempfile.mkdtemp(prefix="extract-", dir=CACHE_DIR))
     try:
-        # filter="data" refuses absolute paths, links that leave the directory and device files.
-        with tarfile.open(tarball, mode="r:xz") as archive:
-            archive.extractall(staging, filter="data")
+        if platform == "linux-x64":
+            _extract_tarball(archive, staging)
+        elif platform == "windows-x64":
+            _extract_zip(archive, staging)
+        else:
+            (staging / install_name).mkdir()
+            _copy_app_from_dmg(archive, staging / install_name / MACOS_APP_NAME)
         extracted = staging / install_name
-        if not (extracted / "blender").is_file():
-            raise FetchError(f"{tarball.name} does not contain {install_name}/blender")
+        executable = extracted / EXECUTABLE_IN_INSTALL[platform]
+        if not executable.is_file():
+            raise FetchError(
+                f"{archive.name} does not contain {install_name}/{EXECUTABLE_IN_INSTALL[platform]}"
+            )
         target = CACHE_DIR / install_name
         if target.exists():
             shutil.rmtree(target)
@@ -118,55 +225,46 @@ def _extract(tarball: Path, install_name: str) -> None:
         shutil.rmtree(staging, ignore_errors=True)
 
 
-def _check_version(version: str) -> None:
-    if not SEMVER.match(version):
-        raise FetchError(f"version must look like 5.2.2, not {version!r}")
-
-
-def executable_path(version: str, platform: str) -> Path:
-    """Where fetch() installs the executable. It does no I/O, so --print-path-only is offline."""
-    _check_version(version)
-    return CACHE_DIR / f"blender-{version}-{platform}" / "blender"
-
-
 def fetch(version: str, platform: str) -> Path:
-    """Ensure the release is downloaded, verified and extracted; return the executable path."""
+    """Ensure the release is downloaded, verified and installed; return the executable path."""
     _check_version(version)
     major_minor = ".".join(version.split(".")[:2])
     release_dir = f"{RELEASE_URL}/Blender{major_minor}"
     install_name = f"blender-{version}-{platform}"
-    tarball_name = f"{install_name}.tar.xz"
+    archive_name = f"{install_name}{ARCHIVE_SUFFIX[platform]}"
     sha_name = f"blender-{version}.sha256"
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    tarball = CACHE_DIR / tarball_name
+    archive = CACHE_DIR / archive_name
     sha_file = CACHE_DIR / sha_name
 
     already_verified = (
-        tarball.is_file()
+        archive.is_file()
         and sha_file.is_file()
-        and _listed_sha256(sha_file, tarball_name) == _sha256(tarball)
+        and _listed_sha256(sha_file, archive_name) == _sha256(archive)
     )
     if already_verified:
-        _log(f"{tarball_name} is present and verified")
+        _log(f"{archive_name} is present and verified")
     else:
-        tarball.unlink(missing_ok=True)
+        archive.unlink(missing_ok=True)
         _download(f"{release_dir}/{sha_name}", sha_file)
-        expected = _listed_sha256(sha_file, tarball_name)
+        expected = _listed_sha256(sha_file, archive_name)
         if expected is None:
-            raise FetchError(f"{sha_name} does not list {tarball_name}")
-        _download(f"{release_dir}/{tarball_name}", tarball)
-        actual = _sha256(tarball)
+            raise FetchError(f"{sha_name} does not list {archive_name}")
+        _download(f"{release_dir}/{archive_name}", archive)
+        actual = _sha256(archive)
         if actual != expected:
-            tarball.unlink()
+            archive.unlink()
             raise FetchError(
-                f"sha256 mismatch for {tarball_name}: expected {expected}, got {actual}"
+                f"sha256 mismatch for {archive_name}: expected {expected}, got {actual}"
             )
-        _log(f"{tarball_name} verified (sha256 {actual})")
+        _log(f"{archive_name} verified (sha256 {actual})")
 
     executable = executable_path(version, platform)
     if not executable.is_file():
-        _extract(tarball, install_name)
+        _install(archive, platform, install_name)
+    if platform == "windows-x64":
+        _report_python3_dll(executable.parent)
     return executable
 
 
@@ -191,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         executable = fetch(args.version, args.platform)
-    except (FetchError, OSError) as error:
+    except (FetchError, OSError, subprocess.SubprocessError) as error:
         print(f"fetch_blender: {error}", file=sys.stderr)
         return 1
     print(f"Blender {args.version} executable: {executable}")

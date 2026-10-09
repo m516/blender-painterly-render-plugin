@@ -6,7 +6,7 @@ export PATH := $(abspath .venv/bin):$(PATH)
 BLENDER ?= $(abspath .cache/blender/blender-$(BLENDER_VERSION)-linux-x64/blender)
 export BLENDER
 
-.PHONY: env env-blender blender build oracle test-cpp test-py test test-slow lint format audit check clean
+.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow lint format audit check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -29,6 +29,10 @@ ORACLE_BUILD_DIR ?= .cache/oracle-build
 oracle:
 	cmake -S . -B $(ORACLE_BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython_EXECUTABLE=$(abspath .venv/bin/python) -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=OFF
 	cmake --build $(ORACLE_BUILD_DIR) --target smallpaint_oracle
+
+# The stable-ABI wheel (cp312-abi3) in dist/. scikit-build-core builds it in build/<wheel tag>, apart from build/dev.
+wheel:
+	uv build --wheel --out-dir dist/
 
 test-cpp: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
