@@ -36,11 +36,11 @@ DEFAULT_JOBS = EXP_DIR / "jobs.py"
 DEFAULT_REFERENCE = REPO_ROOT / "tests" / "data" / "reference" / "smallpaint_painterly.ppm"
 # Earlier experiments whose seeds this one must not reuse (the global seed rule). Block 0 is shared
 # on purpose: the positive control s400 is experiment 001's img64.
-EARLIER_JOBS = (
-    REPO_ROOT / "experiments" / "001-2026-10-08-oracle-reproduction" / "jobs.py",
-    REPO_ROOT / "experiments" / "002-2026-10-08-ingredient-ablation" / "jobs.py",
-    REPO_ROOT / "experiments" / "003-2026-10-08-lane-length" / "jobs.py",
-)
+EARLIER_JOBS = {
+    "001": REPO_ROOT / "experiments" / "001-2026-10-08-oracle-reproduction" / "jobs.py",
+    "002": REPO_ROOT / "experiments" / "002-2026-10-08-ingredient-ablation" / "jobs.py",
+    "003": REPO_ROOT / "experiments" / "003-2026-10-08-lane-length" / "jobs.py",
+}
 IMG64 = "img64"  # experiment 001's name of the ensemble that s400 must reproduce at full scale
 
 # Family-wise level of every decision (README, Method). It is not the oracle option `alpha`.
@@ -73,6 +73,9 @@ SEED_BLOCK = {
     "row_s800": 32,
 }
 POSITIVE = "s400"  # the positive control: experiment 001's img64
+# The renders this experiment reuses from earlier experiments: name -> (key of EARLIER_JOBS, the
+# ensemble of that experiment). check_seed_reuse verifies each reuse at full scale.
+SEED_REUSE = {POSITIVE: ("001", IMG64), "row_s400": ("003", "row")}
 SIZE_PAIRS = (("s200", "s400"), ("s400", "s800"), ("s200", "s800"))  # H1a: every pair of sizes
 ROW_SIZE_PAIRS = (  # H1d: the same size pairs on the row chain
     ("row_s200", "row_s400"),
@@ -142,7 +145,6 @@ def _check_design(
     ensembles: dict[str, list[Job]],
     pairs: int,
     scale: int,
-    earlier_jobs: list[Job],
     jitter: float,
 ) -> None:
     """The README's design, checked on the jobs. Raises RuntimeError on any mismatch.
@@ -150,18 +152,13 @@ def _check_design(
     Every configuration has its expected options, one block of consecutive seeds at its block, and
     no seed shared with another configuration. The positive control s400 is block 0. At full scale
     its options equal those of experiment 001's ``img64``, so its renders are the cached ones. At
-    full scale a seed of experiments 001-003 may be reused only with an identical option set (the
-    row_s400 reuse of experiment 003's row). At smoke scale (``scale > 1``) that check is not made,
-    because the option sets differ from the earlier experiments by size.
+    full scale the seeds shared with experiments 001-003 are exactly the reuses of ``SEED_REUSE``,
+    and each has the earlier option set (``report.check_seed_reuse``). At smoke scale
+    (``scale > 1``) that check is not made, because the option sets differ from the earlier
+    experiments by size.
     """
     if set(ensembles) != set(NATIVE_SIZE):
         raise RuntimeError(f"ENSEMBLES must hold {sorted(NATIVE_SIZE)}, got {sorted(ensembles)}")
-    earlier: dict[int, dict] = {}
-    for job in earlier_jobs:
-        seen = dict(job.options)
-        if earlier.setdefault(job.seed, seen) != seen:
-            raise RuntimeError(f"seed {job.seed} of an earlier experiment has two option sets")
-    img64_options = {job.options for job in earlier_jobs if job.name == IMG64}
     all_seeds: list[int] = []
     for name, native in NATIVE_SIZE.items():
         jobs = ensembles[name]
@@ -176,18 +173,11 @@ def _check_design(
             raise RuntimeError(
                 f"{name}: seeds must be consecutive from {BLOCK * SEED_BLOCK[name]}, got {base}"
             )
-        if name == POSITIVE and scale == 1 and {job.options for job in jobs} != img64_options:
-            raise RuntimeError(f"{name}: options must equal experiment 001's {IMG64}")
-        if scale == 1:
-            for job in jobs:
-                if job.seed in earlier and earlier[job.seed] != dict(job.options):
-                    raise RuntimeError(
-                        f"{name}: seed {job.seed} is used by an earlier experiment "
-                        "with other options"
-                    )
         all_seeds.extend(seeds)
     if len(set(all_seeds)) != len(all_seeds):
         raise RuntimeError("seeds are not unique across configurations")
+    if scale == 1:
+        report.check_seed_reuse(ensembles, EARLIER_JOBS, SEED_REUSE)
 
 
 def _reference_free(
@@ -306,16 +296,6 @@ def _downsampled_ab8(jobs: list[Job]) -> np.ndarray:
     )
 
 
-def _family_test(
-    x_runs: list[dict], y_runs: list[dict], family: list[str], alpha: float, label: str
-) -> dict:
-    """``compare_ensembles`` of two ensembles on a key family, with the power check.
-
-    An underpowered comparison is not run through ``compare_ensembles`` (``report.family_test``).
-    """
-    return {"comparison": label, **report.family_test(x_runs, y_runs, family, alpha)}
-
-
 def _size_comparisons(
     runs: dict[str, list[dict]], family: list[str], pairs: tuple[tuple[str, str], ...]
 ) -> dict:
@@ -327,7 +307,7 @@ def _size_comparisons(
     """
     level = SIGNIFICANCE / len(pairs)
     tests = {
-        f"{a} vs {b}": _family_test(runs[a], runs[b], family, level, f"{a} vs {b}")
+        f"{a} vs {b}": report.family_test(runs[a], runs[b], family, level, labels=(a, b))
         for a, b in pairs
     }
     rejected = {name: t["rejected_keys"] for name, t in tests.items() if t["rejected_keys"]}
@@ -404,7 +384,7 @@ def _h1b(down: list[dict], native: list[dict], family: list[str]) -> dict:
 def _h2(runs: dict[str, list[dict]], family: list[str]) -> dict:
     """H2: jitter 1/700 and 1/1400 at 800 px are distinguishable on the lag-1 and structure keys."""
     a, b = JITTER_PAIR
-    test = _family_test(runs[a], runs[b], family, SIGNIFICANCE, f"{a} vs {b}")
+    test = report.family_test(runs[a], runs[b], family, SIGNIFICANCE, labels=(a, b))
     if not test["powered"]:
         decision = "inconclusive"
     elif test["rejected_keys"]:
@@ -424,20 +404,6 @@ def _h1(h1a: dict, h1b: dict) -> str:
     return "inconclusive"
 
 
-def _summary_table(runs: dict[str, list[dict]], keys: list[str]) -> dict[str, dict]:
-    """Mean and sample sd of each key, per configuration."""
-    table: dict[str, dict] = {}
-    for name, metric_runs in runs.items():
-        table[name] = {}
-        for key in keys:
-            values = np.asarray([run[key] for run in metric_runs], dtype=np.float64)
-            table[name][key] = {
-                "mean": float(np.mean(values)),
-                "sd": float(np.std(values, ddof=1)),
-            }
-    return table
-
-
 def _preview(img8: np.ndarray) -> np.ndarray:
     """A PREVIEW_SIDE x PREVIEW_SIDE tile of a display image, by JAX's antialiased linear resize."""
     x = jnp.asarray(img8, dtype=jnp.float64)
@@ -445,23 +411,19 @@ def _preview(img8: np.ndarray) -> np.ndarray:
     return np.asarray(jnp.clip(jnp.round(y), 0.0, 255.0)).astype(np.uint8)
 
 
-def _fmt(value: float | None, spec: str = ".4g") -> str:
-    return "n/a" if value is None else format(value, spec)
-
-
 def _print_test(test: dict) -> None:
     rejected = test["rejected_keys"]
     count = "underpowered (not run)" if rejected is None else f"rejected={len(rejected)}"
     largest = test["largest_abs_rel_diff"]
     cohen = test["largest_abs_cohen_d"]
+    rel = report.format_number(None if largest is None else largest["value"], ".4g")
+    d = report.format_number(None if cohen is None else cohen["value"], ".4g")
     print(
         f"  {test['comparison']}: keys={test['n_keys']} {count} "
         f"min_attainable_p={test['min_attainable_p']:.3g} "
         f"threshold={test['holm_first_threshold']:.3g} "
-        f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
-        f"({None if largest is None else largest['key']}) "
-        f"largest |d|={_fmt(None if cohen is None else cohen['value'])} "
-        f"({None if cohen is None else cohen['key']})"
+        f"largest |rel|={rel} ({None if largest is None else largest['key']}) "
+        f"largest |d|={d} ({None if cohen is None else cohen['key']})"
     )
     if rejected:
         print(f"    rejected keys: {rejected}")
@@ -483,8 +445,7 @@ def main(argv: list[str] | None = None) -> None:
         raise ValueError("--pairs and --scale must be >= 1")
     jobs_module = report.load_jobs_module(args.jobs)
     ensembles = jobs_module.build_ensembles(args.pairs, args.scale)
-    earlier_jobs = [job for path in EARLIER_JOBS for job in report.load_jobs_module(path).JOBS]
-    _check_design(ensembles, args.pairs, args.scale, earlier_jobs, jobs_module.JITTER_TUNED)
+    _check_design(ensembles, args.pairs, args.scale, jobs_module.JITTER_TUNED)
 
     native_ref = REFERENCE_SIZE // args.scale
     reference8 = read_ppm(args.reference)
@@ -570,9 +531,7 @@ def main(argv: list[str] | None = None) -> None:
     tiles["downsampled"] = _preview(_downsampled_ab8(ensembles[DOWNSAMPLED]))
     tiles["reference"] = _preview(reference8)
     grid_name = "fig_grid.png"
-    grid = report.mosaic(
-        {name: tiles[name] for row in FIG_LAYOUT for name in row}, len(FIG_LAYOUT[0])
-    )
+    grid = report.mosaic([tiles[name] for row in FIG_LAYOUT for name in row], len(FIG_LAYOUT[0]))
     write_png(out_dir / grid_name, grid)
 
     results = {
@@ -612,7 +571,7 @@ def main(argv: list[str] | None = None) -> None:
         "hypotheses": {"H1": h1, "H1d": h1d, "H2": h2},
         "raw_lag1_effects": raw_lag1_effects,
         "downsample_effects": ds_effects,
-        "summary": _summary_table(runs, family),
+        "summary": report.summary_table(runs, family),
         "grid": {
             "file": grid_name,
             "tile_px": PREVIEW_SIDE,
@@ -641,10 +600,10 @@ def main(argv: list[str] | None = None) -> None:
     print(f"H1b downsampled 800 vs native 400, one-sided: {h1b['decision']}")
     _print_h1b(h1b["test"])
     largest = report.largest_abs_rel_diff(ds_effects)
+    rel = report.format_number(None if largest is None else largest["value"], ".4g")
     print(
         "  descriptive, untested (noise-confounded, README D7): "
-        f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
-        f"({None if largest is None else largest['key']})"
+        f"largest |rel|={rel} ({None if largest is None else largest['key']})"
     )
     print(f"H1 {h1['decision']} (H1a and H1b; H1d is reported separately)")
     print(f"H2 jitter 1/700 vs 1/1400 at 800 px: {h2['decision']}")

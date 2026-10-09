@@ -113,7 +113,14 @@ def directional_pair_test(
     }
 
 
-def family_test(a: list[dict], b: list[dict], keys: Iterable[str], alpha: float) -> dict[str, Any]:
+def family_test(
+    a: list[dict],
+    b: list[dict],
+    keys: Iterable[str],
+    alpha: float,
+    *,
+    labels: tuple[str, str] | None = None,
+) -> dict[str, Any]:
     """``ensemble.compare_ensembles`` of ``a`` against ``b`` on a key family, with the power check.
 
     The comparison is powered when its smallest attainable two-sided p-value is at most the first
@@ -121,9 +128,14 @@ def family_test(a: list[dict], b: list[dict], keys: Iterable[str], alpha: float)
     ``compare_ensembles``, because it could reject nothing. Its ``rejected_keys`` is None, and its
     p-values are still reported. Holm is applied at ``alpha`` across ``keys``.
 
+    ``labels`` name the two ensembles. When given, the record has ``comparison``, which reads
+    ``"<a> vs <b>"``, as ``directional_pair_test`` does. When it is None (the default) there is no
+    ``comparison`` field, so a caller that names no ensembles gets the record it always got.
+
     Returns ``{"n_keys", "alpha", "min_attainable_p", "holm_first_threshold", "powered",
-    "effect_summary", "largest_abs_rel_diff", "largest_abs_cohen_d", "pvalues", "rejected_keys"}``.
-    The two largest effects are ``{"key", "value"}`` dicts, or None.
+    "effect_summary", "largest_abs_rel_diff", "largest_abs_cohen_d", "pvalues", "rejected_keys"}``,
+    with ``"comparison"`` added when ``labels`` is given. The two largest effects are
+    ``{"key", "value"}`` dicts, or None.
     """
     family = list(keys)
     if not family:
@@ -154,6 +166,8 @@ def family_test(a: list[dict], b: list[dict], keys: Iterable[str], alpha: float)
             for key in family
         }
         record["rejected_keys"] = None
+    if labels is not None:
+        record = {"comparison": f"{labels[0]} vs {labels[1]}", **record}
     return record
 
 
@@ -193,6 +207,39 @@ def adjacent_tests(
         "significant_increases": [name for name in steps if greater_rejected[name]],
         "powered": all(s["min_attainable_p"] <= alpha / len(steps) for s in steps.values()),
     }
+
+
+def summary_table(
+    runs: Mapping[str, Sequence[Mapping[str, float]]], keys: Iterable[str]
+) -> dict[str, dict[str, dict[str, float]]]:
+    """The mean and the sample sd of each key over the pairs of each ensemble.
+
+    ``runs`` maps an ensemble name to its per-pair metric dicts, as ``ensemble_metrics`` returns
+    them. ``keys`` are the metric keys to tabulate. The sd is the sample standard deviation, with
+    ddof=1, so an ensemble needs at least two pairs for a finite sd. Returns
+    ``{name: {key: {"mean": float, "sd": float}}}``.
+    """
+    family = list(keys)
+    table: dict[str, dict[str, dict[str, float]]] = {}
+    for name, pair_runs in runs.items():
+        table[name] = {}
+        for key in family:
+            values = np.asarray([run[key] for run in pair_runs], dtype=np.float64)
+            table[name][key] = {
+                "mean": float(np.mean(values)),
+                "sd": float(np.std(values, ddof=1)),
+            }
+    return table
+
+
+def format_number(value: float | None, spec: str) -> str:
+    """``format(value, spec)``, or ``"n/a"`` when ``value`` is None (an undefined entry).
+
+    ``spec`` is a format spec, such as ``".4g"`` for the printed tables. The local copies whose
+    output differs keep their own: experiment 002's ``_fmt_largest`` also prints the key of the
+    largest effect, and experiment 001's ``_fmt`` prints ``undefined`` for None.
+    """
+    return "n/a" if value is None else format(value, spec)
 
 
 def _reject_non_finite(value: Any, where: str) -> None:
@@ -264,6 +311,60 @@ def ensemble_metrics(
     return results
 
 
+def check_seed_reuse(
+    ensembles: Mapping[str, list[Job]],
+    earlier_jobs: Mapping[str, Path],
+    reused: Mapping[str, tuple[str, str]],
+) -> None:
+    """Raise RuntimeError unless every seed that an earlier experiment uses is a declared reuse.
+
+    The global seed rule: a seed may be shared with an earlier experiment only when the option sets
+    are identical. ``ensembles`` maps this experiment's configuration names to their jobs.
+    ``earlier_jobs`` maps the key of each earlier experiment to the path of its ``jobs.py``. A seed
+    of one earlier experiment must have the same option set in every earlier experiment that uses
+    it.
+
+    ``reused`` maps a configuration name to ``(key, source)``: the configuration reuses the renders
+    of the ensemble ``source`` of the earlier experiment ``key``. Then:
+
+    - a job whose seed an earlier experiment uses must belong to a configuration named in
+      ``reused``, and its options must equal that seed's option set in the earlier experiment;
+    - the (seed, options) list of a reused configuration, in order, must equal that of
+      ``ENSEMBLES[source]`` in the earlier experiment's jobs file.
+
+    The earlier jobs files are read at the experiment's full size. A caller checks only a run at
+    that size, because a smaller run has other option sets.
+    """
+    earlier: dict[int, dict[str, object]] = {}
+    for key, path in earlier_jobs.items():
+        for job in load_jobs_module(path).JOBS:
+            options = dict(job.options)
+            if earlier.setdefault(job.seed, options) != options:
+                raise RuntimeError(f"seed {job.seed} has two option sets (at experiment {key})")
+    for name, jobs in ensembles.items():
+        for job in jobs:
+            if job.seed not in earlier:
+                continue
+            if name not in reused:
+                raise RuntimeError(f"{name}: seed {job.seed} is used by an earlier experiment")
+            if dict(job.options) != earlier[job.seed]:
+                raise RuntimeError(
+                    f"{name}: seed {job.seed} is used by an earlier experiment with other options"
+                )
+    for name, (key, source) in reused.items():
+        if name not in ensembles:
+            raise RuntimeError(f"reused configuration {name!r} is not an ensemble")
+        if key not in earlier_jobs:
+            raise RuntimeError(f"{name}: reused experiment {key!r} is not in earlier_jobs")
+        their_ensembles = load_jobs_module(earlier_jobs[key]).ENSEMBLES
+        if source not in their_ensembles:
+            raise RuntimeError(f"{name}: experiment {key} has no ensemble {source!r}")
+        mine = [(job.seed, dict(job.options)) for job in ensembles[name]]
+        theirs = [(job.seed, dict(job.options)) for job in their_ensembles[source]]
+        if mine != theirs:
+            raise RuntimeError(f"{name}: seeds or options differ from experiment {key}'s {source}")
+
+
 def ab8_of_pair(jobs: Sequence[Job]) -> np.ndarray:
     """The display image of pair 0: its two half renders summed, at the sum of their passes.
 
@@ -295,8 +396,8 @@ def block_preview(img8: np.ndarray, factor: int) -> np.ndarray:
     return np.round(blocks.mean(axis=(1, 3))).astype(np.uint8)
 
 
-def mosaic(previews: Mapping[str, np.ndarray], columns: int) -> np.ndarray:
-    """A mosaic of equal-size previews, laid out row-major in the mapping's order.
+def mosaic(previews: Sequence[np.ndarray], columns: int) -> np.ndarray:
+    """A mosaic of equal-size previews, laid out row-major in the sequence's order.
 
     Preview ``i`` goes in row ``i // columns`` and column ``i % columns``. The last row is padded
     with black cells when the count is not a multiple of ``columns``. Every preview must have the
@@ -305,7 +406,7 @@ def mosaic(previews: Mapping[str, np.ndarray], columns: int) -> np.ndarray:
     """
     if columns < 1:
         raise ValueError("columns must be >= 1")
-    tiles = list(previews.values())
+    tiles = list(previews)
     if not tiles:
         raise ValueError("need at least one preview")
     tile_shape = tiles[0].shape

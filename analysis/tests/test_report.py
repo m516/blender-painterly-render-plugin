@@ -286,11 +286,11 @@ def test_block_preview_rejects_sides_that_are_not_multiples() -> None:
 
 
 def test_mosaic_fills_row_major_and_pads_the_last_row_with_black() -> None:
-    previews = {
-        "a": np.full((2, 2, 3), 1, dtype=np.uint8),
-        "b": np.full((2, 2, 3), 2, dtype=np.uint8),
-        "c": np.full((2, 2, 3), 3, dtype=np.uint8),
-    }
+    previews = [
+        np.full((2, 2, 3), 1, dtype=np.uint8),
+        np.full((2, 2, 3), 2, dtype=np.uint8),
+        np.full((2, 2, 3), 3, dtype=np.uint8),
+    ]
     grid = report.mosaic(previews, columns=2)
     assert grid.dtype == np.uint8
     assert grid.shape == (4, 4, 3)
@@ -300,13 +300,133 @@ def test_mosaic_fills_row_major_and_pads_the_last_row_with_black() -> None:
     assert np.all(grid[2:4, 2:4] == 0)
 
 
+def test_mosaic_keeps_the_order_of_the_sequence() -> None:
+    # Row-major in the given order: the first tile is top left, whatever its value.
+    tiles = [np.full((1, 1, 3), v, dtype=np.uint8) for v in (9, 4, 7, 1)]
+    grid = report.mosaic(tiles, columns=2)
+    assert grid[:, :, 0].tolist() == [[9, 4], [7, 1]]
+
+
 def test_mosaic_one_row_and_errors() -> None:
     tile = np.full((1, 1, 3), 7, dtype=np.uint8)
-    row = report.mosaic({"x": tile, "y": tile}, columns=2)
+    row = report.mosaic([tile, tile], columns=2)
     assert row.shape == (1, 2, 3)
     with pytest.raises(ValueError, match="columns"):
-        report.mosaic({"x": tile}, columns=0)
+        report.mosaic([tile], columns=0)
     with pytest.raises(ValueError, match="at least one"):
-        report.mosaic({}, columns=2)
+        report.mosaic([], columns=2)
     with pytest.raises(ValueError, match="same shape"):
-        report.mosaic({"x": tile, "y": np.zeros((2, 1, 3), dtype=np.uint8)}, columns=2)
+        report.mosaic([tile, np.zeros((2, 1, 3), dtype=np.uint8)], columns=2)
+
+
+def test_summary_table_mean_and_sample_sd_per_key() -> None:
+    # Values 1, 3, 5: mean 3, squared deviations 4, 0, 4 with sum 8. Divided by n - 1 = 2 that is
+    # 4, whose root is 2 exactly. ddof=0 would give sqrt(8 / 3), so this pins ddof=1.
+    runs = {"a": _runs({"k": [1.0, 3.0, 5.0], "m": [2.0, 2.0, 2.0]})}
+    table = report.summary_table(runs, ["k", "m"])
+    assert table == {"a": {"k": {"mean": 3.0, "sd": 2.0}, "m": {"mean": 2.0, "sd": 0.0}}}
+
+
+def test_summary_table_tabulates_only_the_requested_keys_per_ensemble() -> None:
+    runs = {
+        "x": _runs({"k": [1.0, 3.0, 5.0], "m": [0.0, 0.0, 0.0]}),
+        "y": _runs({"k": [2.0, 2.0, 2.0], "m": [1.0, 3.0, 5.0]}),
+    }
+    table = report.summary_table(runs, ("m",))
+    assert table == {
+        "x": {"m": {"mean": 0.0, "sd": 0.0}},
+        "y": {"m": {"mean": 3.0, "sd": 2.0}},
+    }
+
+
+def test_format_number_prints_none_as_na() -> None:
+    assert report.format_number(None, ".4g") == "n/a"
+    assert report.format_number(1.23456, ".4g") == "1.235"
+    assert report.format_number(0.5, ".2f") == "0.50"
+    assert report.format_number(12.0, ".4g") == "12"
+
+
+def test_family_test_labels_add_the_comparison_field_only_when_given() -> None:
+    named = report.family_test(HIGH, LOW, ["k"], 0.01, labels=("high", "low"))
+    assert named["comparison"] == "high vs low"
+    plain = report.family_test(HIGH, LOW, ["k"], 0.01)
+    assert "comparison" not in plain
+    assert {key: value for key, value in named.items() if key != "comparison"} == plain
+
+
+def _write_jobs(directory: Path, body: str) -> Path:
+    """A jobs file in its own new directory, so ``load_jobs_module`` names it apart."""
+    directory.mkdir()
+    path = directory / "jobs.py"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+EARLIER_BODY = """
+from painterly_analysis.experiment import Job
+
+ENSEMBLES = {
+    "base": [Job.make("base", seed, chain="image", size=8) for seed in (0, 1)],
+    "other": [Job.make("other", seed, chain="row", size=8) for seed in (2, 3)],
+}
+JOBS = [job for jobs in ENSEMBLES.values() for job in jobs]
+"""
+
+
+def _jobs(name: str, seeds: tuple[int, ...], **options: object) -> list[Job]:
+    return [Job.make(name, seed, **options) for seed in seeds]
+
+
+def test_check_seed_reuse_accepts_a_declared_identical_reuse(tmp_path: Path) -> None:
+    earlier = {"001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY)}
+    ensembles = {
+        "mine": _jobs("mine", (0, 1), chain="image", size=8),
+        "fresh": _jobs("fresh", (4, 5), chain="image", size=8),
+    }
+    assert report.check_seed_reuse(ensembles, earlier, {"mine": ("001", "base")}) is None
+
+
+def test_check_seed_reuse_rejects_an_undeclared_shared_seed(tmp_path: Path) -> None:
+    earlier = {"001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY)}
+    ensembles = {"mine": _jobs("mine", (0, 1), chain="image", size=8)}
+    with pytest.raises(RuntimeError, match="used by an earlier experiment"):
+        report.check_seed_reuse(ensembles, earlier, {})
+
+
+def test_check_seed_reuse_rejects_a_shared_seed_with_other_options(tmp_path: Path) -> None:
+    earlier = {"001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY)}
+    ensembles = {"mine": _jobs("mine", (0, 1), chain="image", size=16)}
+    with pytest.raises(RuntimeError, match="with other options"):
+        report.check_seed_reuse(ensembles, earlier, {"mine": ("001", "base")})
+
+
+def test_check_seed_reuse_rejects_a_reuse_whose_seeds_differ_from_its_source(
+    tmp_path: Path,
+) -> None:
+    earlier = {"001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY)}
+    # Seed 7 is not an earlier seed, so only the source comparison can catch this reuse.
+    ensembles = {"mine": _jobs("mine", (0, 7), chain="image", size=8)}
+    with pytest.raises(RuntimeError, match="seeds or options differ"):
+        report.check_seed_reuse(ensembles, earlier, {"mine": ("001", "base")})
+
+
+def test_check_seed_reuse_rejects_a_reuse_of_a_missing_ensemble(tmp_path: Path) -> None:
+    earlier = {"001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY)}
+    ensembles = {"mine": _jobs("mine", (4, 5), chain="image", size=8)}
+    with pytest.raises(RuntimeError, match="has no ensemble"):
+        report.check_seed_reuse(ensembles, earlier, {"mine": ("001", "absent")})
+
+
+def test_check_seed_reuse_rejects_seeds_with_two_option_sets_across_experiments(
+    tmp_path: Path,
+) -> None:
+    earlier = {
+        "001": _write_jobs(tmp_path / "001-earlier", EARLIER_BODY),
+        "002": _write_jobs(
+            tmp_path / "002-other",
+            EARLIER_BODY.replace('chain="image", size=8', 'chain="image", size=9'),
+        ),
+    }
+    ensembles = {"mine": _jobs("mine", (4, 5), chain="image", size=8)}
+    with pytest.raises(RuntimeError, match="two option sets"):
+        report.check_seed_reuse(ensembles, earlier, {})

@@ -153,20 +153,16 @@ def _h3(runs: dict[str, list[dict]]) -> dict:
     return {"metric": LUMA_KEY, "tests": ladder["steps"], **_holm_decision(ladder["steps"])}
 
 
-def _family_test(runs: dict[str, list[dict]], family: list[str], a: str, b: str) -> dict:
-    """``compare_ensembles`` of ``a`` against ``b`` on the diffuse family, with the power check.
-
-    An underpowered comparison is not run through ``compare_ensembles``: it has no rejections,
-    and its verdict can be neither "indistinguishable" nor "refuted" (``report.family_test``).
-    """
-    return {
-        "comparison": f"{a} vs {b}",
-        **report.family_test(runs[a], runs[b], family, SIGNIFICANCE),
-    }
-
-
 def _h4(runs: dict[str, list[dict]], family: list[str]) -> dict:
-    test = _family_test(runs, family, "stop_at_emitter", POSITIVE)
+    # An underpowered comparison is not run through compare_ensembles: it has no rejections, and
+    # its verdict can be neither "indistinguishable" nor "refuted" (report.family_test).
+    test = report.family_test(
+        runs["stop_at_emitter"],
+        runs[POSITIVE],
+        family,
+        SIGNIFICANCE,
+        labels=("stop_at_emitter", POSITIVE),
+    )
     rejected = test["rejected_keys"] or []
     mean_hit = [key for key in rejected if ".mean." in key]
     texture_hit = [key for key in rejected if any(tag in key for tag in TEXTURE_TAGS)]
@@ -186,7 +182,13 @@ def _h4(runs: dict[str, list[dict]], family: list[str]) -> dict:
 
 
 def _h5(runs: dict[str, list[dict]], family: list[str]) -> dict:
-    test = _family_test(runs, family, "ghost_lights", POSITIVE)
+    test = report.family_test(
+        runs["ghost_lights"],
+        runs[POSITIVE],
+        family,
+        SIGNIFICANCE,
+        labels=("ghost_lights", POSITIVE),
+    )
     if not test["powered"]:
         verdict = "underpowered"
     elif test["rejected_keys"]:
@@ -278,6 +280,7 @@ def _print_family(title: str, test: dict, verdict: str) -> None:
 
 
 def _fmt_largest(largest: dict | None) -> str:
+    # Not report.format_number: this prints the key of the largest effect as well as its value.
     if largest is None:
         return "n/a"
     return f"{largest['value']:.4g} ({largest['key']})"
@@ -335,7 +338,7 @@ def main(argv: list[str] | None = None) -> None:
     previews = {name: report.block_preview(img, PREVIEW_FACTOR) for name, img in ab8.items()}
     previews["reference"] = report.block_preview(reference8, PREVIEW_FACTOR)
     grid_name = "fig_grid.png"
-    grid = report.mosaic({name: previews[name] for name in GRID_ORDER}, len(GRID_LAYOUT[0]))
+    grid = report.mosaic([previews[name] for name in GRID_ORDER], len(GRID_LAYOUT[0]))
     write_png(out_dir / grid_name, grid)
     figures = {
         f"fig_{name}.png": (out_dir / f"fig_{name}.png").stat().st_size for name in CONFIGURATIONS

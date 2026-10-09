@@ -30,10 +30,10 @@ DEFAULT_JOBS = EXP_DIR / "jobs.py"
 DEFAULT_REFERENCE = REPO_ROOT / "tests" / "data" / "reference" / "smallpaint_painterly.ppm"
 # Earlier experiments whose seeds this one must not reuse (the global seed rule). Block 0 is shared
 # on purpose: the positive control ``image`` is experiment 001's ``img64``.
-EARLIER_JOBS = (
-    REPO_ROOT / "experiments" / "001-2026-10-08-oracle-reproduction" / "jobs.py",
-    REPO_ROOT / "experiments" / "002-2026-10-08-ingredient-ablation" / "jobs.py",
-)
+EARLIER_JOBS = {
+    "001": REPO_ROOT / "experiments" / "001-2026-10-08-oracle-reproduction" / "jobs.py",
+    "002": REPO_ROOT / "experiments" / "002-2026-10-08-ingredient-ablation" / "jobs.py",
+}
 
 # Family-wise level of every decision (README, Method). It is not the oracle option `alpha`.
 SIGNIFICANCE = 0.01
@@ -49,6 +49,9 @@ LANE_LENGTHS = (1, 2, 4, 8, 16, 32, 64, 128)  # L of chain=lane:L, ascending
 LADDER = tuple(f"lane_{length}" for length in LANE_LENGTHS)
 ADJACENT_STEPS = tuple(zip(LADDER[:-1], LADDER[1:], strict=True))  # (shorter, longer)
 CONFIGURATIONS = (IMAGE, ROW, *LADDER)
+# The renders this experiment reuses from earlier experiments: name -> (key of EARLIER_JOBS, the
+# ensemble of that experiment). check_seed_reuse verifies each reuse at the experiment's size.
+SEED_REUSE = {IMAGE: ("001", "img64"), LADDER[0]: ("002", "per_path_start")}
 PATTERN_KEY = "all.pattern_corr"
 CURVE_KEYS = (PATTERN_KEY, "r4.structure_std", "r4.lag1.x", "r4.lag1.y")  # region 4 = back wall
 # The card's deliverable resolution (a definition, not a tunable) for chains per pass.
@@ -87,25 +90,15 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _earlier_options() -> dict[int, dict]:
-    """The option set of every seed of experiments 001 and 002, keyed by seed."""
-    options: dict[int, dict] = {}
-    for path in EARLIER_JOBS:
-        for job in report.load_jobs_module(path).JOBS:
-            seen = dict(job.options)
-            if options.setdefault(job.seed, seen) != seen:
-                raise RuntimeError(f"seed {job.seed} of {path.parent.name} has two option sets")
-    return options
-
-
-def _check_design(ensembles: dict[str, list[Job]], earlier: dict[int, dict]) -> tuple[int, int]:
+def _check_design(ensembles: dict[str, list[Job]]) -> tuple[int, int]:
     """The card's design, checked on the jobs. Returns ``(pairs, size)``.
 
     Every configuration has the same passes and size, its own option (``chain``), and one block of
     consecutive seeds. The positive control is block 0. No two configurations share a seed. A seed
-    of experiment 001 or 002 may be reused only with an identical option set: block 0 (001's
-    img64) and 002's per_path_start (block 17) are the reuses. At the experiment's size the rule is
-    checked for every job. At another size (a smoke run) it is not, because the option sets differ.
+    of experiment 001 or 002 may be reused only with an identical option set, and only the reuses
+    of ``SEED_REUSE`` are made: block 0 (001's img64) and 002's per_path_start (block 17). At the
+    experiment's size this is checked by ``report.check_seed_reuse``. At another size (a smoke run)
+    it is not, because the option sets differ.
     """
     if set(ensembles) != set(CONFIGURATIONS):
         raise RuntimeError(f"ENSEMBLES must hold {CONFIGURATIONS}, got {sorted(ensembles)}")
@@ -132,16 +125,11 @@ def _check_design(ensembles: dict[str, list[Job]], earlier: dict[int, dict]) -> 
             )
         if name == IMAGE and base != 0:
             raise RuntimeError("image must be block 0, the positive control of experiment 001")
-        if size == EXPERIMENT_SIZE:
-            for job in jobs:
-                if job.seed in earlier and earlier[job.seed] != dict(job.options):
-                    raise RuntimeError(
-                        f"{name}: seed {job.seed} is used by experiment 001 or 002 "
-                        "with other options"
-                    )
         all_seeds.extend(seeds)
     if len(set(all_seeds)) != len(all_seeds):
         raise RuntimeError("seeds are not unique across configurations")
+    if size == EXPERIMENT_SIZE:
+        report.check_seed_reuse(ensembles, EARLIER_JOBS, SEED_REUSE)
     return pairs, size
 
 
@@ -199,21 +187,11 @@ def _h2(runs: dict[str, list[dict]]) -> dict:
     }
 
 
-def _family_test(runs: dict[str, list[dict]], family: list[str], a: str, b: str) -> dict:
-    """``compare_ensembles`` of ``a`` against ``b`` on the diffuse family, with the power check.
-
-    An underpowered comparison is not run through ``compare_ensembles``: it has no rejections,
-    and its verdict can be neither "indistinguishable" nor "refuted" (``report.family_test``).
-    """
-    return {
-        "comparison": f"{a} vs {b}",
-        **report.family_test(runs[a], runs[b], family, SIGNIFICANCE),
-    }
-
-
 def _h3(runs: dict[str, list[dict]], family: list[str]) -> dict:
     """H3: ``chain=row`` is indistinguishable from ``chain=image`` on the diffuse family."""
-    test = _family_test(runs, family, ROW, IMAGE)
+    # An underpowered comparison is not run through compare_ensembles: it has no rejections, and its
+    # verdict can be neither "indistinguishable" nor "refuted" (report.family_test).
+    test = report.family_test(runs[ROW], runs[IMAGE], family, SIGNIFICANCE, labels=(ROW, IMAGE))
     if not test["powered"]:
         decision = "inconclusive"
     elif test["rejected_keys"]:
@@ -285,18 +263,16 @@ def _decision_table(h1: dict, h2: dict, h3: dict) -> list[dict]:
     return rows
 
 
-def _fmt(value: float | None, spec: str = ".4g") -> str:
-    return "n/a" if value is None else format(value, spec)
-
-
 def _print_h1(block: dict) -> None:
     n_steps = len(block["tests"])
     print(f"H1 {block['metric']}, adjacent steps, Holm over {n_steps}: {block['decision']}")
     for name, test in block["tests"].items():
         effect = test["effect"]
+        diff = report.format_number(effect["diff"], ".4g")
+        rel = report.format_number(effect["rel_diff"], ".4g")
+        d = report.format_number(effect["cohen_d"], ".4g")
         print(
-            f"  {name}: diff={_fmt(effect['diff'])} rel={_fmt(effect['rel_diff'])} "
-            f"d={_fmt(effect['cohen_d'])} p_less={test['p_less']:.6g} "
+            f"  {name}: diff={diff} rel={rel} d={d} p_less={test['p_less']:.6g} "
             f"p_greater={test['p_greater']:.6g} min_attainable_p={test['min_attainable_p']:.3g}"
         )
     print(f"  significant decreases: {block['significant_decreases']}")
@@ -319,10 +295,9 @@ def _print_curve(curve: dict[str, dict]) -> None:
         print(f"curve {key} vs {ROW}: mean sd rel d")
         for name, summary in curve.items():
             s = summary[key]
-            print(
-                f"  {name:>9}: {s['mean_a']:.6g} {s['sd_a']:.4g} "
-                f"rel={_fmt(s['rel_diff'])} d={_fmt(s['cohen_d'])}"
-            )
+            rel = report.format_number(s["rel_diff"], ".4g")
+            d = report.format_number(s["cohen_d"], ".4g")
+            print(f"  {name:>9}: {s['mean_a']:.6g} {s['sd_a']:.4g} rel={rel} d={d}")
 
 
 def _print_h3(block: dict) -> None:
@@ -331,21 +306,21 @@ def _print_h3(block: dict) -> None:
     count = "underpowered (not run)" if rejected is None else f"rejected={len(rejected)}"
     largest = test["largest_abs_rel_diff"]
     cohen = test["largest_abs_cohen_d"]
+    rel = report.format_number(None if largest is None else largest["value"], ".4g")
+    d = report.format_number(None if cohen is None else cohen["value"], ".4g")
     print(
         f"H3 {test['comparison']}: keys={test['n_keys']} {count} "
         f"min_attainable_p={test['min_attainable_p']:.3g} "
         f"threshold={test['holm_first_threshold']:.3g} "
-        f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
-        f"({None if largest is None else largest['key']}) "
-        f"largest |d|={_fmt(None if cohen is None else cohen['value'])} "
-        f"({None if cohen is None else cohen['key']}) -> {block['decision']}"
+        f"largest |rel|={rel} ({None if largest is None else largest['key']}) "
+        f"largest |d|={d} ({None if cohen is None else cohen['key']}) -> {block['decision']}"
     )
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     ensembles = report.load_jobs_module(args.jobs).ENSEMBLES
-    pairs, size = _check_design(ensembles, _earlier_options())
+    pairs, size = _check_design(ensembles)
     reference8 = read_ppm(args.reference)
     if reference8.shape != (size, size, 3):
         raise RuntimeError(f"reference must be {size} x {size} x 3, got {reference8.shape}")
@@ -392,7 +367,7 @@ def main(argv: list[str] | None = None) -> None:
     previews = {name: report.block_preview(img, PREVIEW_FACTOR) for name, img in ab8.items()}
     previews["reference"] = report.block_preview(reference8, PREVIEW_FACTOR)
     grid_name = "fig_grid.png"
-    grid = report.mosaic({name: previews[name] for name in GRID_ORDER}, len(GRID_LAYOUT[0]))
+    grid = report.mosaic([previews[name] for name in GRID_ORDER], len(GRID_LAYOUT[0]))
     write_png(out_dir / grid_name, grid)
     figures = {grid_name: (out_dir / grid_name).stat().st_size}
 

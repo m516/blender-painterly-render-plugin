@@ -321,8 +321,8 @@ def _check_design(
 
     Each configuration has its expected options and one block of consecutive seeds at its block. No
     seed is shared between configurations. A reused configuration has the option set and seeds of
-    its source. At full scale a seed of an earlier experiment is reused only with an identical
-    option set, and the new configurations use no seed of an earlier experiment.
+    its source. At full scale the seeds shared with earlier experiments are exactly the reuses, each
+    with an identical option set (``report.check_seed_reuse``).
     """
     if set(ensembles) != set(TABLE):
         raise RuntimeError(f"ENSEMBLES must hold {sorted(TABLE)}, got {sorted(ensembles)}")
@@ -340,42 +340,26 @@ def _check_design(
     if len(set(all_seeds)) != len(all_seeds):
         raise RuntimeError("seeds are not unique across configurations")
 
-    source_004 = report.load_jobs_module(EARLIER_JOBS["004"]).build_ensembles(pairs, scale)
-    for name, source_name in REUSED_FROM_004.items():
-        mine = [(job.seed, job.options) for job in ensembles[name]]
-        theirs = [(job.seed, job.options) for job in source_004[source_name]]
-        if mine != theirs:
-            raise RuntimeError(
-                f"{name}: seeds or options differ from experiment 004's {source_name}"
-            )
     if scale != 1:
-        return
-    for name, (key, source_name) in REUSED_FROM_EARLIER.items():
-        module = report.load_jobs_module(EARLIER_JOBS[key])
-        theirs = [(job.seed, job.options) for job in module.ENSEMBLES[source_name]]
-        if [(job.seed, job.options) for job in ensembles[name]] != theirs:
-            raise RuntimeError(
-                f"{name}: seeds or options differ from experiment {key}'s {source_name}"
-            )
-
-    earlier_jobs = [
-        job for key in EARLIER_JOBS for job in report.load_jobs_module(EARLIER_JOBS[key]).JOBS
-    ]
-    earlier: dict[int, tuple] = {}
-    for job in earlier_jobs:
-        if earlier.setdefault(job.seed, job.options) != job.options:
-            raise RuntimeError(f"seed {job.seed} of an earlier experiment has two option sets")
-    reused = set(REUSED_FROM_004) | set(REUSED_FROM_EARLIER)
-    for name, jobs in ensembles.items():
-        for job in jobs:
-            if job.seed not in earlier:
-                continue
-            if name not in reused:
-                raise RuntimeError(f"{name}: seed {job.seed} is used by an earlier experiment")
-            if earlier[job.seed] != job.options:
+        # A smoke run builds experiment 004 at its own size, so the 004 sources are compared with
+        # that build here. check_seed_reuse reads the full-size jobs files, so it runs at full
+        # scale only.
+        source_004 = report.load_jobs_module(EARLIER_JOBS["004"]).build_ensembles(pairs, scale)
+        for name, source_name in REUSED_FROM_004.items():
+            mine = [(job.seed, job.options) for job in ensembles[name]]
+            theirs = [(job.seed, job.options) for job in source_004[source_name]]
+            if mine != theirs:
                 raise RuntimeError(
-                    f"{name}: seed {job.seed} is used by an earlier experiment with other options"
+                    f"{name}: seeds or options differ from experiment 004's {source_name}"
                 )
+        return
+    # The reuses from experiment 004 and from 001 and 003 are declared together. Where a
+    # configuration is in both (s400 and row_s400), the source in REUSED_FROM_EARLIER is checked.
+    reused = {
+        **{name: ("004", source) for name, source in REUSED_FROM_004.items()},
+        **REUSED_FROM_EARLIER,
+    }
+    report.check_seed_reuse(ensembles, EARLIER_JOBS, reused)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -519,14 +503,14 @@ def _compare(
 ) -> dict[str, Any]:
     """One comparison ``a`` vs ``b``: Holm on the texture family T with the power guard, plus the
     effect summaries (``_effects``) (README, Significance and Estimation)."""
-    record = report.family_test(runs[a], runs[b], keys["texture"], alpha)
+    record = report.family_test(runs[a], runs[b], keys["texture"], alpha, labels=(a, b))
     record["holm_rejected"] = (
         None
         if record["rejected_keys"] is None
         else {key: key in record["rejected_keys"] for key in keys["texture"]}
     )
     record.update(_effects(runs[a], runs[b], keys))
-    return {"comparison": f"{a} vs {b}", **record}
+    return record
 
 
 def _no_difference(tests: Sequence[dict[str, Any]]) -> str:
@@ -896,17 +880,6 @@ def _slag_profile_figure(profile: Mapping[str, list[dict]]) -> np.ndarray:
 # --------------------------------------------------------------------------------------------------
 
 
-def _summary_table(runs: Mapping[str, list[dict]], keys: Sequence[str]) -> dict[str, dict]:
-    """Mean and sample sd over pairs, per configuration and key."""
-    table: dict[str, dict] = {}
-    for name, pair_runs in runs.items():
-        table[name] = {}
-        for key in keys:
-            values = np.asarray([run[key] for run in pair_runs], dtype=np.float64)
-            table[name][key] = {"mean": float(np.mean(values)), "sd": float(np.std(values, ddof=1))}
-    return table
-
-
 def _largest_text(entry: Mapping[str, Any] | None) -> str:
     """A largest-effect entry (``{"key", "value"}``) as ``value (key)``, or ``n/a``."""
     return "n/a" if entry is None else f"{entry['value']:.4g} ({entry['key']})"
@@ -1067,7 +1040,7 @@ def main(argv: list[str] | None = None) -> None:
                 tiles[name] = _preview(report.ab8_of_pair(ensembles[name]))
     grid_paths = [out_dir / f"fig_grid_{stem}.png" for stem, _names in GRID_LAYOUT]
     for path, (_stem, names) in zip(grid_paths, GRID_LAYOUT, strict=True):
-        write_png(path, report.mosaic({name: tiles[name] for name in names}, len(names)))
+        write_png(path, report.mosaic([tiles[name] for name in names], len(names)))
     profile_path = out_dir / "fig_slag_profile.png"
     write_png(profile_path, _slag_profile_figure(profile_runs))
     for path in (*grid_paths, profile_path):
@@ -1143,8 +1116,8 @@ def main(argv: list[str] | None = None) -> None:
             "configurations": zero_image,
         },
         "jitter_footprint": {"estimation_only": True, "comparisons": footprint},
-        "summary": _summary_table(scaled_runs, keys["texture"] + keys["estimation"]),
-        "summary_fixed_erosion": _summary_table(fixed_runs, keys["erosion_control"]),
+        "summary": report.summary_table(scaled_runs, keys["texture"] + keys["estimation"]),
+        "summary_fixed_erosion": report.summary_table(fixed_runs, keys["erosion_control"]),
         "figures": {
             "fig_grid": {
                 "tile_px": PREVIEW_SIDE,
