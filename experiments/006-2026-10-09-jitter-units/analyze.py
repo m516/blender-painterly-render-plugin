@@ -8,14 +8,17 @@ region erosion and the structure lag are in pixels of that side, and the referen
 
 Re-runs from the render cache, so every render must already exist (``jobs.py``). The exception is a
 smoke run (``--scale`` above 1): it renders its own small jobs into ``$PAINTERLY_CACHE`` first, and
-it must write to a scratch ``--out-dir``. Writes ``results.json``, ``fig_grid.png`` and
-``fig_slag_profile.png`` and prints the tables. It is deterministic: the tests are exact permutation
-tests, and the H3 bootstrap draws from ``numpy.random.default_rng(0)``.
+it must write to a scratch ``--out-dir``. Writes ``results.json``, one grid file per row of
+``GRID_LAYOUT`` (``fig_grid_<row>.png``, six files) and ``fig_slag_profile.png``, and prints the
+tables. A smoke run prefixes every printed line with ``SMOKE (code check only): ``. It is
+deterministic: the tests are exact permutation tests, and the H3 bootstrap draws from
+``numpy.random.default_rng(0)``.
 
 Figure encodings (no text is drawn; the mapping is also in ``results.json`` under ``figures``):
-- ``fig_grid.png``: pair 0 of each configuration, box-downsampled to 200 px (nearest upscale only at
-  smoke scale). Rows: image-plane image chain, pixel image chain, image-plane row chain, pixel row
-  chain, zero jitter. The 400 px member of the pixel rows is ``s400`` (or ``row_s400``), since both
+- ``fig_grid_<row>.png``: three tiles, pair 0 of each configuration in its row of ``GRID_LAYOUT``,
+  box-downsampled to 200 px (nearest upscale only at smoke scale). The rows are image-plane image
+  chain, pixel image chain, image-plane row chain, pixel row chain, zero jitter image chain and zero
+  jitter row chain. The 400 px member of the pixel rows is ``s400`` (or ``row_s400``), since both
   units coincide there.
 - ``fig_slag_profile.png``: mean +- sd over pairs of the region-4 structure autocorrelation against
   the image-plane lag k/200 of the side (k = 1, 2, 3). Row 1 is ``slag.x``, row 2 is ``slag.y``.
@@ -28,7 +31,7 @@ Figure encodings (no text is drawn; the mapping is also in ``results.json`` unde
 import argparse
 import hashlib
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -69,9 +72,12 @@ LAG_UNIT_SIDE = 200
 # 004's erosion radius at every side (004 analyze.py, ERODE_RADIUS). It is the control of H5.
 FIXED_EROSION = metrics.HIGHPASS_SIZE // 2
 SPECTRAL_F_MIN = 2  # lowest integer radius of the spectral band (README: f_min = 2)
-SPECTRAL_F_MAX = (
-    50  # highest radius in cycles per image at every full-scale side (README: f_max = 50)
-)
+# Highest radius of the spectral band, in cycles per image, at every full-scale side
+# (README: f_max = 50).
+SPECTRAL_F_MAX = 50
+# radial_spectral_slope's default band is side // 4 (metrics.py). The band takes that value only
+# where it is below SPECTRAL_F_MAX, which is only at smoke scale.
+SPECTRAL_DEFAULT_DIVISOR = 4
 # Sets only the Monte Carlo precision of the H3 intervals (README, H3). No decision depends on them.
 BOOTSTRAP_RESAMPLES = 10_000
 BOOTSTRAP_SEED = 0  # numpy.random.default_rng seed of the H3 bootstrap (README, H3)
@@ -79,9 +85,14 @@ CI_PERCENTILES = (2.5, 97.5)  # the 95% percentile interval (README, H3)
 PROFILE_REGION = 4  # the back wall (README, Analysis)
 PROFILE_LAGS = (1, 2, 3)  # image-plane lags k / LAG_UNIT_SIDE of the side (README, Analysis)
 PREVIEW_SIDE = 200  # side in pixels of each grid tile (README, Analysis)
+# Every grid file is at most 1 MB (README, Layout rules and amendment 2).
+MAX_FIGURE_BYTES = 1_000_000
+# Prefixed to every printed line of a smoke run (README, amendment 3).
+SMOKE_PREFIX = "SMOKE (code check only): "
 UNITS = ("image-plane", "pixel")
 
-# The README's Method table: name -> (native side, chain, image-plane jitter, seed block).
+# The README's Method table, and amendment 1's row zero family:
+# name -> (native side, chain, image-plane jitter, seed block).
 TABLE: dict[str, tuple[int, str, Fraction, int]] = {
     "s200": (200, "image", Fraction(1, 700), 28),
     "s400": (400, "image", Fraction(1, 700), 0),
@@ -96,6 +107,9 @@ TABLE: dict[str, tuple[int, str, Fraction, int]] = {
     "j0_s200": (200, "image", Fraction(0), 36),
     "j0_s400": (400, "image", Fraction(0), 37),
     "j0_s800": (800, "image", Fraction(0), 38),
+    "row_j0_s200": (200, "row", Fraction(0), 39),
+    "row_j0_s400": (400, "row", Fraction(0), 40),
+    "row_j0_s800": (800, "row", Fraction(0), 41),
 }
 # The oracle's default image-plane jitter, 1/700 (smallpaint painterly.cpp:291-292). It is not
 # passed.
@@ -114,23 +128,29 @@ REUSED_FROM_004 = {
 # Reused from the earlier experiments with their own jobs (checked at full scale only).
 REUSED_FROM_EARLIER = {"s400": ("001", "img64"), "row_s400": ("003", "row")}
 # The configurations behind each Holm-tested decision (README, Hypothesis). H3 and H5 are
-# effect-size decisions without p-values, so they are not listed.
+# effect-size decisions without p-values, so they are not listed. H4 is the row-chain zero family of
+# amendment 1.
 HYPOTHESIS_CONFIGURATIONS = {
     "H1-image": ("s200", "s400", "s800"),
     "H1-row": ("row_s200", "row_s400", "row_s800"),
     "H2-image": ("s200_px", "s400", "s800_px"),
     "H2-row": ("row_s200_px", "row_s400", "row_s800_px"),
-    "H4": ("j0_s200", "j0_s400", "j0_s800"),
+    "H4": ("row_j0_s200", "row_j0_s400", "row_j0_s800"),
 }
-
-# Rows of fig_grid.png (README, Analysis): image-plane, pixel, row image-plane, row pixel, zero.
+# The image-chain zero-jitter configurations, estimation only (amendment 1).
+ZERO_IMAGE_CHAIN = ("j0_s200", "j0_s400", "j0_s800")
+# The grid figures (README, amendment 2): (file stem, configurations of the row). Each row is one
+# file, fig_grid_<stem>.png, of three tiles.
 GRID_LAYOUT = (
-    ("s200", "s400", "s800"),
-    ("s200_px", "s400", "s800_px"),
-    ("row_s200", "row_s400", "row_s800"),
-    ("row_s200_px", "row_s400", "row_s800_px"),
-    ("j0_s200", "j0_s400", "j0_s800"),
+    ("image_plane", ("s200", "s400", "s800")),
+    ("pixel", ("s200_px", "s400", "s800_px")),
+    ("row_image_plane", ("row_s200", "row_s400", "row_s800")),
+    ("row_pixel", ("row_s200_px", "row_s400", "row_s800_px")),
+    ("zero", ("j0_s200", "j0_s400", "j0_s800")),
+    ("row_zero", ("row_j0_s200", "row_j0_s400", "row_j0_s800")),
 )
+# The sides of the jitter-footprint comparisons row_j0_sN vs row_sN (amendment 1).
+FOOTPRINT_SIDES = (200, 400, 800)
 # (label, RGB colour, dashed, {native side: configuration name}) of each series of
 # fig_slag_profile.png.
 PROFILE_SERIES = (
@@ -171,6 +191,8 @@ DASH_PERIOD_PX = 10
 DASH_ON_PX = 6
 LEGEND_SAMPLE_PX = 28
 LEGEND_CELL_W = 130
+# Horizontal offset of each series from its lag, in pixels, so the series at one lag do not overlap.
+SERIES_OFFSET_PX = 5
 AXIS_GREY = (120, 120, 120)
 ZERO_GREY = (190, 190, 190)
 X_RANGE = (0.5, 3.5)  # the lag index k on the horizontal axis
@@ -259,9 +281,9 @@ def side_params(side: int, reference: int, scale: int, notes: list[str]) -> Side
         )
         for k in PROFILE_LAGS
     )
-    # side // 4 is the default upper radius of radial_spectral_slope, so the band is valid at every
-    # size. At full scale it equals SPECTRAL_F_MAX at every native side.
-    spectral_f_max = min(SPECTRAL_F_MAX, side // 4)
+    # side // SPECTRAL_DEFAULT_DIVISOR is the default upper radius of radial_spectral_slope, so the
+    # band is valid at every size. At full scale it equals SPECTRAL_F_MAX at every native side.
+    spectral_f_max = min(SPECTRAL_F_MAX, side // SPECTRAL_DEFAULT_DIVISOR)
     if scale == 1 and spectral_f_max != SPECTRAL_F_MAX:
         raise RuntimeError(f"spectral band at side {side} is not f_max = {SPECTRAL_F_MAX}")
     return SideParams(side, sigma, erosion, lag, spectral_f_max, profile_lag)
@@ -473,24 +495,37 @@ def _keys(measured: Sequence[int]) -> dict[str, list[str]]:
 # --------------------------------------------------------------------------------------------------
 
 
+def _effects(a: list[dict], b: list[dict], keys: Mapping[str, list[str]]) -> dict[str, Any]:
+    """The effect summaries of ``a`` against ``b`` on the texture family T and the estimation-only
+    keys (README, Estimation), with the largest effects over all of these keys and over the T keys
+    alone. The T-only maxima are reported because near-zero spectral slopes dominate the all-key
+    maxima (amendment 4)."""
+    summary = {
+        **ensemble.effect_summary(a, b, keys["texture"]),
+        **ensemble.effect_summary(a, b, keys["estimation"]),
+    }
+    texture = {key: summary[key] for key in keys["texture"]}
+    return {
+        "effect_summary": summary,
+        "largest_abs_rel_diff": report.largest_abs_rel_diff(summary),
+        "largest_abs_cohen_d": report.largest_abs_cohen_d(summary),
+        "largest_abs_rel_diff_texture": report.largest_abs_rel_diff(texture),
+        "largest_abs_cohen_d_texture": report.largest_abs_cohen_d(texture),
+    }
+
+
 def _compare(
     runs: Mapping[str, list[dict]], a: str, b: str, alpha: float, keys: Mapping[str, list[str]]
 ) -> dict[str, Any]:
     """One comparison ``a`` vs ``b``: Holm on the texture family T with the power guard, plus the
-    effect summaries of T and the estimation-only keys (README, Significance and Estimation)."""
+    effect summaries (``_effects``) (README, Significance and Estimation)."""
     record = report.family_test(runs[a], runs[b], keys["texture"], alpha)
-    effects = {
-        **record["effect_summary"],
-        **ensemble.effect_summary(runs[a], runs[b], keys["estimation"]),
-    }
     record["holm_rejected"] = (
         None
         if record["rejected_keys"] is None
         else {key: key in record["rejected_keys"] for key in keys["texture"]}
     )
-    record["effect_summary"] = effects
-    record["largest_abs_rel_diff"] = report.largest_abs_rel_diff(effects)
-    record["largest_abs_cohen_d"] = report.largest_abs_cohen_d(effects)
+    record.update(_effects(runs[a], runs[b], keys))
     return {"comparison": f"{a} vs {b}", **record}
 
 
@@ -549,11 +584,18 @@ def _unit_pairs(prefix: str, unit: str) -> list[tuple[str, str]]:
     return [(small, f"{prefix}s400"), (f"{prefix}s400", large)]
 
 
-def _delta(means: Mapping[str, np.ndarray], pairs: Sequence[tuple[str, str]]) -> np.ndarray:
-    """Delta of H3: the median over the texture keys and the two pairs of |rel_diff|, where
-    rel_diff is ``(mean_a - mean_b) / |mean_b|`` as in ``ensemble.effect_summary``. Leading axes of
-    ``means`` are kept."""
-    rel = [np.abs((means[a] - means[b]) / np.abs(means[b])) for a, b in pairs]
+def _delta(
+    means: Mapping[str, np.ndarray],
+    pairs: Sequence[tuple[str, str]],
+    columns: np.ndarray | slice = slice(None),
+) -> np.ndarray:
+    """Delta of H3: the median over the selected texture keys (``columns``, all by default) and the
+    two pairs of |rel_diff|, where rel_diff is ``(mean_a - mean_b) / |mean_b|`` as in
+    ``ensemble.effect_summary``. Leading axes of ``means`` are kept."""
+    rel = [
+        np.abs((means[a][..., columns] - means[b][..., columns]) / np.abs(means[b][..., columns]))
+        for a, b in pairs
+    ]
     return np.median(np.concatenate(rel, axis=-1), axis=-1)
 
 
@@ -565,6 +607,10 @@ def _h3(runs, keys, prefix: str) -> dict[str, Any]:
     Delta_image-plane < Delta_pixel.
     """
     texture = keys["texture"]
+    structure_cols = np.array(
+        [i for i, key in enumerate(texture) if key.endswith(".structure_std")]
+    )
+    slag_cols = np.array([i for i, key in enumerate(texture) if ".slag." in key])
     names = sorted({name for unit in UNITS for pair in _unit_pairs(prefix, unit) for name in pair})
     data = {
         name: np.asarray([[run[key] for key in texture] for run in runs[name]], dtype=np.float64)
@@ -578,6 +624,7 @@ def _h3(runs, keys, prefix: str) -> dict[str, Any]:
     }
     boot_means = {name: data[name][draws[name]].mean(axis=1) for name in names}
     units: dict[str, Any] = {}
+    delta_by_class: dict[str, Any] = {}
     boot_delta: dict[str, np.ndarray] = {}
     for unit in UNITS:
         pairs = _unit_pairs(prefix, unit)
@@ -594,6 +641,10 @@ def _h3(runs, keys, prefix: str) -> dict[str, Any]:
             "delta_ci95": [float(v) for v in np.percentile(boot_delta[unit], CI_PERCENTILES)],
             "median_abs_rel_diff_per_pair": pair_medians,
         }
+        delta_by_class[unit] = {
+            "structure_std": float(_delta(point_means, pairs, structure_cols)),
+            "slag": float(_delta(point_means, pairs, slag_cols)),
+        }
     diff_boot = boot_delta["pixel"] - boot_delta["image-plane"]
     diff_point = units["pixel"]["delta"] - units["image-plane"]["delta"]
     ci = [float(v) for v in np.percentile(diff_boot, CI_PERCENTILES)]
@@ -609,17 +660,72 @@ def _h3(runs, keys, prefix: str) -> dict[str, Any]:
         "chain": "row" if prefix else "image",
         "statistic": "median over the 18 texture keys and 2 size pairs of |rel_diff|",
         "units": units,
+        "delta_by_class": delta_by_class,
         "difference": difference,
         "decision": decision,
     }
 
 
 def _h4(runs, keys) -> dict[str, Any]:
-    """H4: with zero jitter the texture still does not depend on resolution (mechanism)."""
-    pairs = [("j0_s200", "j0_s400"), ("j0_s400", "j0_s800"), ("j0_s200", "j0_s800")]
+    """H4: with zero jitter the texture still does not depend on resolution (mechanism).
+
+    It uses the row-chain zero family of amendment 1, because the image chain with jitter 0 repeats
+    one render.
+    """
+    s200, s400, s800 = HYPOTHESIS_CONFIGURATIONS["H4"]
+    pairs = [(s200, s400), (s400, s800), (s200, s800)]
     level = SIGNIFICANCE / len(pairs)
     tests = [_compare(runs, a, b, level, keys) for a, b in pairs]
     return {"comparisons": tests, "decision": _no_difference(tests)}
+
+
+def _zero_image_chain(
+    jobs: Sequence[Job], object_id: np.ndarray, params: SideParams, measured: Sequence[int]
+) -> dict[str, Any]:
+    """The image-chain zero-jitter configuration (amendment 1), estimation only.
+
+    ``distinct_renders`` counts the distinct ``sum`` arrays among the renders, compared with
+    ``np.array_equal``. The metrics are those of the first render alone, with hp_a = hp_b: the two
+    halves are that one render, so no noise is separated and no p-value is computed. The display of
+    the summed pair is then that of 2 * sum at 2 * PASSES passes, which equals the display of sum at
+    PASSES passes.
+    """
+    distinct: list[np.ndarray] = []
+    for job in jobs:
+        render = load(job)
+        if render.passes != PASSES:
+            raise RuntimeError(f"passes must be {PASSES}, got {render.passes} (seed {job.seed})")
+        if not any(np.array_equal(render.sum, kept) for kept in distinct):
+            distinct.append(render.sum)
+    first = load(jobs[0])
+    scaled, _fixed, _profile = _pair_values(
+        first,
+        first,
+        params,
+        measured,
+        _masks(object_id, params.erosion),
+        _masks(object_id, FIXED_EROSION),
+    )
+    return {
+        "renders": len(jobs),
+        "distinct_renders": len(distinct),
+        "noise_separated": False,
+        "first_render": scaled,
+    }
+
+
+def _jitter_footprint(
+    runs: Mapping[str, list[dict]], keys: Mapping[str, list[str]]
+) -> dict[str, Any]:
+    """Estimation only, no verdict (amendment 1): row_j0_sN vs row_sN at N = 200, 400 and 800, the
+    effect of the jitter footprint at a fixed chain and size."""
+    return {
+        str(side): {
+            "comparison": f"row_j0_s{side} vs row_s{side}",
+            **_effects(runs[f"row_j0_s{side}"], runs[f"row_s{side}"], keys),
+        }
+        for side in FOOTPRINT_SIDES
+    }
 
 
 def _h5(scaled_runs, fixed_runs, control_keys: Sequence[str]) -> dict[str, Any]:
@@ -660,8 +766,8 @@ def _h5(scaled_runs, fixed_runs, control_keys: Sequence[str]) -> dict[str, Any]:
 
 
 def _preview(img8: np.ndarray) -> np.ndarray:
-    """A PREVIEW_SIDE x PREVIEW_SIDE tile. A side that divides PREVIEW_SIDE is box-averaged to it,
-    and a smaller side is repeated (smoke scale only). Display only."""
+    """A PREVIEW_SIDE x PREVIEW_SIDE tile. A side that is a multiple of PREVIEW_SIDE is box-averaged
+    to it, and a side that divides PREVIEW_SIDE is repeated (smoke scale only). Display only."""
     side = img8.shape[0]
     if side >= PREVIEW_SIDE and side % PREVIEW_SIDE == 0:
         return report.block_preview(img8, side // PREVIEW_SIDE)
@@ -775,7 +881,7 @@ def _slag_profile_figure(profile: Mapping[str, list[dict]]) -> np.ndarray:
             left = LEFT_MARGIN + col * CELL_W
             series = []
             for index, (_label, color, dashed, names) in enumerate(PROFILE_SERIES):
-                offset = (index - (len(PROFILE_SERIES) - 1) / 2) * 5.0
+                offset = (index - (len(PROFILE_SERIES) - 1) / 2) * SERIES_OFFSET_PX
                 series.append((color, dashed, offset, _profile_points(profile[names[side]], axis)))
             _draw_panel(canvas, left, top, lo, hi, series)
     legend_y = TOP_MARGIN + 2 * (PANEL_H + ROW_GAP) + LEGEND_H // 2
@@ -801,37 +907,40 @@ def _summary_table(runs: Mapping[str, list[dict]], keys: Sequence[str]) -> dict[
     return table
 
 
-def _fmt(value: float | None) -> str:
-    return "n/a" if value is None else f"{value:.4g}"
+def _largest_text(entry: Mapping[str, Any] | None) -> str:
+    """A largest-effect entry (``{"key", "value"}``) as ``value (key)``, or ``n/a``."""
+    return "n/a" if entry is None else f"{entry['value']:.4g} ({entry['key']})"
 
 
-def _print_comparison(test: Mapping[str, Any]) -> None:
+def _print_comparison(test: Mapping[str, Any], say: Callable[[str], None]) -> None:
     rejected = test["rejected_keys"]
     count = "underpowered (not run)" if rejected is None else f"rejected={len(rejected)}"
-    rel = test["largest_abs_rel_diff"]
-    cohen = test["largest_abs_cohen_d"]
-    print(
+    say(
         f"  {test['comparison']}: alpha={test['alpha']:.4g} keys={test['n_keys']} {count} "
         f"min_attainable_p={test['min_attainable_p']:.3g} "
-        f"threshold={test['holm_first_threshold']:.3g} "
-        f"largest |rel|={_fmt(None if rel is None else rel['value'])} "
-        f"({None if rel is None else rel['key']}) "
-        f"largest |d|={_fmt(None if cohen is None else cohen['value'])} "
-        f"({None if cohen is None else cohen['key']})"
+        f"threshold={test['holm_first_threshold']:.3g}"
+    )
+    say(
+        f"    all keys: largest |rel|={_largest_text(test['largest_abs_rel_diff'])} "
+        f"largest |d|={_largest_text(test['largest_abs_cohen_d'])}"
+    )
+    say(
+        f"    texture keys: largest |rel|={_largest_text(test['largest_abs_rel_diff_texture'])} "
+        f"largest |d|={_largest_text(test['largest_abs_cohen_d_texture'])}"
     )
     if rejected:
-        print(f"    rejected keys: {rejected}")
+        say(f"    rejected keys: {rejected}")
 
 
-def _print_h3(test: Mapping[str, Any]) -> None:
+def _print_h3(test: Mapping[str, Any], say: Callable[[str], None]) -> None:
     for unit, entry in test["units"].items():
-        print(
+        say(
             f"  {test['chain']} chain, {unit}: Delta={entry['delta']:.4g} "
             f"95% CI [{entry['delta_ci95'][0]:.4g}, {entry['delta_ci95'][1]:.4g}] "
             f"pairs {entry['pairs']}"
         )
     diff = test["difference"]
-    print(
+    say(
         f"  difference pixel - image-plane: {diff['pixel_minus_image_plane']:.4g} "
         f"95% CI [{diff['ci95'][0]:.4g}, {diff['ci95'][1]:.4g}] "
         f"excludes 0: {diff['ci_excludes_zero']} "
@@ -907,8 +1016,14 @@ def main(argv: list[str] | None = None) -> None:
         for name, counts in replicates.items()
         if counts["distinct"] < counts["renders"]
     ]
+    # Every printed line of a smoke run is prefixed (amendment 3).
+    prefix = SMOKE_PREFIX if args.scale > 1 else ""
+
+    def say(line: str) -> None:
+        print(f"{prefix}{line}")
+
     for warning in design_warnings:
-        print(f"WARNING: {warning}")
+        say(f"WARNING: {warning}")
 
     h1_image = _h1(scaled_runs, keys, "")
     h1_row = _h1(scaled_runs, keys, "row_")
@@ -918,6 +1033,11 @@ def main(argv: list[str] | None = None) -> None:
     h3_row = _h3(scaled_runs, keys, "row_")
     h4 = _h4(scaled_runs, keys)
     h5 = _h5(scaled_runs, fixed_runs, keys["erosion_control"])
+    zero_image = {
+        name: _zero_image_chain(ensembles[name], object_ids[name], params[name], measured)
+        for name in ZERO_IMAGE_CHAIN
+    }
+    footprint = _jitter_footprint(scaled_runs, keys)
     decisions = {
         "H1-image": h1_image["decision"],
         "H1-row": h1_row["decision"],
@@ -941,26 +1061,30 @@ def main(argv: list[str] | None = None) -> None:
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     tiles: dict[str, np.ndarray] = {}
-    for row in GRID_LAYOUT:
-        for name in row:
+    for _stem, names in GRID_LAYOUT:
+        for name in names:
             if name not in tiles:
                 tiles[name] = _preview(report.ab8_of_pair(ensembles[name]))
-    grid = report.mosaic(
-        {
-            f"{i},{j}": tiles[name]
-            for i, row in enumerate(GRID_LAYOUT)
-            for j, name in enumerate(row)
-        },
-        len(GRID_LAYOUT[0]),
-    )
-    write_png(out_dir / "fig_grid.png", grid)
-    write_png(out_dir / "fig_slag_profile.png", _slag_profile_figure(profile_runs))
+    grid_paths = [out_dir / f"fig_grid_{stem}.png" for stem, _names in GRID_LAYOUT]
+    for path, (_stem, names) in zip(grid_paths, GRID_LAYOUT, strict=True):
+        write_png(path, report.mosaic({name: tiles[name] for name in names}, len(names)))
+    profile_path = out_dir / "fig_slag_profile.png"
+    write_png(profile_path, _slag_profile_figure(profile_runs))
+    for path in (*grid_paths, profile_path):
+        size = path.stat().st_size
+        if size > MAX_FIGURE_BYTES:
+            raise RuntimeError(f"{path.name} is {size} bytes, over the limit {MAX_FIGURE_BYTES}")
+    grid_files = [
+        {"file": path.name, "configurations": list(names)}
+        for path, (_stem, names) in zip(grid_paths, GRID_LAYOUT, strict=True)
+    ]
 
     results = {
         "experiment": EXPERIMENT,
         "significance": SIGNIFICANCE,
         "pairs": args.pairs,
         "scale": args.scale,
+        "smoke": args.scale > 1,
         "passes": PASSES,
         "reference_side": reference,
         "highpass": {"kind": "gaussian", "size_reference_px": metrics.HIGHPASS_SIZE},
@@ -1013,13 +1137,19 @@ def main(argv: list[str] | None = None) -> None:
             hypothesis: {"configurations": names, "decision": decisions[hypothesis]}
             for hypothesis, names in not_interpretable.items()
         },
+        "zero_image_chain": {
+            "estimation_only": True,
+            "noise_separated": False,
+            "configurations": zero_image,
+        },
+        "jitter_footprint": {"estimation_only": True, "comparisons": footprint},
         "summary": _summary_table(scaled_runs, keys["texture"] + keys["estimation"]),
         "summary_fixed_erosion": _summary_table(fixed_runs, keys["erosion_control"]),
         "figures": {
             "fig_grid": {
-                "file": "fig_grid.png",
                 "tile_px": PREVIEW_SIDE,
-                "layout": [list(row) for row in GRID_LAYOUT],
+                "tiles_per_file": len(GRID_LAYOUT[0][1]),
+                "files": grid_files,
             },
             "fig_slag_profile": {
                 "file": "fig_slag_profile.png",
@@ -1035,56 +1165,65 @@ def main(argv: list[str] | None = None) -> None:
     }
     report.write_results_json(out_dir / "results.json", results)
 
-    print(
-        f"pairs={args.pairs} scale={args.scale} sides={sorted({p.side for p in params.values()})}"
-    )
-    for name in sorted({p.side for p in params.values()}):
-        entry = next(p for p in params.values() if p.side == name)
-        print(
+    say(f"pairs={args.pairs} scale={args.scale} sides={sorted({p.side for p in params.values()})}")
+    for side in sorted({p.side for p in params.values()}):
+        entry = next(p for p in params.values() if p.side == side)
+        say(
             f"  side {entry.side}: sigma={entry.sigma:.6g} px erosion={entry.erosion} px "
             f"lag={entry.lag} px "
             f"profile lags={list(entry.profile_lag)} px spectral f_max={entry.spectral_f_max}"
         )
     for note in sorted(set(notes)):
-        print(f"  {note}")
-    print(f"measured regions {measured}, absent {absent}, dropped {dropped}")
-    print(
+        say(f"  {note}")
+    say(f"measured regions {measured}, absent {absent}, dropped {dropped}")
+    say(
         f"H1 image-plane (s200, s400, s800) at level {SIGNIFICANCE / 3:.4g}: {h1_image['decision']}"
     )
     for test in h1_image["comparisons"]:
-        _print_comparison(test)
-    print(f"H1 row chain at level {SIGNIFICANCE / 3:.4g}: {h1_row['decision']}")
+        _print_comparison(test, say)
+    say(f"H1 row chain at level {SIGNIFICANCE / 3:.4g}: {h1_row['decision']}")
     for test in h1_row["comparisons"]:
-        _print_comparison(test)
-    print(
+        _print_comparison(test, say)
+    say(
         f"H2 image chain at level {SIGNIFICANCE / 2:.4g}: {h2_image['decision']} "
         f"{h2_image['statuses']}"
     )
     for test in h2_image["comparisons"]:
-        _print_comparison(test)
-    print(
-        f"H2 row chain at level {SIGNIFICANCE / 2:.4g}: {h2_row['decision']} {h2_row['statuses']}"
-    )
+        _print_comparison(test, say)
+    say(f"H2 row chain at level {SIGNIFICANCE / 2:.4g}: {h2_row['decision']} {h2_row['statuses']}")
     for test in h2_row["comparisons"]:
-        _print_comparison(test)
-    print("H3 (decision on the row chain):")
-    _print_h3(h3_row)
-    _print_h3(h3_image)
-    print(f"H3 decision: {h3_row['decision']}")
-    print(f"H4 zero jitter at level {SIGNIFICANCE / 3:.4g}: {h4['decision']}")
+        _print_comparison(test, say)
+    say("H3 (decision on the row chain):")
+    _print_h3(h3_row, say)
+    _print_h3(h3_image, say)
+    say(f"H3 decision: {h3_row['decision']}")
+    say(f"H4 zero jitter, row chain, at level {SIGNIFICANCE / 3:.4g}: {h4['decision']}")
     for test in h4["comparisons"]:
-        _print_comparison(test)
-    print(f"H5 erosion: {h5['decision']}; failing: {len(h5['failing'])} of {len(h5['rows'])}")
+        _print_comparison(test, say)
+    say(f"H5 erosion: {h5['decision']}; failing: {len(h5['failing'])} of {len(h5['rows'])}")
     for item in h5["failing"]:
-        print(f"    fails: {item}")
-    print("decisions (README rule):", decisions)
+        say(f"    fails: {item}")
+    say(f"decisions (README rule): {decisions}")
     for hypothesis, names in not_interpretable.items():
-        print(
+        say(
             f"NOT INTERPRETABLE {hypothesis} ({decisions[hypothesis]} by the README rule): "
             f"configurations {names} have replicates that repeat a render (see the WARNING lines)"
         )
-    print(
-        f"wrote {out_dir / 'results.json'}, {out_dir / 'fig_grid.png'} and "
+    for name in ZERO_IMAGE_CHAIN:
+        entry = zero_image[name]
+        say(
+            f"zero jitter, image chain, {name} (estimation only): distinct renders "
+            f"{entry['distinct_renders']} of {entry['renders']}; no noise is separated"
+        )
+    for side in FOOTPRINT_SIDES:
+        entry = footprint[str(side)]
+        say(
+            f"jitter footprint {entry['comparison']} (estimation only): texture keys largest "
+            f"|rel|={_largest_text(entry['largest_abs_rel_diff_texture'])} "
+            f"|d|={_largest_text(entry['largest_abs_cohen_d_texture'])}"
+        )
+    say(
+        f"wrote {out_dir / 'results.json'}, the grid files fig_grid_<row>.png and "
         f"{out_dir / 'fig_slag_profile.png'}"
     )
 
