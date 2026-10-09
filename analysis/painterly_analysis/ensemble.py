@@ -68,9 +68,10 @@ def permutation_pvalue(
     drawn with ``jax.random.PRNGKey(0)``, and the p-value is ``(k + 1) / (N + 1)``.
 
     Ties: a split counts as at least as extreme when its statistic is within
-    ``tol = (n + m) * eps * max|pooled|`` of the observed one. ``(n + m) * eps`` is the float64
-    summation round-off bound gamma_{n+m} for means of n + m values (CLAUDE.md rule 2), scaled by
-    the data, not by the statistic. Mirror splits differ only by round-off, so both are counted.
+    ``tol = (n + m) * eps * max|pooled|`` of the observed one. The tolerance is scaled to the
+    float64 round-off of means of n + m values (gamma_{n+m} * max|x|, CLAUDE.md rule 2). Mirror
+    splits differ by far less than that in practice, so both are counted. This is not a strict
+    bound.
 
     Raises ValueError if any sample is NaN or inf.
     """
@@ -228,18 +229,31 @@ def prediction_interval(samples, alpha: float) -> tuple[float, float]:
     return mean - half, mean + half
 
 
-def _min_attainable_pvalue(n: int, m: int) -> float:
-    """Smallest two-sided p-value that ``permutation_pvalue`` can return for sizes n and m.
+def min_attainable_pvalue(
+    n: int,
+    m: int,
+    alternative: str = "two-sided",
+    *,
+    max_exact: int = PERMUTATION_MAX_EXACT,
+    n_resamples: int = PERMUTATION_RESAMPLES,
+) -> float:
+    """Smallest p-value that ``permutation_pvalue`` can return for group sizes n and m.
 
-    Exact branch: the observed split is the most extreme one. When n == m its mirror split is
-    equally extreme, so the minimum is ``(2 if n == m else 1) / C(n + m, n)``. Monte Carlo branch:
-    the minimum is ``1 / (n_resamples + 1)``, reached when no resampled statistic is as extreme as
-    the observed one.
+    Exact branch (``C(n + m, n) <= max_exact``): the observed split is the most extreme one, so the
+    one-sided minimum is ``1 / C(n + m, n)``. The two-sided minimum is ``2 / C(n + m, n)`` when
+    n == m, because the mirror split is then equally extreme; otherwise it is the one-sided minimum.
+    Monte Carlo branch: the minimum is ``1 / (n_resamples + 1)``, reached when no resampled
+    statistic is as extreme as the observed one.
     """
+    _check_alternative(alternative)
+    if n < 1 or m < 1:
+        raise ValueError("both groups need at least one value")
     splits = math.comb(n + m, n)
-    if splits <= PERMUTATION_MAX_EXACT:
-        return (2 if n == m else 1) / splits
-    return 1 / (PERMUTATION_RESAMPLES + 1)
+    if splits <= max_exact:
+        if alternative == "two-sided" and n == m:
+            return 2 / splits
+        return 1 / splits
+    return 1 / (n_resamples + 1)
 
 
 @dataclass
@@ -289,7 +303,7 @@ def compare_ensembles(
         except ValueError as e:
             raise ValueError(f"{key}: {e}") from e
     # Checked after the samples, so bad data is reported before the power of the design.
-    min_attainable = _min_attainable_pvalue(len(a), len(b))
+    min_attainable = min_attainable_pvalue(len(a), len(b), "two-sided")
     threshold = alpha / len(keys)
     if min_attainable > threshold:
         raise ValueError(

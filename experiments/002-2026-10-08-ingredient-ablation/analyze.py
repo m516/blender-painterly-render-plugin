@@ -9,9 +9,6 @@ Deterministic: every test is an exact permutation test, so no random number is d
 """
 
 import argparse
-import importlib.util
-import json
-import math
 from pathlib import Path
 
 import numpy as np
@@ -20,10 +17,11 @@ from painterly_analysis import (
     ensemble,
     metrics,
     read_ppm,
+    report,
     smallpaint_display,
     write_png,
 )
-from painterly_analysis.experiment import Job, load, measure_ensemble
+from painterly_analysis.experiment import Job, load
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -88,15 +86,6 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _load_module(path: Path):
-    spec = importlib.util.spec_from_file_location("experiment_002_jobs", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def _check_design(ensembles: dict[str, list[Job]]) -> None:
     """The card's design: each variant changes exactly one option of the positive control."""
     if set(ensembles) != set(CONFIGURATIONS):
@@ -112,48 +101,10 @@ def _check_design(ensembles: dict[str, list[Job]]) -> None:
             raise RuntimeError(f"{name}: option alpha must be {value}")
 
 
-def _min_attainable_p(n: int, m: int, alternative: str) -> float:
-    """Smallest p-value that ``ensemble.permutation_pvalue`` can return for sizes n and m.
-
-    Mirrors ``ensemble._min_attainable_pvalue`` (two-sided, where a mirror split counts when
-    n == m) and gives the one-sided minimum ``1 / C(n + m, n)``.
-    """
-    splits = math.comb(n + m, n)
-    if splits > ensemble.PERMUTATION_MAX_EXACT:
-        return 1 / (ensemble.PERMUTATION_RESAMPLES + 1)
-    if alternative == "two-sided" and n == m:
-        return 2 / splits
-    return 1 / splits
-
-
-def _column(runs: list[dict], key: str) -> list[float]:
-    return [run[key] for run in runs]
-
-
-def _diffuse_only(object_id: np.ndarray) -> np.ndarray:
-    """``object_id`` with every non-diffuse id set to -1, so that ``metrics.measure`` skips it.
-
-    Only the diffuse regions are measured (README, deviation D5). A region mask is
-    ``erode(object_id == r)`` and the ``all.*`` keys use the union of the diffuse masks, so the
-    pixels set to -1 change no diffuse or ``all.*`` value. Without this, the light (id 9) has one
-    eroded pixel at 64 px, no lag-1 pairs, and ``metrics.measure`` raises.
-    """
-    return np.where(np.isin(object_id, DIFFUSE_REGION_IDS), object_id, -1)
-
-
 def _with_luma(run: dict) -> dict:
     """``run`` plus ``r4.luma``: the mean luminance of the back wall, Rec.709 of its mean RGB."""
     red, green, blue = (run[f"r{BACK_WALL_ID}.mean.{c}"] for c in "RGB")
     return {**run, LUMA_KEY: LUMA[0] * red + LUMA[1] * green + LUMA[2] * blue}
-
-
-def _largest_rel(summary: dict) -> dict | None:
-    """The key with the largest |relative difference|, ties broken by key name."""
-    defined = [(abs(s["rel_diff"]), key) for key, s in summary.items() if s["rel_diff"] is not None]
-    if not defined:
-        return None
-    value, key = max(defined)
-    return {"key": key, "value": value}
 
 
 def _pair_test(runs: dict[str, list[dict]], key: str, a: str, b: str) -> dict:
@@ -161,14 +112,15 @@ def _pair_test(runs: dict[str, list[dict]], key: str, a: str, b: str) -> dict:
 
     ``p_less`` is ``ensemble.separated(a, b, "less")`` at the significance level.
     """
-    x, y = _column(runs[a], key), _column(runs[b], key)
+    less = report.pair_test(runs[a], runs[b], key, "less", SIGNIFICANCE)
+    greater = report.pair_test(runs[a], runs[b], key, "greater", SIGNIFICANCE)
     return {
         "comparison": f"{a} vs {b}",
         "key": key,
-        "p_less": ensemble.permutation_pvalue(x, y, "less"),
-        "p_greater": ensemble.permutation_pvalue(x, y, "greater"),
-        "min_attainable_p": _min_attainable_p(len(x), len(y), "less"),
-        "effect": ensemble.effect_summary(runs[a], runs[b], [key])[key],
+        "p_less": less["p_value"],
+        "p_greater": greater["p_value"],
+        "min_attainable_p": less["min_attainable_p"],
+        "effect": less["effect"],
     }
 
 
@@ -202,48 +154,21 @@ def _h2(runs: dict[str, list[dict]]) -> dict:
 
 
 def _h3(runs: dict[str, list[dict]]) -> dict:
-    steps = zip(ALPHA_LADDER[:-1], ALPHA_LADDER[1:], strict=True)
-    # Each step tests that the higher alpha has the lower back-wall luminance.
-    tests = {f"{lo}->{hi}": _pair_test(runs, LUMA_KEY, hi, lo) for lo, hi in steps}
-    return {"metric": LUMA_KEY, "tests": tests, **_holm_decision(tests)}
+    # Each step lo -> hi tests that the higher alpha has the lower back-wall luminance.
+    ladder = report.adjacent_tests(runs, ALPHA_LADDER, LUMA_KEY, SIGNIFICANCE)
+    return {"metric": LUMA_KEY, "tests": ladder["steps"], **_holm_decision(ladder["steps"])}
 
 
 def _family_test(runs: dict[str, list[dict]], family: list[str], a: str, b: str) -> dict:
     """``compare_ensembles`` of ``a`` against ``b`` on the diffuse family, with the power check.
 
-    A comparison is powered when its smallest attainable p is at most the first Holm threshold.
     An underpowered comparison is not run through ``compare_ensembles``: it has no rejections,
-    and its verdict can be neither "indistinguishable" nor "refuted".
+    and its verdict can be neither "indistinguishable" nor "refuted" (``report.family_test``).
     """
-    x_runs, y_runs = runs[a], runs[b]
-    min_p = _min_attainable_p(len(x_runs), len(y_runs), "two-sided")
-    threshold = SIGNIFICANCE / len(family)
-    powered = min_p <= threshold
-    summary = ensemble.effect_summary(x_runs, y_runs, family)
-    record = {
+    return {
         "comparison": f"{a} vs {b}",
-        "n_keys": len(family),
-        "min_attainable_p": min_p,
-        "holm_first_threshold": threshold,
-        "powered": powered,
-        "effect_summary": summary,
-        "largest_abs_rel_diff": _largest_rel(summary),
+        **report.family_test(runs[a], runs[b], family, SIGNIFICANCE),
     }
-    if powered:
-        comparison = ensemble.compare_ensembles(x_runs, y_runs, family, SIGNIFICANCE)
-        if comparison.min_attainable_p != min_p:
-            raise RuntimeError("power formula is out of step with ensemble.compare_ensembles")
-        record["pvalues"] = comparison.pvalues
-        record["rejected_keys"] = [key for key in family if comparison.rejected[key]]
-    else:
-        record["pvalues"] = {
-            key: ensemble.permutation_pvalue(
-                _column(x_runs, key), _column(y_runs, key), "two-sided"
-            )
-            for key in family
-        }
-        record["rejected_keys"] = None
-    return record
 
 
 def _h4(runs: dict[str, list[dict]], family: list[str]) -> dict:
@@ -367,17 +292,6 @@ def _decision_table(h1: dict, h2: dict, h3: dict, h4: dict, h5: dict) -> list[di
     return rows
 
 
-def _json_safe(value):
-    """JSON has no infinity or NaN. NaN is an error and is never written."""
-    if isinstance(value, dict):
-        return {key: _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    if isinstance(value, float) and math.isnan(value):
-        raise RuntimeError("NaN in results")
-    return value
-
-
 def _print_tests(title: str, block: dict) -> None:
     print(f"{title}: {block['decision']}")
     for name, test in block["tests"].items():
@@ -390,16 +304,25 @@ def _print_tests(title: str, block: dict) -> None:
 def _print_family(title: str, test: dict, verdict: str) -> None:
     rejected = test["rejected_keys"]
     count = "underpowered (not run)" if rejected is None else f"rejected={len(rejected)}"
+    rel = test["largest_abs_rel_diff"]
+    cohen = test["largest_abs_cohen_d"]
     print(
         f"{title} {test['comparison']}: keys={test['n_keys']} {count} "
         f"min_attainable_p={test['min_attainable_p']:.3g} "
-        f"threshold={test['holm_first_threshold']:.3g} -> {verdict}"
+        f"threshold={test['holm_first_threshold']:.3g} "
+        f"largest |rel|={_fmt_largest(rel)} largest |d|={_fmt_largest(cohen)} -> {verdict}"
     )
+
+
+def _fmt_largest(largest: dict | None) -> str:
+    if largest is None:
+        return "n/a"
+    return f"{largest['value']:.4g} ({largest['key']})"
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
-    ensembles = _load_module(args.jobs).ENSEMBLES
+    ensembles = report.load_jobs_module(args.jobs).ENSEMBLES
     _check_design(ensembles)
     reference8 = read_ppm(args.reference)
 
@@ -416,15 +339,15 @@ def main(argv: list[str] | None = None) -> None:
     measured = [r for r in DIFFUSE_REGION_IDS if r in masks]
     absent = [r for r in DIFFUSE_REGION_IDS if r not in masks]
 
-    measure_map = _diffuse_only(object_id)
     raw = {
-        name: measure_ensemble(jobs, reference8, measure_map) for name, jobs in ensembles.items()
+        name: report.ensemble_metrics(jobs, reference8, DIFFUSE_REGION_IDS, object_id=object_id)
+        for name, jobs in ensembles.items()
     }
     keys = sorted(raw[POSITIVE][0])
     for name, metric_runs in raw.items():
         if any(sorted(run) != keys for run in metric_runs):
             raise RuntimeError(f"metric keys of {name} differ")
-    family = metrics.DIFFUSE_KEY_FAMILY(keys)
+    family = metrics.diffuse_key_family(keys)
     if not family:
         raise RuntimeError("the diffuse key family is empty")
     runs = {name: [_with_luma(run) for run in metric_runs] for name, metric_runs in raw.items()}
@@ -490,10 +413,7 @@ def main(argv: list[str] | None = None) -> None:
         },
         "figures": figures,
     }
-    text = json.dumps(_json_safe(results), indent=2, sort_keys=True) + "\n"
-    if "NaN" in text:
-        raise RuntimeError("NaN in results.json")
-    (out_dir / "results.json").write_text(text, encoding="utf-8")
+    report.write_results_json(out_dir / "results.json", results)
 
     print(f"keys measured={len(keys)} diffuse family={len(family)}; passes={passes}")
     print(f"measured regions {measured}, absent {absent}")

@@ -137,7 +137,7 @@ Hypothesis, configurations, seeds and decision rules stand as written, except fo
    bootstrap keeps all 1000 resamples and takes percentiles of `q`, which are then mapped to `P`. A non-positive
    `q` bound maps to inf, so the interval is `[1/q_hi, 1/q_lo]` with inf for any non-positive bound. The pre-registered
    rule took percentiles over the defined resamples only. Here 3 of 1000 resamples have `q <= 0`.
-2. **Comparison family.** Every `compare_ensembles` call (H2 and H3) uses `metrics.DIFFUSE_KEY_FAMILY`: the 46 keys
+2. **Comparison family.** Every `compare_ensembles` call (H2 and H3) uses `metrics.diffuse_key_family`: the 46 keys
    of diffuse regions 2-7 and of `all.*`. The 21 keys of regions 0, 1 and 9 are dropped, because those ids are not in
    `DIFFUSE_REGION_IDS` (SPEC §9: 9 is the light). With all 67 keys the smallest attainable p,
    2/C(16,8) = 1.554e-4, exceeds the first Holm threshold 0.01/67 = 1.49e-4. The power guard in
@@ -155,7 +155,7 @@ Hypothesis, configurations, seeds and decision rules stand as written, except fo
    `(n + m) eps max|pooled|` for permutation tests and `n eps max|x|` for sign flips. It replaces
    `64 eps max|statistic|`. The old tolerance scaled with the statistic. On data with a large offset it could drop a
    mirror split, which halves an extreme two-sided p-value. The test `test_two_sided_exact_counts_mirror_split`
-   covers that case. The power guard, `Comparison.min_attainable_p`, `effect_summary` and `DIFFUSE_KEY_FAMILY` are the
+   covers that case. The power guard, `Comparison.min_attainable_p`, `effect_summary` and `diffuse_key_family` are the
    other library changes.
 
 ## Results

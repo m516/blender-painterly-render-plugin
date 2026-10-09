@@ -8,6 +8,7 @@ from painterly_analysis import (
     highpass,
     pearson,
     radial_spectral_slope,
+    realization_free_key_family,
     structure_std,
 )
 
@@ -124,3 +125,31 @@ def test_radial_spectral_slope_of_power_law_is_minus_two() -> None:
     # bins per radius. It is computed from the data, so it is not a hand-picked number.
     tolerance = _radial_fit_residual_rms(x)
     assert abs(slope - (-2.0)) <= tolerance
+
+
+def test_realization_free_key_family_drops_reference_realization_keys() -> None:
+    keys = [
+        "r2.mean.R",
+        "r2.mean.G",
+        "r2.mean.B",
+        "r2.structure_std",
+        "r2.lag1.x",
+        "r2.lag1.y",
+        "r2.pattern_corr",
+        "r2.spectral_slope",
+        "all.pattern_corr",
+        "all.block_rmse",
+        "all.clip_fraction",
+        "all.spectral_slope",
+    ]
+    # pattern_corr and block_rmse compare with the reference's realization. The raw lag-1 keys
+    # are not in the family. The rest keep their order.
+    assert realization_free_key_family(keys) == [
+        "r2.mean.R",
+        "r2.mean.G",
+        "r2.mean.B",
+        "r2.structure_std",
+        "r2.spectral_slope",
+        "all.clip_fraction",
+        "all.spectral_slope",
+    ]

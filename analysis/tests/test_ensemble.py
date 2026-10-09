@@ -8,12 +8,14 @@ import math
 import pytest
 from painterly_analysis import (
     compare_ensembles,
+    diffuse_key_family,
     holm,
+    min_attainable_pvalue,
     permutation_pvalue,
     sign_flip_pvalue,
     student_t_ppf,
 )
-from painterly_analysis.ensemble import effect_summary
+from painterly_analysis.ensemble import PERMUTATION_RESAMPLES, effect_summary
 
 NON_FINITE_MESSAGE = "samples must be finite (got NaN or inf)"
 
@@ -140,3 +142,76 @@ def test_effect_summary_values_and_constant_key_gives_none() -> None:
     assert summary["c"]["mean_a"] == 240.0
     assert summary["c"]["sd_a"] == 0.0
     assert summary["c"]["diff"] == 0.0
+
+
+def _separated_runs(keys: list[str], low: range, high: range) -> tuple[list[dict], list[dict]]:
+    """Two ensembles of metric dicts, one run per value, identical for every key."""
+    a = [{key: float(v) for key in keys} for v in high]
+    b = [{key: float(v) for key in keys} for v in low]
+    return a, b
+
+
+def test_power_guard_boundary_on_fully_separated_8_vs_8() -> None:
+    # The first Holm threshold is alpha / keys. With 8 vs 8 the smallest attainable p is
+    # 2 / C(16, 8) = 1.55e-4, which is at most 0.01 / 46 = 2.17e-4 and above 0.01 / 67 = 1.49e-4.
+    keys46 = [f"k{i}" for i in range(46)]
+    a, b = _separated_runs(keys46, range(1, 9), range(9, 17))
+    comparison = compare_ensembles(a, b, keys46, alpha=0.01)
+    assert comparison.min_attainable_p == 2 / math.comb(16, 8)
+    assert not comparison.indistinguishable
+
+    keys67 = [f"k{i}" for i in range(67)]
+    a, b = _separated_runs(keys67, range(1, 9), range(9, 17))
+    with pytest.raises(ValueError, match="67 keys"):
+        compare_ensembles(a, b, keys67, alpha=0.01)
+
+
+def test_eight_vs_seven_minimum_is_one_over_c_15_7() -> None:
+    a = [{"k": float(v)} for v in range(9, 17)]
+    b = [{"k": float(v)} for v in range(1, 8)]
+    comparison = compare_ensembles(a, b, ["k"], alpha=0.01)
+    # Unequal sizes have no mirror split, so the two-sided minimum is 1 / C(15, 7).
+    assert comparison.min_attainable_p == 1 / math.comb(15, 7)
+
+
+def test_monte_carlo_minimum_is_one_over_resamples_plus_one() -> None:
+    # 20 vs 20 has C(40, 20) > PERMUTATION_MAX_EXACT, so the test is Monte Carlo.
+    assert min_attainable_pvalue(20, 20) == 1 / (PERMUTATION_RESAMPLES + 1)
+    assert min_attainable_pvalue(20, 20, "greater") == 1 / (PERMUTATION_RESAMPLES + 1)
+    # The exact branch takes over when the split count is within max_exact.
+    assert min_attainable_pvalue(8, 8, max_exact=10, n_resamples=99) == 1 / 100
+    assert min_attainable_pvalue(8, 8, max_exact=math.comb(16, 8)) == 2 / math.comb(16, 8)
+
+
+def test_one_sided_minimum_has_no_mirror_factor() -> None:
+    assert min_attainable_pvalue(8, 8, "greater") == 1 / math.comb(16, 8)
+    assert min_attainable_pvalue(8, 8, "less") == 1 / math.comb(16, 8)
+    assert min_attainable_pvalue(8, 8, "two-sided") == 2 / math.comb(16, 8)
+
+
+def test_min_attainable_pvalue_rejects_bad_arguments() -> None:
+    with pytest.raises(ValueError, match="alternative"):
+        min_attainable_pvalue(8, 8, "sideways")
+    with pytest.raises(ValueError, match="at least one value"):
+        min_attainable_pvalue(0, 8)
+
+
+def test_diffuse_key_family() -> None:
+    keys = [
+        "r2.mean.R",
+        "r9.mean.R",
+        "all.clip_fraction",
+        "r4.lag1.x",
+        "r10.mean.R",
+        "r8.structure_std",
+        "all.spectral_slope",
+        "r0.structure_std",
+    ]
+    # Region 9 (the light) and regions 0 and 10 are outside DIFFUSE_REGION_IDS. Order is kept.
+    assert diffuse_key_family(keys) == [
+        "r2.mean.R",
+        "all.clip_fraction",
+        "r4.lag1.x",
+        "r8.structure_std",
+        "all.spectral_slope",
+    ]

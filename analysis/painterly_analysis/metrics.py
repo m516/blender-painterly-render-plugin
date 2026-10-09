@@ -306,7 +306,7 @@ def measure(
     return out
 
 
-def DIFFUSE_KEY_FAMILY(keys: Iterable[str]) -> list[str]:
+def diffuse_key_family(keys: Iterable[str]) -> list[str]:
     """Keys of the diffuse family: every ``r{id}.*`` key with id in ``DIFFUSE_REGION_IDS``, plus
     every ``all.*`` key. Order is that of ``keys``.
 
@@ -321,5 +321,30 @@ def DIFFUSE_KEY_FAMILY(keys: Iterable[str]) -> list[str]:
             continue
         match = _REGION_KEY.match(key)
         if match is not None and int(match.group(1)) in DIFFUSE_REGION_IDS:
+            family.append(key)
+    return family
+
+
+# Suffixes of the realization-free keys of ``realization_free_key_family``.
+_REALIZATION_FREE_SUFFIXES = (".mean.R", ".mean.G", ".mean.B", ".structure_std", ".spectral_slope")
+_REALIZATION_FREE_GLOBAL = "all.clip_fraction"
+
+
+def realization_free_key_family(keys: Iterable[str]) -> list[str]:
+    """Keys of the realization-free family, in the order of ``keys``.
+
+    It keeps every key ending in ``.mean.R``, ``.mean.G``, ``.mean.B``, ``.structure_std`` or
+    ``.spectral_slope``, and ``all.clip_fraction``. It drops ``pattern_corr`` and ``block_rmse``,
+    and every other key, including the raw lag-1 keys.
+
+    ``pattern_corr`` and ``block_rmse`` measure agreement with the reference's specific
+    *realization*: the particular sample sequence of the oracle's K stream. A scene that cannot
+    reproduce oracle K consumption exactly (Blender meshes, ghost-lights-only) is judged on this
+    realization-free family instead. Regions are not restricted here. Apply ``diffuse_key_family``
+    first to restrict the family to the diffuse regions.
+    """
+    family = []
+    for key in keys:
+        if key == _REALIZATION_FREE_GLOBAL or key.endswith(_REALIZATION_FREE_SUFFIXES):
             family.append(key)
     return family

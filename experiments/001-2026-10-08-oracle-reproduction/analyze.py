@@ -1,14 +1,13 @@
 """Analysis of experiment 001 (T1.6, amended in T1.10): does the oracle reproduce the reference?
 
 Re-runs from the render cache, so every render must already exist (``jobs.py``). Writes
-``results.json`` and the ``fig_*.png`` previews next to this file, and prints the tables.
-Deterministic: the only random numbers are the bootstrap indices from ``jax.random.PRNGKey(0)``.
+``results.json`` and the ``fig_*.png`` previews to the output directory (default: next to this
+file), and prints the tables. Deterministic: the only random numbers are the bootstrap indices from
+``jax.random.PRNGKey(0)``.
 """
 
-import importlib.util
-import json
+import argparse
 import math
-import os
 from pathlib import Path
 
 import jax
@@ -19,10 +18,11 @@ from painterly_analysis import (
     ensemble,
     metrics,
     read_ppm,
+    report,
     smallpaint_display,
     write_png,
 )
-from painterly_analysis.experiment import load, measure_ensemble
+from painterly_analysis.experiment import load
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -46,13 +46,15 @@ DIFF_GAIN = 4  # fig_absdiff_P512: |ab8 - ref8| scaled by this factor, then clip
 DISPLAY_MAX = 255  # SPEC §7 display maximum
 
 
-def _load_jobs_module():
-    spec = importlib.util.spec_from_file_location("experiment_001_jobs", EXP_DIR / "jobs.py")
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load jobs.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Analysis of experiment 001 (T1.6, T1.10).")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=EXP_DIR,
+        help="directory for results.json and the figures (default: this directory)",
+    )
+    return parser.parse_args(argv)
 
 
 def _masked_var(x, mask) -> float:
@@ -120,24 +122,24 @@ def _h1(ref8: np.ndarray, jobs: list, masks: dict, present: list[int]) -> dict:
 
 def _compare(measures: dict, keys: list[str], a: str, b: str) -> dict:
     """Holm comparison over ``keys`` (the diffuse family) with the effect summary of each key."""
-    comparison = ensemble.compare_ensembles(measures[a], measures[b], keys, ALPHA)
-    summary = ensemble.effect_summary(measures[a], measures[b], keys)
-    cohen = {key: summary[key]["cohen_d"] for key in keys}
-    defined = [key for key in keys if cohen[key] is not None]
-    worst = max(defined, key=lambda key: abs(cohen[key])) if defined else None
+    test = report.family_test(measures[a], measures[b], keys, ALPHA)
+    if not test["powered"]:
+        raise ValueError(f"{a} vs {b} is underpowered: compare_ensembles would raise")
+    rejected_keys = test["rejected_keys"]
+    worst = test["largest_abs_cohen_d"]
     return {
         "a": a,
         "b": b,
         "n_keys": len(keys),
-        "min_attainable_p": comparison.min_attainable_p,
-        "pvalues": comparison.pvalues,
-        "rejected": comparison.rejected,
-        "n_rejected": sum(comparison.rejected.values()),
-        "indistinguishable": comparison.indistinguishable,
-        "min_p": min(comparison.pvalues.values()),
-        "effect_summary": summary,
-        "max_abs_cohen_d": abs(cohen[worst]) if worst is not None else None,
-        "max_abs_cohen_d_key": worst,
+        "min_attainable_p": test["min_attainable_p"],
+        "pvalues": test["pvalues"],
+        "rejected": {key: key in rejected_keys for key in keys},
+        "n_rejected": len(rejected_keys),
+        "indistinguishable": not rejected_keys,
+        "min_p": min(test["pvalues"].values()),
+        "effect_summary": test["effect_summary"],
+        "max_abs_cohen_d": worst["value"] if worst is not None else None,
+        "max_abs_cohen_d_key": worst["key"] if worst is not None else None,
     }
 
 
@@ -302,18 +304,17 @@ def _structure_correlation(measures: dict, conv: dict) -> dict:
 
 def _h4(measures: dict, jobs_by_p: dict[int, list], ref8: np.ndarray, mask: jnp.ndarray) -> dict:
     pattern = {p: [m["all.pattern_corr"] for m in measures[f"img{p}"]] for p in P_VALUES}
-    steps = list(zip(P_VALUES[:-1], P_VALUES[1:], strict=True))
-    names = [f"{lo}->{hi}" for lo, hi in steps]
-    p_up = {
-        name: ensemble.permutation_pvalue(pattern[hi], pattern[lo], "greater")
-        for name, (lo, hi) in zip(names, steps, strict=True)
-    }
-    p_down = {
-        name: ensemble.permutation_pvalue(pattern[hi], pattern[lo], "less")
-        for name, (lo, hi) in zip(names, steps, strict=True)
-    }
-    up_rejected = ensemble.holm(p_up, ALPHA)
-    down_rejected = ensemble.holm(p_down, ALPHA)
+    # Adjacent steps lo -> hi of P. hi is tested against lo: "greater" is a rise, "less" a fall.
+    steps = report.adjacent_tests(
+        {str(p): measures[f"img{p}"] for p in P_VALUES},
+        [str(p) for p in P_VALUES],
+        "all.pattern_corr",
+        ALPHA,
+    )
+    p_up = {name: step["p_greater"] for name, step in steps["steps"].items()}
+    p_down = {name: step["p_less"] for name, step in steps["steps"].items()}
+    up_rejected = steps["holm_rejected_greater"]
+    down_rejected = steps["holm_rejected_less"]
     if all(up_rejected.values()):
         decision = "supported"
     elif any(down_rejected.values()):
@@ -421,21 +422,24 @@ def _print_h4(h4: dict) -> None:
 
 
 def _json_safe(value):
-    """JSON has no infinity: inf becomes the string "inf". NaN is an error and is never written."""
+    """Encode infinity as the strings "inf" and "-inf", which the results file can hold.
+
+    NaN is left as it is, and ``report.write_results_json`` refuses it.
+    """
     if isinstance(value, dict):
         return {key: _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
-    if isinstance(value, float):
-        if math.isnan(value):
-            raise RuntimeError("NaN in results")
-        if math.isinf(value):
-            return "inf" if value > 0 else "-inf"
+    if isinstance(value, float) and math.isinf(value):
+        return "inf" if value > 0 else "-inf"
     return value
 
 
-def main() -> None:
-    jobs_module = _load_jobs_module()
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    out_dir = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    jobs_module = report.load_jobs_module(EXP_DIR / "jobs.py")
     ensembles = jobs_module.ENSEMBLES
     ref8 = read_ppm(REFERENCE_PPM)
 
@@ -451,12 +455,15 @@ def main() -> None:
         raise RuntimeError(f"unmeasured diffuse regions {absent} have pixels")
     mask4 = masks[BACK_WALL_ID]
 
-    measures = {name: measure_ensemble(jobs, ref8, object_id) for name, jobs in ensembles.items()}
+    measures = {
+        name: report.ensemble_metrics(jobs, ref8, object_id=object_id)
+        for name, jobs in ensembles.items()
+    }
     keys = sorted(measures["img64"][0])
     for name, runs in measures.items():
         if sorted(runs[0]) != keys:
             raise RuntimeError(f"metric keys of {name} differ")
-    family = metrics.DIFFUSE_KEY_FAMILY(keys)
+    family = metrics.diffuse_key_family(keys)
 
     h1 = _h1(ref8, ensembles["img256"], masks, present)
     h2 = [
@@ -471,15 +478,15 @@ def main() -> None:
 
     fig_pair0_512 = _ab8(*ensembles["img512"][:2])
     fig_pair0_pm = _ab8(*ensembles["pm64"][:2])
-    write_png(EXP_DIR / "fig_reference.png", ref8)
-    write_png(EXP_DIR / "fig_image_P512.png", fig_pair0_512)
-    write_png(EXP_DIR / "fig_pixel_major_P64.png", fig_pair0_pm)
+    write_png(out_dir / "fig_reference.png", ref8)
+    write_png(out_dir / "fig_image_P512.png", fig_pair0_512)
+    write_png(out_dir / "fig_pixel_major_P64.png", fig_pair0_pm)
     diff = np.clip(
         DIFF_GAIN * np.abs(fig_pair0_512.astype(np.int64) - ref8.astype(np.int64)), 0, DISPLAY_MAX
     ).astype(np.uint8)
-    write_png(EXP_DIR / "fig_absdiff_P512.png", diff)
+    write_png(out_dir / "fig_absdiff_P512.png", diff)
     figures = {
-        name: os.path.getsize(EXP_DIR / name)
+        name: (out_dir / name).stat().st_size
         for name in (
             "fig_reference.png",
             "fig_image_P512.png",
@@ -515,10 +522,7 @@ def main() -> None:
         "h5": h5,
         "figures": figures,
     }
-    json_text = json.dumps(_json_safe(results), indent=2, sort_keys=True) + "\n"
-    if "NaN" in json_text:
-        raise RuntimeError("NaN in results.json")
-    (EXP_DIR / "results.json").write_text(json_text, encoding="utf-8")
+    report.write_results_json(out_dir / "results.json", _json_safe(results))
 
     _print_h1(h1)
     for cmp in h2:

@@ -11,12 +11,8 @@ where all six diffuse regions are measured at every size. The defaults are the e
 """
 
 import argparse
-import importlib.util
-import json
-import math
 from collections.abc import Iterable
 from pathlib import Path
-from types import ModuleType
 
 import jax
 import jax.numpy as jnp
@@ -26,10 +22,11 @@ from painterly_analysis import (
     ensemble,
     metrics,
     read_ppm,
+    report,
     smallpaint_display,
     write_png,
 )
-from painterly_analysis.experiment import Job, load, measure_ensemble
+from painterly_analysis.experiment import Job, load
 
 EXP_DIR = Path(__file__).resolve().parent
 EXPERIMENT = EXP_DIR.name
@@ -53,18 +50,38 @@ BLOCK = 16  # seeds per configuration: 8 pairs x 2 half renders (jobs.py)
 HIGHPASS_SIZE = 9  # metrics.measure default
 ERODE_RADIUS = HIGHPASS_SIZE // 2  # metrics.measure default: half-width of the high-pass box
 REFERENCE_SIZE = 400  # the native reference (GUI scene)
-JITTER_TUNED = 1.0 / 1400.0  # s800_j1400 (jobs.py). The default 1/700 is not passed as an option.
 PREVIEW_SIDE = 200  # side in pixels of each figure tile, whatever the render size
 
 # Native size and seed block of each configuration (README, Method). The jobs must match them.
-NATIVE_SIZE = {"s200": 200, "s400": 400, "s800": 800, "s800_j1400": 800}
-SEED_BLOCK = {"s200": 28, "s400": 0, "s800": 29, "s800_j1400": 30}
+# The row_ configurations are the artist-mode chain (H1d). row_s400 is experiment 003's row.
+NATIVE_SIZE = {
+    "s200": 200,
+    "s400": 400,
+    "s800": 800,
+    "s800_j1400": 800,
+    "row_s200": 200,
+    "row_s400": 400,
+    "row_s800": 800,
+}
+SEED_BLOCK = {
+    "s200": 28,
+    "s400": 0,
+    "s800": 29,
+    "s800_j1400": 30,
+    "row_s200": 31,
+    "row_s400": 27,
+    "row_s800": 32,
+}
 POSITIVE = "s400"  # the positive control: experiment 001's img64
 SIZE_PAIRS = (("s200", "s400"), ("s400", "s800"), ("s200", "s800"))  # H1a: every pair of sizes
-JITTER_PAIR = ("s800", "s800_j1400")  # H2
-DOWNSAMPLED = (
-    "s800"  # H1b: box-downsampled 2 x 2 to the native size of POSITIVE, then compared with it
+ROW_SIZE_PAIRS = (  # H1d: the same size pairs on the row chain
+    ("row_s200", "row_s400"),
+    ("row_s400", "row_s800"),
+    ("row_s200", "row_s800"),
 )
+JITTER_PAIR = ("s800", "s800_j1400")  # H2
+# H1b: box-downsampled 2 x 2 to the native size of POSITIVE, then compared with it.
+DOWNSAMPLED = "s800"
 FIG_LAYOUT = (
     ("s200", "s400", "s800"),
     ("s800_j1400", "downsampled", "reference"),
@@ -112,40 +129,43 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _load_module(path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(f"jobs_{path.parent.name}", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _expected_options(name: str, size: int) -> dict[str, object]:
+def _expected_options(name: str, size: int, jitter: float) -> dict[str, object]:
     """The oracle options of a configuration (README, Method). The jitter default is not passed."""
-    options: dict[str, object] = {"chain": "image", "passes": PASSES, "size": size}
+    chain = "row" if name.startswith("row_") else "image"
+    options: dict[str, object] = {"chain": chain, "passes": PASSES, "size": size}
     if name == "s800_j1400":
-        options["jitter"] = JITTER_TUNED
+        options["jitter"] = jitter
     return options
 
 
 def _check_design(
-    ensembles: dict[str, list[Job]], pairs: int, scale: int, earlier: list[Job]
+    ensembles: dict[str, list[Job]],
+    pairs: int,
+    scale: int,
+    earlier_jobs: list[Job],
+    jitter: float,
 ) -> None:
     """The README's design, checked on the jobs. Raises RuntimeError on any mismatch.
 
     Every configuration has its expected options, one block of consecutive seeds at its block, and
-    no seed of experiments 001-003. The positive control s400 is block 0, and at full scale its
-    options equal those of experiment 001's img64, so its renders are the cached ones.
+    no seed shared with another configuration. The positive control s400 is block 0. At full scale
+    its options equal those of experiment 001's ``img64``, so its renders are the cached ones. At
+    full scale a seed of experiments 001-003 may be reused only with an identical option set (the
+    row_s400 reuse of experiment 003's row). At smoke scale (``scale > 1``) that check is not made,
+    because the option sets differ from the earlier experiments by size.
     """
     if set(ensembles) != set(NATIVE_SIZE):
         raise RuntimeError(f"ENSEMBLES must hold {sorted(NATIVE_SIZE)}, got {sorted(ensembles)}")
-    earlier_seeds = {job.seed for job in earlier}
-    img64_options = {job.options for job in earlier if job.name == IMG64}
+    earlier: dict[int, dict] = {}
+    for job in earlier_jobs:
+        seen = dict(job.options)
+        if earlier.setdefault(job.seed, seen) != seen:
+            raise RuntimeError(f"seed {job.seed} of an earlier experiment has two option sets")
+    img64_options = {job.options for job in earlier_jobs if job.name == IMG64}
     all_seeds: list[int] = []
     for name, native in NATIVE_SIZE.items():
         jobs = ensembles[name]
-        options = _expected_options(name, native // scale)
+        options = _expected_options(name, native // scale, jitter)
         if len(jobs) != 2 * pairs:
             raise RuntimeError(f"{name}: expected {2 * pairs} jobs, got {len(jobs)}")
         if any(dict(job.options) != options for job in jobs):
@@ -156,35 +176,18 @@ def _check_design(
             raise RuntimeError(
                 f"{name}: seeds must be consecutive from {BLOCK * SEED_BLOCK[name]}, got {base}"
             )
-        if name == POSITIVE:
-            if scale == 1 and {job.options for job in jobs} != img64_options:
-                raise RuntimeError(f"{name}: options must equal experiment 001's {IMG64}")
-        elif set(seeds) & earlier_seeds:
-            raise RuntimeError(f"{name}: seeds overlap experiments 001-003")
+        if name == POSITIVE and scale == 1 and {job.options for job in jobs} != img64_options:
+            raise RuntimeError(f"{name}: options must equal experiment 001's {IMG64}")
+        if scale == 1:
+            for job in jobs:
+                if job.seed in earlier and earlier[job.seed] != dict(job.options):
+                    raise RuntimeError(
+                        f"{name}: seed {job.seed} is used by an earlier experiment "
+                        "with other options"
+                    )
         all_seeds.extend(seeds)
     if len(set(all_seeds)) != len(all_seeds):
         raise RuntimeError("seeds are not unique across configurations")
-
-
-def _diffuse_only(object_id: np.ndarray, regions: Iterable[int]) -> np.ndarray:
-    """``object_id`` with every id outside ``regions`` set to -1, so that the metrics skip it.
-
-    ``regions`` are the measured diffuse regions. The light (id 9) is never one of them, as in
-    experiments 002 and 003, so it is excluded from every family.
-    """
-    return np.where(np.isin(object_id, list(regions)), object_id, -1)
-
-
-def _min_attainable_p(n: int, m: int) -> float:
-    """Smallest two-sided p-value that ``ensemble.permutation_pvalue`` can return for sizes n and m.
-
-    Mirrors ``ensemble._min_attainable_pvalue``. When n == m, the mirror split is equally extreme,
-    so the minimum is 2 / C(n + m, n).
-    """
-    splits = math.comb(n + m, n)
-    if splits > ensemble.PERMUTATION_MAX_EXACT:
-        return 1 / (ensemble.PERMUTATION_RESAMPLES + 1)
-    return (2 if n == m else 1) / splits
 
 
 def _masked_cov(x, y, mask) -> float:
@@ -237,7 +240,7 @@ def _reference_free(
     hp_a = metrics.highpass(metrics.luminance(a8), HIGHPASS_SIZE)
     hp_b = metrics.highpass(metrics.luminance(b8), HIGHPASS_SIZE)
     hp_ab = metrics.highpass(metrics.luminance(ab8), HIGHPASS_SIZE)
-    masks = metrics.region_masks(_diffuse_only(object_id, regions), ERODE_RADIUS)
+    masks = metrics.region_masks(report.diffuse_only(object_id, regions), ERODE_RADIUS)
     if not masks:
         raise ValueError("no diffuse region survives erosion")
     out: dict[str, float] = {}
@@ -344,63 +347,29 @@ def _ab8_downsampled(jobs: list[Job]) -> np.ndarray:
     )
 
 
-def _column(runs: list[dict], key: str) -> list[float]:
-    return [run[key] for run in runs]
-
-
-def _largest_rel(summary: dict) -> dict | None:
-    """The key with the largest |relative difference|, ties broken by key name."""
-    defined = [(abs(s["rel_diff"]), key) for key, s in summary.items() if s["rel_diff"] is not None]
-    if not defined:
-        return None
-    value, key = max(defined)
-    return {"key": key, "value": value}
-
-
 def _family_test(
     x_runs: list[dict], y_runs: list[dict], family: list[str], alpha: float, label: str
 ) -> dict:
     """``compare_ensembles`` of two ensembles on a key family, with the power check.
 
-    A comparison is powered when its smallest attainable p is at most the first Holm threshold,
-    ``alpha / len(family)``. An underpowered comparison is not run through ``compare_ensembles``:
-    it can neither reject nor be called indistinguishable.
+    An underpowered comparison is not run through ``compare_ensembles`` (``report.family_test``).
     """
-    min_p = _min_attainable_p(len(x_runs), len(y_runs))
-    threshold = alpha / len(family)
-    powered = min_p <= threshold
-    summary = ensemble.effect_summary(x_runs, y_runs, family)
-    record: dict = {
-        "comparison": label,
-        "n_keys": len(family),
-        "alpha": alpha,
-        "min_attainable_p": min_p,
-        "holm_first_threshold": threshold,
-        "powered": powered,
-        "effect_summary": summary,
-        "largest_abs_rel_diff": _largest_rel(summary),
-    }
-    if powered:
-        comparison = ensemble.compare_ensembles(x_runs, y_runs, family, alpha)
-        if comparison.min_attainable_p != min_p:
-            raise RuntimeError("power formula is out of step with ensemble.compare_ensembles")
-        record["pvalues"] = comparison.pvalues
-        record["rejected_keys"] = [key for key in family if comparison.rejected[key]]
-    else:
-        record["pvalues"] = {
-            key: ensemble.permutation_pvalue(_column(x_runs, key), _column(y_runs, key))
-            for key in family
-        }
-        record["rejected_keys"] = None
-    return record
+    return {"comparison": label, **report.family_test(x_runs, y_runs, family, alpha)}
 
 
-def _h1a(runs: dict[str, list[dict]], family: list[str]) -> dict:
-    """H1a: the noise-corrected lag-1 keys are indistinguishable across the three size pairs."""
-    level = SIGNIFICANCE / len(SIZE_PAIRS)
+def _size_comparisons(
+    runs: dict[str, list[dict]], family: list[str], pairs: tuple[tuple[str, str], ...]
+) -> dict:
+    """The noise-corrected lag-1 keys compared across size pairs, at alpha = 0.01 / len(pairs).
+
+    H1a uses ``SIZE_PAIRS`` (image chain). H1d uses ``ROW_SIZE_PAIRS`` (row chain). The decision is
+    the same for both: refuted iff some key is rejected in some pair, supported iff no key is
+    rejected and every pair is powered, otherwise inconclusive.
+    """
+    level = SIGNIFICANCE / len(pairs)
     tests = {
         f"{a} vs {b}": _family_test(runs[a], runs[b], family, level, f"{a} vs {b}")
-        for a, b in SIZE_PAIRS
+        for a, b in pairs
     }
     rejected = {name: t["rejected_keys"] for name, t in tests.items() if t["rejected_keys"]}
     powered = all(t["powered"] for t in tests.values())
@@ -421,15 +390,55 @@ def _h1a(runs: dict[str, list[dict]], family: list[str]) -> dict:
 
 
 def _h1b(down: list[dict], native: list[dict], family: list[str]) -> dict:
-    """H1b: the 800 px ensemble, box-downsampled to 400 px, is distinguishable from native 400 on
-    the keys of ``family`` (the noise-corrected lag-1 keys, README D7)."""
-    test = _family_test(down, native, family, SIGNIFICANCE, "downsampled 800 vs native 400")
-    if not test["powered"]:
+    """H1b, one-sided (the amendment before rendering, Opus M1 review 3).
+
+    The 800 px ensemble, box-downsampled to 400 px, against native 400 px on the noise-corrected
+    lag-1 keys. For each key, ``p_less`` is the p-value of "downsampled is lower" and ``p_greater``
+    that of "downsampled is higher". Holm runs across the keys in each direction at SIGNIFICANCE.
+
+    Supported (pixel-locked) iff at least one key is rejected "less" and none "greater". Refuted
+    (world-locked) iff at least one key is rejected "greater" and none "less". Otherwise
+    inconclusive. An underpowered comparison, whose smallest attainable one-sided p exceeds
+    SIGNIFICANCE / len(family), is inconclusive.
+    """
+    p_less = {
+        key: report.pair_test(down, native, key, "less", SIGNIFICANCE)["p_value"] for key in family
+    }
+    p_greater = {
+        key: report.pair_test(down, native, key, "greater", SIGNIFICANCE)["p_value"]
+        for key in family
+    }
+    holm_less = ensemble.holm(p_less, SIGNIFICANCE)
+    holm_greater = ensemble.holm(p_greater, SIGNIFICANCE)
+    threshold = SIGNIFICANCE / len(family)
+    min_p = ensemble.min_attainable_pvalue(len(down), len(native), "less")
+    powered = min_p <= threshold
+    rejected_less = [key for key in family if holm_less[key]]
+    rejected_greater = [key for key in family if holm_greater[key]]
+    if not powered:
         decision = "inconclusive"
-    elif test["rejected_keys"]:
+    elif rejected_less and not rejected_greater:
         decision = "supported"
-    else:
+    elif rejected_greater and not rejected_less:
         decision = "refuted"
+    else:
+        decision = "inconclusive"
+    summary = ensemble.effect_summary(down, native, family)
+    test = {
+        "comparison": "downsampled 800 vs native 400",
+        "n_keys": len(family),
+        "alpha": SIGNIFICANCE,
+        "min_attainable_p": min_p,
+        "holm_first_threshold": threshold,
+        "powered": powered,
+        "p_less": p_less,
+        "p_greater": p_greater,
+        "holm_rejected_less": rejected_less,
+        "holm_rejected_greater": rejected_greater,
+        "effect_summary": summary,
+        "largest_abs_rel_diff": report.largest_abs_rel_diff(summary),
+        "largest_abs_cohen_d": report.largest_abs_cohen_d(summary),
+    }
     return {"test": test, "decision": decision}
 
 
@@ -462,7 +471,7 @@ def _summary_table(runs: dict[str, list[dict]], keys: list[str]) -> dict[str, di
     for name, metric_runs in runs.items():
         table[name] = {}
         for key in keys:
-            values = np.asarray(_column(metric_runs, key), dtype=np.float64)
+            values = np.asarray([run[key] for run in metric_runs], dtype=np.float64)
             table[name][key] = {
                 "mean": float(np.mean(values)),
                 "sd": float(np.std(values, ddof=1)),
@@ -489,17 +498,6 @@ def _grid(tiles: dict[str, np.ndarray]) -> np.ndarray:
     return mosaic
 
 
-def _json_safe(value):
-    """JSON has no infinity or NaN. NaN is an error and is never written."""
-    if isinstance(value, dict):
-        return {key: _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    if isinstance(value, float) and math.isnan(value):
-        raise RuntimeError("NaN in results")
-    return value
-
-
 def _fmt(value: float | None, spec: str = ".4g") -> str:
     return "n/a" if value is None else format(value, spec)
 
@@ -508,24 +506,38 @@ def _print_test(test: dict) -> None:
     rejected = test["rejected_keys"]
     count = "underpowered (not run)" if rejected is None else f"rejected={len(rejected)}"
     largest = test["largest_abs_rel_diff"]
+    cohen = test["largest_abs_cohen_d"]
     print(
         f"  {test['comparison']}: keys={test['n_keys']} {count} "
         f"min_attainable_p={test['min_attainable_p']:.3g} "
         f"threshold={test['holm_first_threshold']:.3g} "
         f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
-        f"({None if largest is None else largest['key']})"
+        f"({None if largest is None else largest['key']}) "
+        f"largest |d|={_fmt(None if cohen is None else cohen['value'])} "
+        f"({None if cohen is None else cohen['key']})"
     )
     if rejected:
         print(f"    rejected keys: {rejected}")
+
+
+def _print_h1b(test: dict) -> None:
+    print(
+        f"  {test['comparison']}: keys={test['n_keys']} "
+        f"min_attainable_p={test['min_attainable_p']:.3g} "
+        f"threshold={test['holm_first_threshold']:.3g} powered={test['powered']}"
+    )
+    print(f"    rejected less: {test['holm_rejected_less']}")
+    print(f"    rejected greater: {test['holm_rejected_greater']}")
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     if args.pairs < 1 or args.scale < 1:
         raise ValueError("--pairs and --scale must be >= 1")
-    ensembles = _load_module(args.jobs).build_ensembles(args.pairs, args.scale)
-    earlier: list[Job] = [job for path in EARLIER_JOBS for job in _load_module(path).JOBS]
-    _check_design(ensembles, args.pairs, args.scale, earlier)
+    jobs_module = report.load_jobs_module(args.jobs)
+    ensembles = jobs_module.build_ensembles(args.pairs, args.scale)
+    earlier_jobs = [job for path in EARLIER_JOBS for job in report.load_jobs_module(path).JOBS]
+    _check_design(ensembles, args.pairs, args.scale, earlier_jobs, jobs_module.JITTER_TUNED)
 
     native_ref = REFERENCE_SIZE // args.scale
     reference8 = read_ppm(args.reference)
@@ -543,7 +555,9 @@ def main(argv: list[str] | None = None) -> None:
             if not np.array_equal(object_ids[name], object_ids[names[0]]):
                 raise RuntimeError(f"object id of {name} differs from {names[0]}")
     measured_by = {
-        name: sorted(metrics.region_masks(_diffuse_only(oid, DIFFUSE_REGION_IDS), ERODE_RADIUS))
+        name: sorted(
+            metrics.region_masks(report.diffuse_only(oid, DIFFUSE_REGION_IDS), ERODE_RADIUS)
+        )
         for name, oid in object_ids.items()
     }
     if args.scale == 1:
@@ -561,7 +575,6 @@ def main(argv: list[str] | None = None) -> None:
             raise RuntimeError("no diffuse region is measured in every configuration")
     absent = sorted(set(DIFFUSE_REGION_IDS) - set().union(*measured_by.values()))
     dropped = sorted(set().union(*measured_by.values()) - set(measured))
-    measure_map = _diffuse_only(object_ids[POSITIVE], measured)
 
     runs = {
         name: _reference_free_ensemble(ensembles[name], object_ids[name], measured)
@@ -571,7 +584,7 @@ def main(argv: list[str] | None = None) -> None:
     for name, metric_runs in runs.items():
         if any(sorted(run) != keys for run in metric_runs):
             raise RuntimeError(f"reference-free keys of {name} differ")
-    family = metrics.DIFFUSE_KEY_FAMILY(keys)
+    family = metrics.diffuse_key_family(keys)
     lag1_corr = [key for key in family if ".slag1." in key]
     lag1_raw = [key for key in family if ".lag1." in key]
     structure = [key for key in family if key.endswith(".structure_std")]
@@ -583,15 +596,20 @@ def main(argv: list[str] | None = None) -> None:
     if sorted(down_runs[0]) != keys:
         raise RuntimeError("reference-free keys of the downsampled ensemble differ")
     # Descriptive only (README D7): metrics.measure keys, noise-confounded, never tested.
-    native = measure_ensemble(ensembles[POSITIVE], reference8, measure_map)
-    down = _downsampled_ensemble(ensembles[DOWNSAMPLED], reference8, measure_map)
+    native = report.ensemble_metrics(
+        ensembles[POSITIVE], reference8, measured, object_id=object_ids[POSITIVE]
+    )
+    down = _downsampled_ensemble(
+        ensembles[DOWNSAMPLED], reference8, report.diffuse_only(object_ids[POSITIVE], measured)
+    )
     ds_keys = sorted(native[0])
     if sorted(down[0]) != ds_keys:
         raise RuntimeError("keys of the downsampled and native ensembles differ")
-    ds_family = [key for key in metrics.DIFFUSE_KEY_FAMILY(ds_keys) if key != "all.block_rmse"]
+    ds_family = [key for key in metrics.diffuse_key_family(ds_keys) if key != "all.block_rmse"]
     ds_effects = ensemble.effect_summary(down, native, ds_family)
 
-    h1a = _h1a(runs, lag1_corr)
+    h1a = _size_comparisons(runs, lag1_corr, SIZE_PAIRS)
+    h1d = _size_comparisons(runs, lag1_corr, ROW_SIZE_PAIRS)
     h1b = _h1b(down_runs, runs[POSITIVE], lag1_corr)
     h1 = {"decision": _h1(h1a, h1b), "H1a": h1a, "H1b": h1b}
     h2 = _h2(runs, lag1_raw + lag1_corr + structure)
@@ -641,7 +659,7 @@ def main(argv: list[str] | None = None) -> None:
             "lag1_raw": lag1_raw,
             "structure_std": structure,
         },
-        "hypotheses": {"H1": h1, "H2": h2},
+        "hypotheses": {"H1": h1, "H1d": h1d, "H2": h2},
         "raw_lag1_effects": raw_lag1_effects,
         "downsample_effects": ds_effects,
         "summary": _summary_table(runs, family),
@@ -651,10 +669,7 @@ def main(argv: list[str] | None = None) -> None:
             "layout": [list(r) for r in FIG_LAYOUT],
         },
     }
-    text = json.dumps(_json_safe(results), indent=2, sort_keys=True) + "\n"
-    if "NaN" in text:
-        raise RuntimeError("NaN in results.json")
-    (out_dir / "results.json").write_text(text, encoding="utf-8")
+    report.write_results_json(out_dir / "results.json", results)
 
     print(
         f"keys: reference-free={len(family)} downsample={len(ds_family)}; "
@@ -667,15 +682,21 @@ def main(argv: list[str] | None = None) -> None:
     )
     for test in h1a["tests"].values():
         _print_test(test)
-    print(f"H1b downsampled 800 vs native 400 on noise-corrected lag-1: {h1b['decision']}")
-    _print_test(h1b["test"])
-    largest = _largest_rel(ds_effects)
+    print(
+        "H1d row chain, noise-corrected lag-1 across sizes, "
+        f"level {h1d['level_per_pair']:.4g} per pair: {h1d['decision']}"
+    )
+    for test in h1d["tests"].values():
+        _print_test(test)
+    print(f"H1b downsampled 800 vs native 400, one-sided: {h1b['decision']}")
+    _print_h1b(h1b["test"])
+    largest = report.largest_abs_rel_diff(ds_effects)
     print(
         "  descriptive, untested (noise-confounded, README D7): "
         f"largest |rel|={_fmt(None if largest is None else largest['value'])} "
         f"({None if largest is None else largest['key']})"
     )
-    print(f"H1 {h1['decision']}")
+    print(f"H1 {h1['decision']} (H1a and H1b; H1d is reported separately)")
     print(f"H2 jitter 1/700 vs 1/1400 at 800 px: {h2['decision']}")
     _print_test(h2["test"])
     print(f"wrote {out_dir / 'results.json'} and {out_dir / grid_name}")

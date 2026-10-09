@@ -17,11 +17,11 @@
   `all.pattern_corr` significantly against `img64` (0.5809 vs 0.5889, p = 1.55e-4). Its `img64` is `chain=image`,
   P = 64, block 0 (seeds 0-15). Its `all.pattern_corr` is 0.588908 (sd 0.001582). Its `pm64` gives 0.2947. This
   experiment's positive control `image` is that ensemble: the same option set, so the same 16 renders from the cache.
-- `experiments/002-2026-10-08-ingredient-ablation/` takes seed blocks 10-18. This experiment starts at block 19.
+- `experiments/002-2026-10-08-ingredient-ablation/` takes seed blocks 10-18. This experiment reuses block 17 (`lane_1`) and
+  block 0 (`image`), takes new blocks 20-27, and leaves block 19 unused.
 - Pilot values from the T1.8 card. They are not evidence: row against image gives 0.588 vs 0.589 pattern correlation;
-  `r4.lag1.x` is 0.156 at L = 16 against 0.204 for row. The plan's 0.63 for the row chain is a research-port number on
-  is a research-port number, and it is not directly comparable with 001's 0.589 from the compiled oracle. The tests
-  below use only the compiled oracle.
+  `r4.lag1.x` is 0.156 at L = 16 against 0.204 for row. The plan's 0.63 for the row chain is a research-port number
+  and is not directly comparable with 001's 0.589 from the compiled oracle. The tests below use only the compiled oracle.
 
 ## Hypothesis
 
@@ -30,7 +30,7 @@
 - A configuration is an ensemble of 8 pairs. A pair is two independent half renders (seeds 2k and 2k+1 of one
   configuration), each with P = 64 passes at 400 px, `scene=gui` and `ghost=all` (the oracle defaults).
 - Metrics are those of `metrics.measure`, over the diffuse regions only (as in experiment 002, D5). The key family is
-  `metrics.DIFFUSE_KEY_FAMILY(keys)`, which has 46 keys. Every `compare_ensembles` call uses it, never all keys.
+  `metrics.diffuse_key_family(keys)`, which has 46 keys. Every `compare_ensembles` call uses it, never all keys.
 - Curve keys, for H2: `all.pattern_corr`, `r4.structure_std`, `r4.lag1.x` and `r4.lag1.y`. Region 4 is the back plane
   (SPEC §9).
 - The significance level is alpha = 0.01 (written `SIGNIFICANCE` in the code). It is not the oracle option `alpha`.
@@ -43,7 +43,7 @@
   `inconclusive`, never as `supported` or `refuted`.
 - Estimation over verdicts: for every comparison, `ensemble.effect_summary` is reported (mean +- sd, relative
   difference, Cohen's d). A verdict of "indistinguishable" is always reported together with `min_attainable_p` and the
-  largest observed |relative difference|.
+  largest observed |relative difference| and the largest |Cohen's d|.
 
 ### H1: the pattern correlation does not fall as the lane gets longer
 
@@ -77,13 +77,21 @@
   the card's research finding that the start-index distribution reaches stationarity within about one pixel. So the
   hashed restart should match the continuous chain. The pilot gives 0.588 vs 0.589.
 - Claim: `row` is indistinguishable from `image` on the diffuse family.
-- Test: `ensemble.compare_ensembles(row, image, DIFFUSE_KEY_FAMILY(keys), alpha = 0.01)`. This is a two-sided permutation
-  test on each key, with Holm over 46 keys. The effect summary of the family is reported with `min_attainable_p` and the
-  largest |relative difference|.
+- Test: `ensemble.compare_ensembles(row, image, diffuse_key_family(keys), alpha = 0.01)`. This is a two-sided permutation
+  test on each key, with Holm over 46 keys. The effect summary of the family is reported with `min_attainable_p`, the
+  largest |relative difference| and the largest |Cohen's d|.
 - Decision: supported iff the comparison is powered and no key is rejected ("indistinguishable"). Refuted iff any key is
   rejected. Inconclusive if underpowered.
 
 ## Method
+
+### Amendments before rendering (Opus, cb52945)
+
+- `lane_1` has exactly the option set of experiment 002's `per_path_start`, so it reuses that experiment's block 17
+  (seeds 272-287). Its 16 renders come from the cache.
+- Block 19 is unused.
+- There are 128 new renders: 8 configurations x 16 seeds (`lane_2` to `lane_128`, and `row`). Reused: 32 (`image`
+  from experiment 001's block 0, and `lane_1` from experiment 002's block 17).
 
 ### Configurations
 
@@ -94,7 +102,7 @@ exactly that of experiment 001's `img64`, so its 16 renders come from the cache.
 | name | oracle options (besides size 400, passes 64) | seed block | seeds | renders |
 |---|---|---|---|---|
 | image | `chain=image` | 0 (001's img64) | 0-15 | 16, reused |
-| lane_1 | `chain=lane:1` | 19 | 304-319 | 16 new |
+| lane_1 | `chain=lane:1` | 17 (002's per_path_start) | 272-287 | 16, reused |
 | lane_2 | `chain=lane:2` | 20 | 320-335 | 16 new |
 | lane_4 | `chain=lane:4` | 21 | 336-351 | 16 new |
 | lane_8 | `chain=lane:8` | 22 | 352-367 | 16 new |
@@ -104,10 +112,10 @@ exactly that of experiment 001's `img64`, so its 16 renders come from the cache.
 | lane_128 | `chain=lane:128` | 26 | 416-431 | 16 new |
 | row | `chain=row` | 27 | 432-447 | 16 new |
 
-The base seed of each configuration is 16 times its block. Block 0 is shared with experiment 001. The nine other
-configurations take blocks 19-27, the first free blocks after experiment 002's block 18. Experiment 002's
-`per_path_start` is also `chain=lane:1`, but at seeds 272-287. Each configuration owns its block, so `lane_1` renders
-its own 16 seeds (304-319). New renders: 144 (9 configurations x 16). Reused: 16.
+The base seed of each configuration is 16 times its block. Block 0 is shared with experiment 001. The other
+configurations take blocks 20-27, the first free blocks after experiment 002's block 18, and block 19 is unused.
+`lane_1` has the option set of experiment 002's `per_path_start`, so it reuses that block 17 (seeds 272-287). New
+renders: 128 (8 configurations x 16). Reused: 32 (`image` from block 0, `lane_1` from block 17).
 
 ### Commands
 

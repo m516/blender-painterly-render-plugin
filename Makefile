@@ -6,7 +6,7 @@ export PATH := $(abspath .venv/bin):$(PATH)
 BLENDER ?= $(abspath .cache/blender/blender-$(BLENDER_VERSION)-linux-x64/blender)
 export BLENDER
 
-.PHONY: env env-blender blender build test-cpp test-py test test-slow lint format audit check clean
+.PHONY: env env-blender blender build oracle test-cpp test-py test test-slow lint format audit check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -22,6 +22,13 @@ blender:
 build:
 	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython_EXECUTABLE=$(abspath .venv/bin/python)
 	cmake --build $(BUILD_DIR)
+
+# The experiments' oracle, built alone into .cache/oracle-build. `make clean` does not touch it, so the renders
+# in .cache/renders stay valid. Run experiments with PAINTERLY_BUILD_DIR=.cache/oracle-build.
+ORACLE_BUILD_DIR ?= .cache/oracle-build
+oracle:
+	cmake -S . -B $(ORACLE_BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=Release -DPython_EXECUTABLE=$(abspath .venv/bin/python) -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=OFF
+	cmake --build $(ORACLE_BUILD_DIR) --target smallpaint_oracle
 
 test-cpp: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure

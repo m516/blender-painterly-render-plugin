@@ -17,8 +17,8 @@
 - `experiments/001-2026-10-08-oracle-reproduction/`: the compiled oracle reproduces the reference. Its `img64` ensemble
   (block 0, seeds 0-15, `chain=image`, P = 64, size 400, default jitter) is this experiment's positive control `s400`.
   Its `all.pattern_corr` at P = 64 is 0.588908 (sd 0.001582).
-- `experiments/002-2026-10-08-ingredient-ablation/` uses blocks 10-18 and `experiments/003-2026-10-08-lane-length/` uses
-  blocks 19-27. This experiment starts at block 28.
+- `experiments/002-2026-10-08-ingredient-ablation/` uses blocks 10-18, and `experiments/003-2026-10-08-lane-length/` uses
+  blocks 20-27 with 002's block 17 and 001's block 0 (block 19 is unused). This experiment starts at block 28.
 - Two readings of the look are possible. In the **pixel-locked** reading, the texture's correlation length is fixed in
   pixels, so it is the same at 200, 400 and 800 px. In the **world-locked** reading, the correlation length is fixed in
   world units, so it doubles in pixels from 400 to 800 px. The two readings make opposite predictions on the tests
@@ -43,7 +43,7 @@
   - `all.clip_fraction`, `all.spectral_slope`: as in `metrics.measure`.
   - Here `r` runs over the measured diffuse regions (SPEC §9 ids 2-8, eroded as in `metrics.measure`). The light (id 9)
     is excluded.
-- **Key families.** Every `compare_ensembles` call uses `metrics.DIFFUSE_KEY_FAMILY(keys)` for its key list, or a subset
+- **Key families.** Every `compare_ensembles` call uses `metrics.diffuse_key_family(keys)` for its key list, or a subset
   named in the hypothesis. It never uses all keys. The reference-free dictionary has 56 keys (6 measured regions with 9
   keys each, plus 2 `all.*` keys), not the 46 of `metrics.measure`, because it has no `pattern_corr` or `block_rmse`.
   H1b's subset is the 12 noise-corrected lag-1 keys (D7).
@@ -56,7 +56,7 @@
   `supported` or `refuted`, and it is not passed to `compare_ensembles`.
 - **Estimation over verdicts.** Every comparison reports `ensemble.effect_summary` (mean ± sd, relative difference,
   Cohen's d). "Indistinguishable" is only written together with `min_attainable_p` and the largest observed |relative
-  difference|.
+  difference| and the largest |Cohen's d|.
 
 ### H1: the texture is pixel-locked
 
@@ -79,7 +79,7 @@
   - Tests: `compare_ensembles` between the downsampled 800 px ensemble and the native 400 px ensemble on the 12 `slag1`
     keys of the measured regions, at alpha = 0.01. Their values on the downsampled ensemble use the native 400 px object
     id map (`_reference_free_downsampled`). The other keys of the downsample comparison, the 45 keys of
-    `metrics.DIFFUSE_KEY_FAMILY(keys)` for `metrics.measure` without `all.block_rmse` (raw lag-1, `structure_std`,
+    `metrics.diffuse_key_family(keys)` for `metrics.measure` without `all.block_rmse` (raw lag-1, `structure_std`,
     `pattern_corr` against the reference, and the rest), get `ensemble.effect_summary` only, with no p-value and no
     verdict (D7).
   - Decision: supported iff the comparison is powered (threshold 0.01/12 = 8.3e-4, which is at least 1.55e-4) and at least
@@ -90,7 +90,7 @@
   The world-locked reading predicts that H1a is refuted (the noise-corrected lag-1 keys rise with the side) and that H1b
   is not distinguishable. The second prediction ignores the box filter (D7).
 
-### H2: jitter units do not matter for the look
+### H2: jitter units matter for the look
 
 - Derived from: SPEC §7. The image-plane jitter corresponds to a blur that scales with the side length in pixels. At
   800 px, 1/700 displaces by up to 0.57 px and 1/1400 by up to 0.29 px. If the jitter changes the texture, the two differ.
@@ -118,19 +118,23 @@
 
 ### Configurations
 
-All configurations: P = 64, `chain=image`, 8 pairs. The scene and ghost are the oracle defaults and are left implicit, as
-in experiments 001-003. The jitter default 1/700 is left implicit too, so the option sets of the 1/700 configurations
+All configurations: P = 64, 8 pairs. The chain is `image`, except in the three `row_` configurations, which use
+`chain=row` (H1d). The scene and ghost are the oracle defaults and are left implicit, as in experiments 001-003. The jitter default 1/700 is left implicit too, so the option sets of the 1/700 configurations
 hold no jitter key. Only `s800_j1400` passes `jitter`, with the value `1.0 / 1400.0`.
 
-| name | size | oracle options (besides `passes=64`, `chain=image`) | seed block | seeds | renders |
+| name | size | oracle options (besides `passes=64`) | seed block | seeds | renders |
 |---|---|---|---|---|---|
 | s200 | 200 | `size=200` | 28 | 448-463 | 16 new |
 | s400 | 400 | `size=400` | 0 | 0-15 | 16, reused (experiment 001's `img64`) |
 | s800 | 800 | `size=800` | 29 | 464-479 | 16 new |
 | s800_j1400 | 800 | `size=800`, `jitter=1/1400` | 30 | 480-495 | 16 new |
+| row_s200 | 200 | `size=200`, `chain=row` | 31 | 496-511 | 16 new |
+| row_s400 | 400 | `size=400`, `chain=row` | 27 | 432-447 | 16, reused (experiment 003's `row`) |
+| row_s800 | 800 | `size=800`, `chain=row` | 32 | 512-527 | 16 new |
 
 The base seed of each configuration is 16 times its block. Block 0 is shared with experiment 001 on purpose: `s400` has
-the same options as `img64`, so its 16 renders come from the cache. New renders: 48 (3 x 16). Reused: 16.
+the same options as `img64`, so its 16 renders come from the cache. `row_s400` has the options of experiment 003's
+`row`, so its 16 renders come from that cache too. New renders: 80 (5 x 16). Reused: 32.
 
 ### Downsample
 
@@ -194,7 +198,8 @@ and 400), each with `--reference` at the scaled size. They are not part of the e
   At size 50, diffuse region 2 (left sphere) erodes away (erosion radius 4 px), so the six regions differ between sizes.
   At `--scale` above 1, the comparisons therefore use the regions measured in every configuration (3-7 at this scale;
   region 2 is listed as `dropped_at_this_scale`). At `--scale 1` the rule is strict and stops the analysis. The smoke at
-  `--scale 2` (sizes 100, 200 and 400) measures all six regions at every size and runs the strict rule. At full scale,
+  `--scale 2` (sizes 100, 200 and 400) measures all six regions at every size, so the intersection equals the strict set.
+At full scale,
   the 1-pass object-id maps at 200, 400 and 800 px (and 800 px with jitter 1/1400) measure regions 2-7 and no region 8.
   The maps are identical across seeds and jitter, since the id is that of the unjittered primary hit (SPEC §9, `io.py`).
   The 2-pair smoke runs no comparison (its smallest attainable p is 0.333), so the decision path is also run in a scratch

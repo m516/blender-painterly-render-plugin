@@ -37,14 +37,15 @@
 - The significance level is alpha = 0.01 (written SIGNIFICANCE in the code). It is not the oracle option `alpha`.
   Every p-value is an exact permutation p-value (`ensemble.permutation_pvalue`). Where several tests share a decision,
   Holm (`ensemble.holm`) is applied at alpha = 0.01.
-- Key family: `metrics.DIFFUSE_KEY_FAMILY(keys)`, which has 46 keys for the GUI scene. Every `compare_ensembles` call
+- Key family: `metrics.diffuse_key_family(keys)`, which has 46 keys for the GUI scene. Every `compare_ensembles` call
   uses it, never all keys.
 - Power: the smallest attainable p-value of 8 vs 8 pairs is 2 / C(16, 8) = 1.55e-4 two-sided, and 1 / C(16, 8) =
   7.77e-5 one-sided. A family comparison is powered only if that minimum is at most alpha / 46 = 2.17e-4, which holds.
   An underpowered comparison has no decision of "indistinguishable" or "refuted". It is reported as underpowered.
 - Estimation over verdicts: for every variant, the effect size against the positive control is reported for each key:
   `ensemble.effect_summary` (mean +- sd, relative difference, Cohen's d = (mean_v - mean_pos) / pooled sd). Any
-  "indistinguishable" verdict is reported with `min_attainable_p` and the largest observed |relative difference|.
+  "indistinguishable" verdict is reported with `min_attainable_p` and the largest observed |relative difference| and
+  the largest |Cohen's d|.
 
 ### H1: the back wall needs the ghost spheres and the unnormalized bounce
 
@@ -90,7 +91,7 @@
   both the deterministic pattern and the region means. Card pilot: K draws per pixel per pass about 16.3 when continuing
   and about 5.1 when stopping.
 - Claim: `continue_after_emitter=False` (`stop_at_emitter`) changes both the region means and the texture.
-- Test: `ensemble.compare_ensembles(stop_at_emitter, positive, DIFFUSE_KEY_FAMILY(keys), alpha = 0.01)`, Holm over the
+- Test: `ensemble.compare_ensembles(stop_at_emitter, positive, diffuse_key_family(keys), alpha = 0.01)`, Holm over the
   46 keys. The rejected keys are sorted into region-mean keys (containing `.mean.`) and texture keys (containing
   `structure_std`, `pattern_corr`, `lag1` or `spectral_slope`).
 - Decision: supported iff at least one region-mean key and at least one texture key are rejected. Refuted iff the
@@ -104,7 +105,7 @@
   full policy (experiment 001).
 - Claim: lights-only ghosting reproduces most of the look. The size of the gap is the deliverable, since it is the
   parity target for Blender scenes.
-- Test: `ensemble.compare_ensembles(ghost_lights, positive, DIFFUSE_KEY_FAMILY(keys), alpha = 0.01)`. Also the ratio of
+- Test: `ensemble.compare_ensembles(ghost_lights, positive, diffuse_key_family(keys), alpha = 0.01)`. Also the ratio of
   the ensemble means `ghost_lights / positive` for `all.pattern_corr` and for each region-mean key of the family.
 - Verdict: "distinguishable" if at least one family key is rejected. "indistinguishable" if none is rejected and the
   comparison is powered. "underpowered" otherwise. Distinguishable is the expected result. The card gives no numeric
@@ -112,6 +113,8 @@
   ratios and the effect sizes, and the Conclusion will report them without a threshold.
 
 ## Method
+
+Pilots seen before pre-registration: 8 pairs, 128 px, all ten configurations, scratch cache.
 
 ### Configurations
 
