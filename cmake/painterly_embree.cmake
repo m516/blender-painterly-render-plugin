@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Static, namespaced Embree 4.4.1 for the _painterly module (docs/plan.md "Isolation from Blender's own libraries").
+# Static, namespaced Embree 4.4.1 for painterly_bvh, i.e. the _painterly module and painterly_tests (docs/plan.md "Isolation from Blender's own libraries").
 #
 # Blender 5.2 already has Cycles, Embree 4.4.1 and oneTBB in its process, so we link a private copy that exports
 # nothing: a static library, API symbols in the namespace painterly_embree, INTERNAL tasking (no TBB), and only
@@ -60,7 +60,7 @@ set(EMBREE_STAT_COUNTERS OFF CACHE BOOL "Enables statistic counters" FORCE)
 set(EMBREE_INSTALL_DEPENDENCIES OFF CACHE BOOL "Install Embree dependencies" FORCE)
 set(EMBREE_ZIP_MODE OFF CACHE BOOL "Create Embree ZIP package" FORCE)
 
-# EXCLUDE_FROM_ALL: Embree's targets are built only as dependencies of _painterly.
+# EXCLUDE_FROM_ALL: Embree's targets are built only as dependencies of painterly_bvh, i.e. _painterly and painterly_tests.
 FetchContent_Declare(
   embree
   GIT_REPOSITORY https://github.com/RenderKit/embree.git
