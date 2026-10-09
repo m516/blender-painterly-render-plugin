@@ -77,3 +77,27 @@ glass and mirror branches are unchanged except where listed.
     Each applies unless given. `--out DIR` is required. `int main()` (global scope) calls `oracle_main()`.
 20. **Thread-safety.** `trace()` uses `params["refr_index"]`, and `unordered_map::operator[]` is not safe to share. Each
     worker copies `params` (item 18). The knobs in item 6 are read-only once the workers start.
+21. **Knobs added by T3.4.** Each default is the literal it replaces, so default output is unchanged. `sum.npy` for
+    `--size 64 --passes 2 --seed 7` is byte-identical to the build before T3.4, and
+    `test_new_knobs_default_identity` checks that explicit defaults reproduce omitted defaults.
+    - `--diffuse-gain X` (double, default `0.1`, `smallpaint_painterly.cpp:209-211`). Global `g_diffuse_gain` replaces the
+      `*0.1` in the three diffuse lines of `trace()` (item 13). The expression keeps its shape,
+      `cost*(tmp.x*cl.x)*g_diffuse_gain`.
+    - `--emission-gain X` (double, default `2`, `smallpaint_painterly.cpp:200`). Global `g_emission_gain` replaces the `* 2`
+      on the emission line of `trace()`.
+    - `--max-depth N` (int, default `20`, `N >= 1`, `smallpaint_painterly.cpp:190`). Global `g_max_depth` replaces
+      `depth >= 20` at the top of `trace()`. N = 0 would return before any intersection, so it is rejected.
+    - `--ray-epsilon X` (double, default `1e-4`, `X > 0`, `smallpaint_painterly.cpp:39`). The global `eps` is no longer
+      `const`. Every use of `eps` now reads the flag: the plane test, both sphere branches (item 8), `Scene::intersect`
+      (`painterly.cpp:138`, SPEC §5), and the standalone light radius. X <= 0 removes the offset that keeps a ray from
+      re-hitting its origin surface, so it is rejected.
+      - **Coupling.** Under `--scene standalone`, `--ray-epsilon` also sets the light radius `add(new Sphere(eps, ...))` in
+        `build_scene()` (item 14). smallpaint uses the same `eps` for the light radius, so the flag moves the scene
+        geometry too. The core's `ray_epsilon` socket (SPEC §6, parametric along d) does not change the scene. The two
+        therefore agree on the ray tests only.
+    - `oracle_main()` sets `eps`, `g_diffuse_gain`, `g_emission_gain` and `g_max_depth` before `build_scene()` and before any
+      worker thread starts. They are read-only afterwards, like the knobs in item 6.
+    - Values parse with `parse_double_arg()` (`strtod`, correctly rounded, finite values only) or `parse_int_arg()`. Any double
+      printed with `%.17g` parses back to itself, so a float32 socket value such as `0.1` (0.100000001490116119...) passed as
+      text reproduces the same double.
+    - `meta.json` does not record the new knobs, so its content is the same for every render.

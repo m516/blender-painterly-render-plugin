@@ -1,9 +1,9 @@
 """Fast contract tests for ``smallpaint_oracle`` (T1.3).
 
 They pin determinism, thread invariance, exact Halton equivalence below the 2^23 period, K
-accounting, the SPEC §9 scene geometry, and the alpha and ghost knobs. Renders are 64 pixels
-square unless a test says otherwise. Arrays are compared for exact equality, so no tolerance is
-used anywhere in this file.
+accounting, the SPEC §9 scene geometry, the alpha and ghost knobs, and the default values of the
+gain, epsilon and depth knobs. Renders are 64 pixels square unless a test says otherwise. Arrays
+are compared for exact equality, so no tolerance is used anywhere in this file.
 """
 
 import numpy as np
@@ -130,6 +130,27 @@ def test_alpha_default_is_zero_and_hook_is_live(oracle, tmp_path) -> None:
     assert default.meta["alpha"] == 0
     assert np.array_equal(default.sum, alpha_zero.sum)
     assert not np.array_equal(default.sum, alpha_one.sum)
+
+
+def test_new_knobs_default_identity(oracle, tmp_path) -> None:
+    # The defaults are the smallpaint literals: diffuse_gain 0.1 (smallpaint_painterly.cpp:209-211),
+    # emission_gain 2 (:200), ray_epsilon 1e-4 (:39) and max_depth 20 (:190). Passing them
+    # explicitly must give the same sum.npy bytes as omitting them. The values travel as the
+    # decimal text Python prints, which strtod reads back to the same double.
+    oracle.run_oracle(tmp_path / "omitted", size=SIZE, passes=2, seed=7)
+    oracle.run_oracle(
+        tmp_path / "explicit",
+        size=SIZE,
+        passes=2,
+        seed=7,
+        diffuse_gain=0.1,
+        emission_gain=2,
+        ray_epsilon=1e-4,
+        max_depth=20,
+    )
+    omitted = (tmp_path / "omitted" / "sum.npy").read_bytes()
+    explicit = (tmp_path / "explicit" / "sum.npy").read_bytes()
+    assert omitted == explicit
 
 
 def test_ghost_none_darkens(oracle, tmp_path) -> None:

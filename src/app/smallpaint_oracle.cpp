@@ -35,7 +35,7 @@ namespace smallpaint_painterly {
 
 int width, height;
 const double inf = 1e9;
-const double eps = 1e-4;
+double eps = 1e-4;                             // --ray-epsilon 1e-4; smallpaint_painterly.cpp:39. Set by oracle_main() before build_scene().
 using namespace std;
 typedef unordered_map<string, double> pl;
 
@@ -51,6 +51,9 @@ U2Mode g_u2 = U2Mode::same;                     // --u2 same
 bool g_continue_after_emitter = true;           // --continue-after-emitter yes
 SceneKind g_scene = SceneKind::gui;             // --scene gui
 double g_jitter = 1.0 / 700.0;                  // --jitter; smallpaint_painterly.cpp:291-292 (RND / 700)
+double g_diffuse_gain = 0.1;                   // --diffuse-gain 0.1; smallpaint_painterly.cpp:209-211 (*0.1)
+double g_emission_gain = 2;                    // --emission-gain 2; smallpaint_painterly.cpp:200 (* 2)
+int g_max_depth = 20;                          // --max-depth 20; smallpaint_painterly.cpp:190 (depth >= 20)
 
 // Path context for the stateless RNG (SPEC §2). The chain driver sets it before every trace() call.
 struct PathContext {
@@ -260,7 +263,7 @@ Vec hemisphere(double u1, double u2) {
 }
 
 void trace(Ray &ray, const Scene& scene, int depth, Vec& clr, pl& params, Halton& hal, Halton& hal2) {
-	if (depth >= 20) return;
+	if (depth >= g_max_depth) return;
 
 	Intersection intersection = scene.intersect(ray);
 	if (!intersection) return;
@@ -270,7 +273,7 @@ void trace(Ray &ray, const Scene& scene, int depth, Vec& clr, pl& params, Halton
 	Vec N = intersection.object->normal(hp);
 	ray.o = hp;
 
-	clr = clr + Vec(intersection.object->emission, intersection.object->emission, intersection.object->emission) * 2;
+	clr = clr + Vec(intersection.object->emission, intersection.object->emission, intersection.object->emission) * g_emission_gain;
 	// --continue-after-emitter no: the path ends at an emitter after its emission (CHANGES.md 8).
 	if (!g_continue_after_emitter && intersection.object->emission > 0) return;
 
@@ -286,9 +289,9 @@ void trace(Ray &ray, const Scene& scene, int depth, Vec& clr, pl& params, Halton
 		double cost = ray.d.dot(N);
 		Vec tmp = Vec();
 		trace(ray, scene, depth + 1, tmp, params, hal, hal2);
-		clr.x += cost*(tmp.x*intersection.object->cl.x)*0.1;
-		clr.y += cost*(tmp.y*intersection.object->cl.y)*0.1;
-		clr.z += cost*(tmp.z*intersection.object->cl.z)*0.1;
+		clr.x += cost*(tmp.x*intersection.object->cl.x)*g_diffuse_gain;
+		clr.y += cost*(tmp.y*intersection.object->cl.y)*g_diffuse_gain;
+		clr.z += cost*(tmp.z*intersection.object->cl.z)*g_diffuse_gain;
 	}
 
 	if (intersection.object->type == 2) {
@@ -427,6 +430,10 @@ struct Options {
 	string u2 = "same";
 	string continue_after_emitter = "yes";
 	double jitter = 1.0 / 700.0;
+	double diffuse_gain = 0.1;
+	double emission_gain = 2;
+	double ray_epsilon = 1e-4;
+	int max_depth = 20;
 	int threads = 1;
 	string out;
 	int base2 = 2; // base of hal2: 3 with --u2 base3, otherwise 2 (SPEC §3, §4)
@@ -591,6 +598,10 @@ const char* const usage_text =
 	"  --u2 same|independent|base3         (default same)\n"
 	"  --continue-after-emitter yes|no     (default yes)\n"
 	"  --jitter X                          image-plane jitter (default 1/700)\n"
+	"  --diffuse-gain X                    diffuse bounce gain (default 0.1)\n"
+	"  --emission-gain X                   emission gain (default 2)\n"
+	"  --ray-epsilon X                     self-intersection eps, X > 0 (default 1e-4; also the standalone light radius)\n"
+	"  --max-depth N                       path depth limit, N >= 1 (default 20)\n"
 	"  --threads N                         worker threads (default hardware concurrency)\n"
 	"  --out DIR                           output directory, created if missing (required)\n";
 
@@ -648,7 +659,9 @@ int oracle_main(int argc, char** argv) {
 		const string flag = argv[a];
 		const bool known = flag == "--scene" || flag == "--size" || flag == "--passes" || flag == "--refr" ||
 			flag == "--seed" || flag == "--chain" || flag == "--halton" || flag == "--ghost" || flag == "--alpha" ||
-			flag == "--u2" || flag == "--continue-after-emitter" || flag == "--jitter" || flag == "--threads" ||
+			flag == "--u2" || flag == "--continue-after-emitter" || flag == "--jitter" ||
+			flag == "--diffuse-gain" || flag == "--emission-gain" || flag == "--ray-epsilon" ||
+			flag == "--max-depth" || flag == "--threads" ||
 			flag == "--out";
 		if (!known) return usage_error("unknown option '" + flag + "'");
 		if (a + 1 >= argc) return usage_error("missing value for " + flag);
@@ -695,6 +708,18 @@ int oracle_main(int argc, char** argv) {
 		} else if (flag == "--jitter") {
 			if (!parse_double_arg(val, dv)) return usage_error(bad);
 			o.jitter = dv;
+		} else if (flag == "--diffuse-gain") {
+			if (!parse_double_arg(val, dv)) return usage_error(bad);
+			o.diffuse_gain = dv;
+		} else if (flag == "--emission-gain") {
+			if (!parse_double_arg(val, dv)) return usage_error(bad);
+			o.emission_gain = dv;
+		} else if (flag == "--ray-epsilon") {
+			if (!parse_double_arg(val, dv) || dv <= 0) return usage_error(bad);
+			o.ray_epsilon = dv;
+		} else if (flag == "--max-depth") {
+			if (!parse_int_arg(val, 1, INT_MAX, iv)) return usage_error(bad);
+			o.max_depth = (int)iv;
 		} else if (flag == "--threads") {
 			if (!parse_int_arg(val, 1, INT_MAX, iv)) return usage_error(bad);
 			o.threads = (int)iv;
@@ -722,6 +747,10 @@ int oracle_main(int argc, char** argv) {
 	g_continue_after_emitter = o.continue_after_emitter == "yes";
 	g_scene = standalone ? SceneKind::standalone : SceneKind::gui;
 	g_jitter = o.jitter;
+	g_diffuse_gain = o.diffuse_gain;
+	g_emission_gain = o.emission_gain;
+	eps = o.ray_epsilon;
+	g_max_depth = o.max_depth;
 	o.base2 = g_u2 == U2Mode::base3 ? 3 : 2;
 	width = o.size;
 	height = o.size;
