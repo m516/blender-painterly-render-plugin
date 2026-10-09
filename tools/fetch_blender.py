@@ -14,9 +14,8 @@ Steps. Each step is skipped when its work is already done, so a second run downl
    deletes the download and fails.
 3. Install to .cache/blender/blender-{v}-{platform}/ through a new empty staging directory:
    extract the tarball or the zip, or copy Blender.app out of the mounted disk image.
-4. Windows only: report whether python3.dll ships next to Blender's bundled python.exe. An
-   abi3 module needs it. Each such line goes to stderr, and a line containing MISSING means
-   that the module cannot be imported from that interpreter.
+4. Windows only: report where python3.dll sits (see _report_python3_dll). Nothing here fails
+   the fetch: the import in the coexistence run decides whether the module loads.
 5. Print the absolute path of the Blender executable.
 
 Status messages go to stderr, so make shows download progress. The path goes to stdout:
@@ -30,6 +29,7 @@ urllib User-Agent (CLAUDE.md, "Network notes").
 
 import argparse
 import hashlib
+import platform
 import plistlib
 import re
 import shutil
@@ -46,8 +46,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = REPO_ROOT / ".cache" / "blender"
 RELEASE_URL = "https://download.blender.org/release"
 DEFAULT_VERSION = "5.2.2"
-DEFAULT_PLATFORM = "linux-x64"
 PLATFORMS = ("linux-x64", "macos-arm64", "windows-x64")
+# The release platform of each host, keyed by (sys.platform, platform.machine().lower()).
+# A host that is not listed has no default platform, so --platform is required there.
+HOST_PLATFORMS = {
+    ("linux", "x86_64"): "linux-x64",
+    ("darwin", "arm64"): "macos-arm64",
+    ("win32", "amd64"): "windows-x64",
+}
 # The release archive of each platform, as a suffix of blender-{v}-{platform}.
 ARCHIVE_SUFFIX = {"linux-x64": ".tar.xz", "macos-arm64": ".dmg", "windows-x64": ".zip"}
 # Where the executable sits inside the install directory blender-{v}-{platform}/.
@@ -58,9 +64,12 @@ EXECUTABLE_IN_INSTALL = {
 }
 # The macOS bundle name on the disk image.
 MACOS_APP_NAME = "Blender.app"
-# Windows: the stable-ABI DLL that an abi3 module imports, and the interpreter that ships beside it.
+# Windows: the stable-ABI DLL that an abi3 module imports, and the version-specific
+# DLLs (python312.dll, ...).
 PYTHON3_DLL = "python3.dll"
-PYTHON_EXE = "python.exe"
+PYTHON3_VERSIONED_DLL = "python3??.dll"
+# Windows: name prefix of the Blender shared library. python3.dll is reported in its directory.
+BLENDER_SHARED_PREFIX = "blender.shared"
 # Socket timeout in seconds for each network read. It does not change any downloaded byte.
 NETWORK_TIMEOUT_S = 120
 # I/O buffer in bytes for downloads and hashing. It does not change any downloaded byte.
@@ -83,17 +92,24 @@ def _log(message: str) -> None:
 
 
 def _download(url: str, dest: Path) -> None:
-    """Stream url into dest. The file appears under its final name only once it is complete."""
+    """Stream url into dest. The file appears under its final name only once it is complete.
+
+    Whatever raises, the partial file is removed before the exception goes on.
+    """
     _log(f"downloading {url}")
     partial = dest.with_name(dest.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with (
-        urllib.request.urlopen(request, timeout=NETWORK_TIMEOUT_S) as response,
-        partial.open("wb") as out,
-    ):
-        while chunk := response.read(IO_CHUNK_BYTES):
-            out.write(chunk)
-    partial.replace(dest)
+    try:
+        with (
+            urllib.request.urlopen(request, timeout=NETWORK_TIMEOUT_S) as response,
+            partial.open("wb") as out,
+        ):
+            while chunk := response.read(IO_CHUNK_BYTES):
+                out.write(chunk)
+        partial.replace(dest)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
 
 
 def _sha256(path: Path) -> str:
@@ -174,24 +190,32 @@ def _check_version(version: str) -> None:
         raise FetchError(f"version must look like 5.2.2, not {version!r}")
 
 
-def _report_python3_dll(install_dir: Path) -> None:
-    """Report whether python3.dll sits next to each python.exe that the install ships.
+def _report_python3_dll(install_dir: Path, executable: Path) -> None:
+    """Report where python3.dll sits in a Windows install. Lines go to stderr, into fetch.log.
 
-    An abi3 module imports python3.dll, so a missing DLL means the coexist job cannot import
-    _painterly. Each line goes to stderr. A line containing MISSING is the failure signal.
+    An abi3 module imports python3.dll. Blender's process (blender.exe) loads _painterly, so the DLL
+    search directories of blender.exe matter, not those of python.exe. The report prints one line
+    per python3.dll and python3??.dll under the install, with its path relative to the install. Then
+    it prints exactly one verdict line:
+
+    - if the install has a blender.shared* file: `python3.dll in blender.shared: yes|no`, whether
+      python3.dll sits in the directory of such a file;
+    - otherwise: `python3.dll next to blender.exe: yes|no`.
+
+    The verdict only describes the install. Whether the module loads is decided by the import in the
+    coexistence run, so no line here fails the fetch.
     """
-    interpreters = sorted(install_dir.rglob(PYTHON_EXE))
-    if not interpreters:
-        _log(f"python3.dll: MISSING, no {PYTHON_EXE} under {install_dir}")
-        return
-    elsewhere = sorted(install_dir.rglob(PYTHON3_DLL))
-    for interpreter in interpreters:
-        dll = interpreter.parent / PYTHON3_DLL
-        if dll.is_file():
-            _log(f"python3.dll: present next to {interpreter}")
-        else:
-            found = f"; found at {elsewhere[0]}" if elsewhere else "; not found in the install"
-            _log(f"python3.dll: MISSING next to {interpreter}{found}")
+    for dll in sorted({*install_dir.rglob(PYTHON3_DLL), *install_dir.rglob(PYTHON3_VERSIONED_DLL)}):
+        _log(f"found {dll.relative_to(install_dir)}")
+    shared = sorted(
+        path for path in install_dir.rglob(f"{BLENDER_SHARED_PREFIX}*") if path.is_file()
+    )
+    if shared:
+        present = any((path.parent / PYTHON3_DLL).is_file() for path in shared)
+        _log(f"python3.dll in blender.shared: {'yes' if present else 'no'}")
+    else:
+        present = (executable.parent / PYTHON3_DLL).is_file()
+        _log(f"python3.dll next to blender.exe: {'yes' if present else 'no'}")
 
 
 def executable_path(version: str, platform: str) -> Path:
@@ -264,20 +288,31 @@ def fetch(version: str, platform: str) -> Path:
     if not executable.is_file():
         _install(archive, platform, install_name)
     if platform == "windows-x64":
-        _report_python3_dll(executable.parent)
+        _report_python3_dll(executable.parent, executable)
     return executable
 
 
 def main(argv: list[str] | None = None) -> int:
+    host = HOST_PLATFORMS.get((sys.platform, platform.machine().lower()))
+    platform_help = "release platform: " + ", ".join(PLATFORMS)
+    if host is None:
+        platform_help += " (required: this host has no default platform)"
+    else:
+        platform_help += " (default: %(default)s, the host platform)"
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
         "--version", default=DEFAULT_VERSION, help="Blender version (default: %(default)s)"
     )
-    parser.add_argument("--platform", default=DEFAULT_PLATFORM, choices=PLATFORMS)
+    parser.add_argument(
+        "--platform", default=host, choices=PLATFORMS, required=host is None, help=platform_help
+    )
     parser.add_argument(
         "--print-path-only",
         action="store_true",
-        help="stdout carries only the executable path (for Makefile $(shell ...))",
+        help=(
+            "stdout carries only the executable path, with no network or file access "
+            "(used by run.sh)"
+        ),
     )
     args = parser.parse_args(argv)
     if args.print_path_only:

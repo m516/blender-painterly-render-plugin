@@ -1,0 +1,12 @@
+# Debian/Ubuntu packages for Blender 5.2.2's system libraries on linux-x64 (CI installs them with apt-get; comment lines are skipped).
+# Derived from the NEEDED entries of the blender executable and of libusd_ms.so (which the executable needs) that lib/ does not bundle,
+# mapped with dpkg -S to the packages that own them. libc6, libgcc-s1 and libstdc++6 are left out: apt itself needs them, so every system has them.
+libx11-6
+libxrender1
+libxfixes3
+libxi6
+libxkbcommon0
+libxext6
+libsm6
+libice6
+libgl1

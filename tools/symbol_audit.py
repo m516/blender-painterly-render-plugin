@@ -11,8 +11,10 @@ The rules follow the binary's own file format. Each format needs its platform to
 - PE (Windows): `dumpbin`, or `llvm-objdump` when dumpbin is absent.
 
 A wheel (.whl) may be given instead of a module: its single `_painterly*` file is extracted into a
-temporary directory and audited there. Exit status is 0 when every check passes and 1 otherwise. A
-check that cannot run is a failure.
+temporary directory and audited there. A wheel's platform tag (PEP 427) sets the glibc baseline of
+the ELF `glibc_versions` check: `manylinux_X_Y_<arch>` (PEP 600) means every imported GLIBC version
+must be at most X.Y. Any other tag, or a bare module, only reports the highest imported version.
+Exit status is 0 when every check passes and 1 otherwise. A check that cannot run is a failure.
 """
 
 import argparse
@@ -48,6 +50,10 @@ ALLOWED_NEEDED_LINUX = frozenset(
 # ELF imports are allowed only if they are glibc-versioned, a Python C-API symbol (resolved from the
 # interpreter), or a toolchain weak hook. Anything else would bind into Blender's own libraries.
 GLIBC_VERSION_PREFIX = "GLIBC_"
+# A symbol version `GLIBC_a.b` or `GLIBC_a.b.c`; the parts are integers compared as tuples.
+GLIBC_VERSION_PATTERN = re.compile(r"^GLIBC_(?P<parts>\d+\.\d+(?:\.\d+)?)$")
+# A PEP 600 platform tag `manylinux_X_Y_<arch>`: glibc >= X.Y on the target.
+MANYLINUX_TAG_PATTERN = re.compile(r"^manylinux_(?P<major>\d+)_(?P<minor>\d+)_\w+$")
 PYTHON_API_PATTERN_LINUX = re.compile(r"^_?Py")
 # The toolchain's standard weak hooks: weak undefined references that every module carries.
 CRT_WEAK_HOOKS_LINUX = frozenset(
@@ -185,7 +191,89 @@ def _elf_import_violations(imports: list[tuple[str, str]]) -> list[str]:
     return violations
 
 
-def _audit_elf(path: Path) -> list[Check]:
+def _wheel_platform_tag(filename: str) -> str:
+    """The platform tag of a wheel filename (PEP 427): its last dash-separated field.
+
+    The name is `{distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl`.
+    A name with another number of fields raises AuditError.
+    """
+    fields = filename.removesuffix(".whl").split("-")
+    if len(fields) not in (5, 6):
+        raise AuditError(f"{filename} is not a wheel filename (PEP 427)")
+    return fields[-1]
+
+
+def _manylinux_baseline(platform_tag: str | None) -> tuple[int, int] | None:
+    """(X, Y) of a `manylinux_X_Y_<arch>` platform tag (PEP 600), or None when there is no such tag.
+
+    None covers a bare module (no tag) and any tag that is not manylinux, such as `linux_x86_64`.
+    A tag that starts with `manylinux` but is not in the X_Y form (`manylinux2014_x86_64`, for
+    example) raises AuditError: its glibc baseline cannot be read, so the audit fails.
+    """
+    if platform_tag is None or not platform_tag.startswith("manylinux"):
+        return None
+    match = MANYLINUX_TAG_PATTERN.match(platform_tag)
+    if match is None:
+        raise AuditError(f"cannot read the glibc baseline of platform tag {platform_tag}")
+    return int(match["major"]), int(match["minor"])
+
+
+def _glibc_version(version: str) -> tuple[int, ...] | None:
+    """The `GLIBC_a.b[.c]` symbol version as a tuple of integers, e.g. (2, 3, 4).
+
+    None for an unversioned symbol or a version from another library. A `GLIBC_` version that does
+    not match the form raises AuditError.
+    """
+    if not version.startswith(GLIBC_VERSION_PREFIX):
+        return None
+    match = GLIBC_VERSION_PATTERN.match(version)
+    if match is None:
+        raise AuditError(f"cannot parse glibc symbol version {version}")
+    return tuple(int(part) for part in match["parts"].split("."))
+
+
+def _dotted(parts: tuple[int, ...]) -> str:
+    return ".".join(str(part) for part in parts)
+
+
+def _glibc_check(imports: list[tuple[str, str]], platform_tag: str | None) -> Check:
+    """The `glibc_versions` check of the ELF audit.
+
+    With a manylinux_X_Y tag, every imported GLIBC version must be at most (X, Y), compared as
+    integer tuples. Otherwise the check passes and its rule reports the highest imported version,
+    for information.
+    """
+    # (symbol, version string, parsed version) for every imported GLIBC version
+    versions: list[tuple[str, str, tuple[int, ...]]] = []
+    for name, version in imports:
+        parsed = _glibc_version(version)
+        if parsed is not None:
+            versions.append((name, version, parsed))
+    baseline = _manylinux_baseline(platform_tag)
+    if baseline is None:
+        highest = max((parsed for _, _, parsed in versions), default=None)
+        summary = (
+            "no GLIBC version imported"
+            if highest is None
+            else f"highest imported GLIBC_{_dotted(highest)}"
+        )
+        return Check("glibc_versions", f"{summary} (no manylinux tag to check against)", [])
+
+    major, minor = baseline
+    violations = [
+        f"{name}@{version}: requires glibc {_dotted(parsed)}, above the "
+        f"manylinux_{major}_{minor} baseline {major}.{minor}"
+        for name, version, parsed in sorted(set(versions))
+        if parsed > baseline
+    ]
+    return Check(
+        "glibc_versions",
+        f"every imported GLIBC version must be <= {major}.{minor} (manylinux_{major}_{minor})",
+        violations,
+    )
+
+
+def _audit_elf(path: Path, platform_tag: str | None = None) -> list[Check]:
     exports = _nm_symbols(_run(["nm", "-D", "--defined-only", str(path)]))
     defined = {name for _, name in exports}
     export_check = Check(
@@ -197,7 +285,7 @@ def _audit_elf(path: Path) -> list[Check]:
     needed = NEEDED_PATTERN.findall(_run(["readelf", "-d", str(path)]))
     dependency_check = Check(
         "dependencies",
-        "dependencies must be glibc only (manylinux_2_28 baseline)",
+        "glibc only (manylinux_2_28 baseline)",
         [f"{lib} is not allowed" for lib in needed if lib not in ALLOWED_NEEDED_LINUX],
     )
 
@@ -207,7 +295,7 @@ def _audit_elf(path: Path) -> list[Check]:
         "only glibc-versioned, Python C-API or toolchain weak hooks",
         _elf_import_violations(imports),
     )
-    return [export_check, dependency_check, import_check]
+    return [export_check, dependency_check, import_check, _glibc_check(imports, platform_tag)]
 
 
 def _otool_dylibs(output: str) -> list[str]:
@@ -346,14 +434,18 @@ def _audit_pe(path: Path) -> list[Check]:
     return [export_check, dependency_check]
 
 
-def _audit_module(path: Path, label: str) -> AuditResult:
-    """Audit one module, choosing the rules from its own file format."""
+def _audit_module(path: Path, label: str, platform_tag: str | None = None) -> AuditResult:
+    """Audit one module, choosing the rules from its own file format.
+
+    platform_tag is the wheel's platform tag when the module came from a wheel, else None. Only the
+    ELF rules read it.
+    """
     if not path.is_file():
         raise AuditError(f"{label} does not exist")
     with path.open("rb") as handle:
         magic = handle.read(4)
     if magic == ELF_MAGIC:
-        return AuditResult(label, "ELF", _audit_elf(path))
+        return AuditResult(label, "ELF", _audit_elf(path, platform_tag))
     if magic in MACHO_MAGICS:
         return AuditResult(label, "Mach-O", _audit_macho(path))
     if magic[:2] == PE_MAGIC:
@@ -390,10 +482,11 @@ def _extract_module(wheel: Path, destination: Path) -> Path:
 
 def _audit_input(path: Path) -> AuditResult:
     if path.suffix.lower() == ".whl":
+        platform_tag = _wheel_platform_tag(path.name)
         CACHE_DIR.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="symbol_audit-", dir=CACHE_DIR) as extract_dir:
             module = _extract_module(path, Path(extract_dir))
-            return _audit_module(module, f"{path}:{module.name}")
+            return _audit_module(module, f"{path}:{module.name}", platform_tag)
     return _audit_module(path, str(path))
 
 

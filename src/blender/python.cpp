@@ -13,12 +13,31 @@ namespace nb = nanobind;
 #define PAINTERLY_STR_(x) #x
 #define PAINTERLY_STR(x) PAINTERLY_STR_(x)
 
-// __VERSION__ is defined by GCC and Clang; MSVC defines _MSC_FULL_VER instead.
-#if defined(__VERSION__)
-#  define PAINTERLY_COMPILER __VERSION__
+// The compiler string is "<id> <version>", for example "GCC 13.3.0". Clang also defines __GNUC__,
+// so __clang__ is tested first. Apple's Clang defines __apple_build_version__ and is reported as
+// AppleClang.
+#if defined(__clang__)
+#  if defined(__apple_build_version__)
+#    define PAINTERLY_COMPILER_ID "AppleClang"
+#  else
+#    define PAINTERLY_COMPILER_ID "Clang"
+#  endif
+#  define PAINTERLY_COMPILER_VERSION \
+    PAINTERLY_STR(__clang_major__) \
+    "." PAINTERLY_STR(__clang_minor__) "." PAINTERLY_STR(__clang_patchlevel__)
+#elif defined(__GNUC__)
+#  define PAINTERLY_COMPILER_ID "GCC"
+#  define PAINTERLY_COMPILER_VERSION \
+    PAINTERLY_STR(__GNUC__) \
+    "." PAINTERLY_STR(__GNUC_MINOR__) "." PAINTERLY_STR(__GNUC_PATCHLEVEL__)
+#elif defined(_MSC_VER)
+#  define PAINTERLY_COMPILER_ID "MSVC"
+#  define PAINTERLY_COMPILER_VERSION PAINTERLY_STR(_MSC_FULL_VER)
 #else
-#  define PAINTERLY_COMPILER PAINTERLY_STR(_MSC_FULL_VER)
+#  error \
+      "unknown compiler: add a branch for its id and version to PAINTERLY_COMPILER in python.cpp"
 #endif
+#define PAINTERLY_COMPILER PAINTERLY_COMPILER_ID " " PAINTERLY_COMPILER_VERSION
 
 // NDEBUG is the standard C/C++ switch for optimised builds (CMake Release sets it).
 #if defined(NDEBUG)

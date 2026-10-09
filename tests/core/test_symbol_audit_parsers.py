@@ -209,3 +209,80 @@ def test_elf_import_with_a_non_glibc_version_fails() -> None:
     assert violations == [
         "_Znwm@GLIBCXX_3.4: not glibc-versioned, a Python C-API symbol or a toolchain weak hook"
     ]
+
+
+# Synthetic `nm -D --undefined-only` output for the glibc_versions check (T2.7).
+# Each name carries a GLIBC version.
+NM_GLIBC_2_17_AND_2_28 = """\
+                 U memcpy@GLIBC_2.17
+                 U strlen@GLIBC_2.28
+"""
+
+NM_GLIBC_2_29 = """\
+                 U memcpy@GLIBC_2.17
+                 U memset@GLIBC_2.29
+"""
+
+NM_GLIBC_3_PARTS = """\
+                 U qsort@GLIBC_2.3.4
+"""
+
+NM_GLIBC_2_9_AND_2_10 = """\
+                 U memcpy@GLIBC_2.9
+                 U memset@GLIBC_2.10
+"""
+
+WHEEL_MANYLINUX = "painterly_core-0.1.0-cp312-abi3-manylinux_2_28_x86_64.whl"
+WHEEL_LINUX = "painterly_core-0.1.0-cp312-abi3-linux_x86_64.whl"
+
+
+def test_glibc_versions_at_or_below_the_manylinux_baseline_pass() -> None:
+    check = audit._glibc_check(
+        audit._nm_undefined_elf(NM_GLIBC_2_17_AND_2_28), "manylinux_2_28_x86_64"
+    )
+    assert check.passed, check.violations
+    assert check.rule == "every imported GLIBC version must be <= 2.28 (manylinux_2_28)"
+
+
+def test_glibc_version_above_the_manylinux_baseline_fails_and_names_the_symbol() -> None:
+    check = audit._glibc_check(audit._nm_undefined_elf(NM_GLIBC_2_29), "manylinux_2_28_x86_64")
+    assert not check.passed
+    assert check.violations == [
+        "memset@GLIBC_2.29: requires glibc 2.29, above the manylinux_2_28 baseline 2.28"
+    ]
+
+
+def test_glibc_version_with_three_components_parses_as_integers_and_passes() -> None:
+    assert audit._glibc_version("GLIBC_2.3.4") == (2, 3, 4)
+    check = audit._glibc_check(audit._nm_undefined_elf(NM_GLIBC_3_PARTS), "manylinux_2_28_x86_64")
+    assert check.passed, check.violations
+
+
+def test_glibc_versions_without_a_manylinux_tag_report_the_highest_and_pass() -> None:
+    # 2.10 > 2.9 only as integers, so the highest version is GLIBC_2.10, not GLIBC_2.9.
+    for tag in (None, "linux_x86_64"):
+        check = audit._glibc_check(audit._nm_undefined_elf(NM_GLIBC_2_9_AND_2_10), tag)
+        assert check.passed, check.violations
+        assert check.rule == "highest imported GLIBC_2.10 (no manylinux tag to check against)"
+
+
+def test_glibc_check_fails_closed_on_an_unparseable_version() -> None:
+    with pytest.raises(audit.AuditError, match="GLIBC_PRIVATE"):
+        audit._glibc_check(
+            audit._nm_undefined_elf("                 U _dl_x@GLIBC_PRIVATE\n"), None
+        )
+
+
+def test_wheel_platform_tag_of_a_manylinux_wheel() -> None:
+    assert audit._wheel_platform_tag(WHEEL_MANYLINUX) == "manylinux_2_28_x86_64"
+    assert audit._manylinux_baseline(audit._wheel_platform_tag(WHEEL_MANYLINUX)) == (2, 28)
+
+
+def test_wheel_platform_tag_of_a_linux_wheel_has_no_manylinux_baseline() -> None:
+    assert audit._wheel_platform_tag(WHEEL_LINUX) == "linux_x86_64"
+    assert audit._manylinux_baseline(audit._wheel_platform_tag(WHEEL_LINUX)) is None
+
+
+def test_wheel_filename_without_the_pep_427_fields_is_refused() -> None:
+    with pytest.raises(audit.AuditError, match="PEP 427"):
+        audit._wheel_platform_tag("painterly_core.whl")

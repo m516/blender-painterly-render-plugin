@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=1.1", "nanobind>=3.1"]
+requires = ["scikit-build-core==1.1.1", "nanobind==3.1.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Native core (_painterly) of the Painterly render engine for Blender"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 
 [tool.scikit-build]
 wheel.py-api = "cp312"            # stable ABI: one wheel serves Blender's Python 3.13
@@ -46,16 +47,18 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
 
 # Wheels (T2.4). cibuildwheel builds one CPython 3.13 wheel per platform; the abi3 tag (wheel.py-api above) makes it
 # valid for CPython >= 3.12. The Embree source is cloned to .cache/src/embree by .github/workflows/wheels.yml, and the
-# build compiles it from that local copy. CMAKE_ARGS is the only channel that reaches CMake through scikit-build-core:
-# CMake ignores FETCHCONTENT_SOURCE_DIR_* environment variables, and cibuildwheel does not expand {project} in
-# environment values. The path is relative to the project root, where the build backend runs, so it is the same on
-# every platform. Compiled objects are never cached. Only cibuildwheel reads this table, so local builds fetch Embree.
+# build compiles it from that local copy. CMake turns a relative untyped `-D` PATH value into an absolute one against
+# the working directory, which is the project root under the build backend, so the relative path is the same on every
+# platform. The path is relative to the project root, where the build backend runs, so it is the same on every
+# platform. Compiled objects are never cached. Only cibuildwheel reads this table, so local builds fetch Embree.
 [tool.cibuildwheel]
 build = "cp313-*"
 skip = "*-musllinux* *-win32 *_i686"
 build-verbosity = 1
 environment = { CMAKE_ARGS = "-DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree" }
 test-requires = ["pytest>=8"]
+# The tests import the installed wheel, not the build directory (tests/conftest.py, PAINTERLY_TEST_INSTALLED).
+test-environment = { PAINTERLY_TEST_INSTALLED = "1" }
 # The selftest criterion of tests/core/test_import.py (T2.5), then the symbol audit of the installed module. The path
 # is passed as a raw string so that Windows backslashes survive the Python string literal.
 test-command = "python -m pytest {project}/tests/core/test_import.py -q && python -c \"import subprocess, sys, _painterly; subprocess.run([sys.executable, r'{project}/tools/symbol_audit.py', _painterly.__file__], check=True)\""
