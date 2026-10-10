@@ -237,6 +237,39 @@ trace that missed bindings: coverage is complete in the main run and in both con
 - Both H3 controls show at least 1 violation: pass (5 and 122).
 - `make lint`: pass (ruff check, ruff format --check, clang-format; no network line at parse time).
 
+### Later runs (CI coexist job, 2026-10-09 to 2026-10-10)
+
+These runs used `.github/workflows/wheels.yml` and the allocator-coherence rule of "Amendment for later runs", which was
+fixed before any of them. Each OS runs the experiment in Blender 5.2.2 with the wheel built on that OS. The binding trace
+runs on Linux only (the job's "Trace the coexistence run and scan its bindings (Linux)" step).
+
+| Run | Commit | Linux | macOS (arm64) | Windows (x64) |
+|---|---|---|---|---|
+| 37935120179 | `c3e7566` | wheel built | wheel built | wheel failed the symbol audit: 19 nanobind `NB_EXPORT` exports (fixed by T2.9). `coexist` was skipped on every OS |
+| 37984431443 | `d2259e7` | coexist passed | coexist passed: 20 of 20 iterations equal to the first, every selftest `hit` | wheel did not compile: vendored `util/guarded_allocator.h` without `<memory>` (fixed by T2.10) |
+| 38003053457 | `f052211` | wheel built | wheel built | wheel did not compile: 148 errors, all from `<windows.h>`'s `min`/`max` macros (fixed by T2.11) |
+| 38013859281 | `6abe417` | coexist passed | coexist passed | coexist passed |
+
+Run 38013859281 in detail, all three OS:
+
+| | Linux | macOS | Windows |
+|---|---|---|---|
+| Compiler (`version_info`) | GCC 14.2.1 | AppleClang 15.0.0 | MSVC 194435229 |
+| Iterations, equal to the first | 20 of 20 (plain), 20 of 20 (traced) | 20 of 20 | 20 of 20 |
+| Selftest | Embree 4.4.1, `tasking_system` 0, `hit`, `t` 0.4999999701976776 | Embree 4.4.1, `tasking_system` 0, `hit`, `t` 0.5 | Embree 4.4.1, `tasking_system` 0, `hit`, `t` 0.4999999701976776 |
+| `error` | none | none | none |
+| Symbol audit of the wheel's module | PASS | PASS (exports `_PyInit__painterly` only; libSystem and libc++ only) | PASS (exports `PyInit__painterly` and nanobind's exception classes only) |
+
+- **Linux bindings (coherence rule).** 0 violations. Coverage is complete: 244 of 244 expected bindings matched. The
+  traced process is `ld.2613`. The module's allocator-family bindings and libc's both go to Blender's
+  `lib/libtbbmalloc_proxy.so.2`, so `allocator.coherent` is true.
+- **Windows imports.** `llvm-objdump --private-headers` of the wheel's `_painterly.pyd` lists `python3.dll`,
+  `KERNEL32.dll` and `ADVAPI32.dll`. The `ADVAPI32.dll` imports are `OpenProcessToken`, `LookupPrivilegeValueW` and
+  `AdjustTokenPrivileges`: Embree's huge-page code, which the audit's allowlist already names (`tools/symbol_audit.py:88`).
+- **macOS bindings.** Not traced: the job has no Mach-O binding trace.
+- **The `t` values differ by platform** (0.5 on macOS arm64, 0.4999999701976776 on x86-64). Embree computes in float32,
+  with ISA-dependent code paths. Each value is equal across that OS's 20 iterations and to its own venv selftest (H1 on CI).
+
 ## Conclusion
 
 Final (Opus, 2026-10-09). The Haiku draft is superseded. The numbers are those in Results.
@@ -279,3 +312,20 @@ remove no risk that in-process rendering carries.
 **Hypothesis for later work.** Blender's macOS build has no ELF interposition. Two-level namespaces bind each import
 to the library it was linked against. The CI run should therefore show 0 allocator violations there, without the
 coherence rule. The Windows module, linked with the static CRT (`/MT`), imports only from `python3.dll` and `kernel32.dll`. That is the audit's allowlist, so the allocator question does not arise there.
+
+**Addendum: G1 on macOS and Windows (Opus, 2026-10-10).** The numbers are in Results, "Later runs".
+- **G1 is not triggered on any OS.** On Linux, macOS and Windows, H1 and H2 hold on CI. Each OS gives 20 of 20 Blender
+  renders with selftests equal to the first, and its selftest equals that OS's venv selftest. The Linux trace has 0
+  violations under the coherence rule fixed before the run, with complete coverage (244 of 244). `_painterly` stays
+  in-process on every platform, and no out-of-process render server is needed. M2's gate is closed.
+- **The hypothesis for later work, checked.**
+  - macOS: untested. The CI job traces bindings only on Linux, so the claim of 0 allocator violations without the
+    coherence rule has no data. H1 and H2 do not depend on it.
+  - Windows: refuted as stated, though not in substance. The module imports `ADVAPI32.dll` as well: three privilege
+    functions of Embree's huge-page allocator. The audit's allowlist already names it. With the static CRT the allocator
+    question still does not arise, since `ADVAPI32.dll` exports no allocator.
+- Reaching green on Windows needed two build fixes in vendored Cycles' include environment, and neither changes code
+  under test:
+  - T2.10: force-include `<memory>`, which upstream gets from `MEM_guardedalloc.h`;
+  - T2.11: `NOMINMAX`, which upstream defines for every Windows source.
+  The CI `windows` job (T2.10) now builds and unit-tests the C++ libraries with MSVC on every push.
