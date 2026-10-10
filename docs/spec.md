@@ -9,7 +9,7 @@ Line numbers like `painterly.cpp:262` refer to `third_party/smallpaint/smallpain
 
 | Term | Meaning |
 |---|---|
-| **pass** | One sample per pixel over the whole image. smallpaint's GUI port loops passes outermost (`painterly.cpp:282`). |
+| **pass** | One sample per pixel over the whole image. smallpaint's GUI port loops passes outermost (`painterly.cpp:282`). "pass" alone always means this sample pass; Blender's output layers are **render passes** (the combined render pass, the object_id buffer). |
 | **row / col** | Displayed image coordinates. `row` 0 is the top. smallpaint's loop index `i` is the row and `j` is the column: `pix[j][i]` is displayed at `(col=j,row=i)` (`painterly.cpp:295`, `mainrenderdistributor.cpp:71`). |
 | **K** | The painterly sequence counter (§2). |
 | **chain** | The set of pixel samples that share one running K (§3). |
@@ -113,6 +113,13 @@ d ← d · |d|^(−α)                                                          
 cost = d·N                                                                # painterly.cpp:206, uses the unnormalized d
 ```
 - The new ray is `(P, d)` and d is **not normalized**.
+- **Zero-length d.** If `d = 0`, d stays 0: the rescale is not evaluated, `cost = 0`, the bounce contributes nothing, and
+  the path continues as it does for α = 0.
+  - This happens only when `F·s = −N` exactly. An example: u1 = u2 = 0 at K ≡ 0 mod 2^23 (§2), on a surface with
+    N = −F·(1,0,0).
+  - Evaluated literally, `0·|0|^(−α)` is `0·∞ = NaN` for α > 0. For α = 0 the rule is the existing result
+    (`pow(0, −0) = 1`).
+  - smallpaint's incremental generator never returns exactly 0, so reference renders never reach this case.
 - The child radiance contributes per channel as `L += (cost · (L_child · color)) · diffuse_gain`, in exactly this order
   (`painterly.cpp:209-211`).
 - `cost ∈ [0, 2]` when α = 0.

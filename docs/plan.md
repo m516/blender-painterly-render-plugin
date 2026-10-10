@@ -86,7 +86,7 @@ The core is new C++20 that mirrors Cycles' layout and names: `util/ kernel/ bvh/
 **Isolation from Blender's own libraries:**
 - Embree 4.4.1 is built **static**, with `EMBREE_API_NAMESPACE=painterly_embree` and INTERNAL tasking (no TBB).
 - There is no OIIO, OCIO or TBB.
-- Everything compiles with `CCL_NAMESPACE_BEGIN`→`namespace painterly {`, `-fvisibility=hidden` and a version script; only `PyInit__painterly` is exported.
+- Everything compiles with `CCL_NAMESPACE_BEGIN`→`namespace painterly {`, `-fvisibility=hidden` and a version script; only `PyInit__painterly` is exported (on Windows also the members of nanobind's two `NB_EXPORT` exception classes, which a PE import cannot interpose; T2.9).
 - Builds target manylinux_2_28 (its devtoolset GCC) with a static libstdc++/libgcc, and MSVC with the static CRT (`/MT`), so the module never binds to Blender's C++ runtime.
 
 **Distribution.**
@@ -251,7 +251,7 @@ Card IDs and contents in `docs/tasks/` supersede these tables (2026-10-09).
 | ID | Task | Deps | Acceptance |
 |---|---|---|---|
 | T2.1 | CMake: nanobind `STABLE_ABI NB_STATIC NB_DOMAIN painterly`; Embree 4.4.1 via FetchContent (static, namespaced, INTERNAL tasking, triangle + instance geometry only); hidden visibility plus version script / exported-symbols list. `_painterly.selftest()` traces one triangle. | T0.2 | `make build test` |
-| T2.2 | `tools/symbol_audit.py` (nm / nm -gU / dumpbin): only `PyInit__painterly` is exported; no `_ZN3ccl`, `rtc*` or `tbb` symbols | T2.1 | `make audit` |
+| T2.2 | `tools/symbol_audit.py` (nm / nm -gU / dumpbin): only `PyInit__painterly` is exported (Windows: also nanobind's `NB_EXPORT` exception classes, T2.9); no `_ZN3ccl`, `rtc*` or `tbb` symbols | T2.1 | `make audit` |
 | T2.3 | `tools/fetch_blender.py` (5.2.2 tarball into `.cache/`, outside git). X-coexist spike: inside `blender -b`, import `_painterly` and run `selftest`, alternating 20× with Cycles renders | T2.2 | experiment README; zero crashes |
 | T2.4 | `cibuildwheel` config and wheels workflow (manylinux_2_28 with GCC 11, windows-2022 with MSVC 14.44, macos-14 with deployment target 11.0), plus symbol audit and the X-coexist smoke test per OS | T2.3 | CI green on 3 OSes |
 
