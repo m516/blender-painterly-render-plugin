@@ -65,13 +65,14 @@ jobs:
 
       - name: Build the C++ libraries and unit tests with MSVC
         shell: cmd
+        # -k 0: Ninja keeps building after a failure, so one run reports every failing translation unit (as MSBuild does).
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set "VSROOT=%%i"
           call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
           cmake --version || exit /b 1
           ninja --version || exit /b 1
           cmake -S . -B build/msvc -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=ON -DPAINTERLY_BUILD_ORACLE=OFF -DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree || exit /b 1
-          cmake --build build/msvc || exit /b 1
+          cmake --build build/msvc -- -k 0 || exit /b 1
 
       - name: Run the C++ unit tests
         run: ctest --test-dir build/msvc --output-on-failure

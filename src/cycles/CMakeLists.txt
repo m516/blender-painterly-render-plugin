@@ -37,6 +37,14 @@ if(MSVC)
   target_compile_options(cycles_util PUBLIC /FImemory)
 endif()
 
+# Windows: <windows.h> (reached through util/windows.h, e.g. from util/thread.h) defines the macros min(a,b) and max(a,b)
+# unless NOMINMAX is defined, which breaks Cycles' own min/max overloads (util/math_base.h) and every std::min/max call.
+# Upstream defines NOMINMAX for every Windows source (Blender v5.2.2 build_files/cmake/platform/platform_win32.cmake:133-142).
+# PUBLIC, because every consumer includes these headers.
+if(WIN32)
+  target_compile_definitions(cycles_util PUBLIC NOMINMAX)
+endif()
+
 # arm64: upstream's Blender root CMakeLists.txt:1564-1566 defines WITH_SSE2NEON, which lets util/optimization.h
 # select the Neon code path.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|ARM64|aarch64)$")
