@@ -1,0 +1,3 @@
+stand-in sds, median growth: P(Holm rejects >= 1 of 18) 0.0280; mean per-key rate at 0.01/18 0.00156 (nominal 0.00056); sd ratio range 2.24-13.42
+stand-in sds, q75 growth: P(Holm rejects >= 1 of 18) 0.0195; mean per-key rate at 0.01/18 0.00108 (nominal 0.00056); sd ratio range 1.78-10.66
+equal sds: P(Holm rejects >= 1 of 18) 0.0100; mean per-key rate at 0.01/18 0.00056 (nominal 0.00056); sd ratio range 1.00-1.00

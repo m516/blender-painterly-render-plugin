@@ -1,0 +1,48 @@
+H1 row_j0_s A truth I sd1600=1.0sd800: {'G': 0.03, 'I': 0.86, 'I or G': 0.04, 'N (reversal)': 0.04, 'between G and N': 0.02}
+H1 row_j0_s A truth I sd1600=0.5sd800: {'G': 0.01, 'I': 0.89, 'I or G': 0.0, 'N (reversal)': 0.06, 'between G and N': 0.04}
+H1 row_j0_s A truth G sd1600=1.0sd800: {'G': 0.9, 'I or G': 0.01, 'between G and N': 0.1}
+H1 row_j0_s A truth G sd1600=0.5sd800: {'G': 0.92, 'between G and N': 0.08}
+H1 row_j0_s A truth N sd1600=1.0sd800: {'N': 0.97, 'between G and N': 0.03}
+H1 row_j0_s A truth N sd1600=0.5sd800: {'N': 0.95, 'between G and N': 0.05}
+H1 row_j0_s X truth I sd1600=1.0sd800: {'G': 0.04, 'I': 0.21, 'I or G': 0.68, 'N (reversal)': 0.07}
+H1 row_j0_s X truth I sd1600=0.5sd800: {'G': 0.06, 'I': 0.28, 'I or G': 0.6, 'N (reversal)': 0.05}
+H1 row_j0_s X truth G sd1600=1.0sd800: {'G': 0.3, 'I': 0.04, 'I or G': 0.62, 'N': 0.02, 'N (reversal)': 0.01}
+H1 row_j0_s X truth G sd1600=0.5sd800: {'G': 0.47, 'I': 0.04, 'I or G': 0.45, 'N': 0.03, 'N (reversal)': 0.01, 'between G and N': 0.0}
+H1 row_j0_s X truth N sd1600=1.0sd800: {'G': 0.04, 'N': 0.92, 'N (reversal)': 0.01, 'between G and N': 0.02}
+H1 row_j0_s X truth N sd1600=0.5sd800: {'G': 0.04, 'N': 0.93, 'N (reversal)': 0.0, 'between G and N': 0.03}
+H1 row_j0_s Y truth I sd1600=1.0sd800: {'G': 0.03, 'I': 0.03, 'I or G': 0.9, 'N (reversal)': 0.05}
+H1 row_j0_s Y truth I sd1600=0.5sd800: {'G': 0.04, 'I': 0.04, 'I or G': 0.88, 'N (reversal)': 0.05}
+H1 row_j0_s Y truth G sd1600=1.0sd800: {'G': 0.05, 'I': 0.03, 'I or G': 0.87, 'N': 0.01, 'N (reversal)': 0.04}
+H1 row_j0_s Y truth G sd1600=0.5sd800: {'G': 0.05, 'I': 0.01, 'I or G': 0.85, 'N': 0.01, 'N (reversal)': 0.07}
+H1 row_j0_s Y truth N sd1600=1.0sd800: {'G': 0.08, 'I': 0.02, 'I or G': 0.81, 'N': 0.04, 'N (reversal)': 0.06}
+H1 row_j0_s Y truth N sd1600=0.5sd800: {'G': 0.13, 'I': 0.01, 'I or G': 0.73, 'N': 0.03, 'N (reversal)': 0.11}
+H1 row_s A truth I sd1600=1.0sd800: {'G': 0.03, 'I': 0.07, 'I or G': 0.83, 'N': 0.0, 'N (reversal)': 0.06}
+H1 row_s A truth I sd1600=0.5sd800: {'G': 0.04, 'I': 0.09, 'I or G': 0.82, 'N': 0.01, 'N (reversal)': 0.05}
+H1 row_s A truth G sd1600=1.0sd800: {'G': 0.08, 'I': 0.03, 'I or G': 0.83, 'N': 0.03, 'N (reversal)': 0.03}
+H1 row_s A truth G sd1600=0.5sd800: {'G': 0.12, 'I': 0.07, 'I or G': 0.76, 'N': 0.04, 'N (reversal)': 0.02}
+H1 row_s A truth N sd1600=1.0sd800: {'G': 0.37, 'I or G': 0.2, 'N': 0.4, 'N (reversal)': 0.03}
+H1 row_s A truth N sd1600=0.5sd800: {'G': 0.38, 'I or G': 0.05, 'N': 0.54, 'N (reversal)': 0.03, 'between G and N': 0.0}
+H1 row_s X truth I sd1600=1.0sd800: {'G': 0.03, 'I': 0.04, 'I or G': 0.88, 'N': 0.01, 'N (reversal)': 0.04}
+H1 row_s X truth I sd1600=0.5sd800: {'G': 0.04, 'I': 0.07, 'I or G': 0.86, 'N (reversal)': 0.03}
+H1 row_s X truth G sd1600=1.0sd800: {'G': 0.07, 'I': 0.03, 'I or G': 0.84, 'N': 0.02, 'N (reversal)': 0.04}
+H1 row_s X truth G sd1600=0.5sd800: {'G': 0.1, 'I': 0.04, 'I or G': 0.8, 'N': 0.02, 'N (reversal)': 0.04}
+H1 row_s X truth N sd1600=1.0sd800: {'G': 0.26, 'I': 0.01, 'I or G': 0.47, 'N': 0.14, 'N (reversal)': 0.11}
+H1 row_s X truth N sd1600=0.5sd800: {'G': 0.37, 'I or G': 0.28, 'N': 0.23, 'N (reversal)': 0.12}
+H1 row_s Y truth I sd1600=1.0sd800: {'G': 0.02, 'I': 0.02, 'I or G': 0.89, 'N': 0.0, 'N (reversal)': 0.07}
+H1 row_s Y truth I sd1600=0.5sd800: {'G': 0.03, 'I': 0.01, 'I or G': 0.88, 'N': 0.0, 'N (reversal)': 0.07}
+H1 row_s Y truth G sd1600=1.0sd800: {'G': 0.02, 'I': 0.01, 'I or G': 0.89, 'N': 0.01, 'N (reversal)': 0.07}
+H1 row_s Y truth G sd1600=0.5sd800: {'G': 0.02, 'I': 0.03, 'I or G': 0.86, 'N': 0.01, 'N (reversal)': 0.09}
+H1 row_s Y truth N sd1600=1.0sd800: {'G': 0.02, 'I': 0.02, 'I or G': 0.87, 'N': 0.01, 'N (reversal)': 0.07}
+H1 row_s Y truth N sd1600=0.5sd800: {'G': 0.02, 'I': 0.02, 'I or G': 0.85, 'N': 0.0, 'N (reversal)': 0.1}
+H2 interval conditions, sd growth median, Delta_1400 x1.0: {'removed': 0.8, 'halved': 0.04, 'unchanged': 0.0}
+H2 interval conditions, sd growth median, Delta_1400 x0.5: {'removed': 0.24, 'halved': 0.05, 'unchanged': 0.0}
+H2 interval conditions, sd growth q75, Delta_1400 x1.0: {'removed': 0.71, 'halved': 0.11, 'unchanged': 0.0}
+H2 interval conditions, sd growth q75, Delta_1400 x0.5: {'removed': 0.18, 'halved': 0.04, 'unchanged': 0.0}
+H2 r4.slag.x median growth: d 2.53, n=8 power(t approx) 0.71
+H2 r4.slag.x median growth: d 2.53, n=16 power(t approx) nan
+H2 r4.slag.x 1/700 sd at 200 px: d 1.32, n=8 power(t approx) 0.09
+H2 r4.slag.x 1/700 sd at 200 px: d 1.32, n=16 power(t approx) 0.47
+16v16 d=1.44: 0.59
+16v16 d=1.55: 0.69
+16v16 d=2.0: 0.95
+16v16 d=2.5: 1.00

@@ -42,6 +42,10 @@ markers = ["slow: takes more than ~10 s"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Frozen material, kept byte-identical rather than maintained:
+# - pre-registration planning computations (the power and synthetic-gate scripts behind registered numbers);
+# - the handoff bundle's drafted cards, whose code blocks are reviewed and formatted when a card moves to docs/tasks/.
+extend-exclude = ["experiments/*/_planning", "docs/handoff"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
 

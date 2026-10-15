@@ -1,0 +1,5 @@
+f=0 n=16 chain only in X (c = Delta on the slag.x keys, 0 elsewhere) {'mixed': 0.995, 'undersampling': 0.005} | chi point median 0.049
+f=1/1400 n=32 chain on every key except r4.slag.x {'chain': 0.975, 'chain+flag': 0.025} | chi point median 0.974
+f=1/1400 n=32 chain only in r4.slag.x {'mixed': 0.995, 'mixed+flag': 0.005} | chi point median 0.030
+f=1/1400 n=32 chain only in the structure_std keys {'chain': 0.007, 'unresolved': 0.95, 'unresolved+flag': 0.043} | chi point median 0.531
+f=1/1400 n=32 chain only in the slag.x keys {'mixed': 0.958, 'mixed+flag': 0.035, 'unresolved': 0.007} | chi point median 0.069

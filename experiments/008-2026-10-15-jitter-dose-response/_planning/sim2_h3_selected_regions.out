@@ -1,0 +1,57 @@
+# Variant superseded in review 2: S_i restricted to the F1-resolved regions of each denominator step (README H3, Statistics: 0.075 at "linear from 0").
+
+H3: 6 conf x 6 regions x 8 pairs, B = 2000, 200 designs per truth; F1 Holm over 30 sets S_i
+  f_c model (rho 1.12, 1.07, 1.03): true q0 0.426, rho [1.122, 1.065, 1.034]
+    median point q~0 0.428, rho~ [1.12, 1.067, 1.034]; median half-widths (q0 99%, rho 0.01/3) [0.051, 0.196, 0.171, 0.152]
+    mean |S_i| [6.0, 6.0, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.285, 'logarithmic': 0.715}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 1.074
+    1/f_c = 5600 x: median point 14245; median 99% interval [10202, 20469]
+  logarithmic (rho = 1): true q0 0.478, rho [1.0, 1.0, 1.0]
+    median point q~0 0.481, rho~ [0.995, 1.007, 0.99]; median half-widths (q0 99%, rho 0.01/3) [0.052, 0.161, 0.163, 0.163]
+    mean |S_i| [6.0, 6.0, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.04, 'logarithmic': 0.96}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 0.998
+    1/f_c = 5600 x: median point 10149; median 99% interval [7489, 13954]
+  saturating (rho = 1/2): true q0 0.956, rho [0.5, 0.5, 0.5]
+    median point q~0 0.954, rho~ [0.499, 0.504, 0.476]; median half-widths (q0 99%, rho 0.01/3) [0.068, 0.063, 0.125, 0.255]
+    mean |S_i| [6.0, 6.0, 6.0, 5.71]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'saturating@1': 1.0}
+    H3a-0 sup 0.195 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 0.501
+    1/f_c = 5600 x: median point 275; median 99% interval [0, 746]
+  kink then linear (step 0 f_c, then rho = 2): true q0 0.239, rho [2.0, 2.0, 2.0]
+    median point q~0 0.241, rho~ [1.945, 2.007, 1.999]; median half-widths (q0 99%, rho 0.01/3) [0.045, 0.492, 0.247, 0.123]
+    mean |S_i| [6.0, 5.9, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.365, 'linear': 0.635}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 0.000 ref 0.020; median R 2.001
+    1/f_c = 5600 x: median point 80876; median 99% interval [46225, 167254]
+  linear from 0 (all q = 1): true q0 1.000, rho [2.0, 2.0, 2.0]
+    median point q~0 0.866, rho~ [1.769, 2.001, 1.992]; median half-widths (q0 99%, rho 0.01/3) [0.412, 0.696, 0.375, 0.184]
+    mean |S_i| [3.78, 3.87, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.935, 'linear': 0.065}
+    H3a-0 sup 0.075 ref 0.005; H3a-d sup 0.000 ref 0.015; median R 1.995
+    1/f_c = 5600 x: median point 935; median 99% interval [0, 7696]
+  f_c model, rho_3 = 2^-1/2 (boundary): true q0 0.426, rho [1.122, 1.065, 0.707]
+    median point q~0 0.426, rho~ [1.125, 1.068, 0.707]; median half-widths (q0 99%, rho 0.01/3) [0.051, 0.194, 0.171, 0.133]
+    mean |S_i| [6.0, 6.0, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.99, 'logarithmic': 0.005, 'saturating@3': 0.005}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 0.995
+    1/f_c = 5600 x: median point 14372; median 99% interval [10339, 20159]
+  f_c model, rho_3 = 1/2: true q0 0.426, rho [1.122, 1.065, 0.5]
+    median point q~0 0.426, rho~ [1.124, 1.071, 0.498]; median half-widths (q0 99%, rho 0.01/3) [0.05, 0.192, 0.166, 0.12]
+    mean |S_i| [6.0, 6.0, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'inconclusive': 0.13, 'saturating@3': 0.87}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 0.997
+    1/f_c = 5600 x: median point 14419; median 99% interval [10395, 20211]
+  stop at 1/700 (step 4 = 0): true q0 0.426, rho [1.122, 1.065, -0.0]
+    median point q~0 0.426, rho~ [1.118, 1.057, 0.0]; median half-widths (q0 99%, rho 0.01/3) [0.052, 0.197, 0.165, 0.087]
+    mean |S_i| [6.0, 6.0, 6.0, 6.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.0]
+    H3b classes {'saturating@3': 1.0}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median R 0.987
+    1/f_c = 5600 x: median point 14361; median 99% interval [10215, 20481]
+  stop at 1/1400 (steps 3, 4 = 0): true q0 0.426, rho [1.122, -0.0, nan]
+    median point q~0 0.427, rho~ [1.118, -0.0, -0.975]; median half-widths (q0 99%, rho 0.01/3) [0.051, 0.194, 0.093, 0.946]
+    mean |S_i| [6.0, 6.0, 6.0, 0.0]; P(S_i empty) [0.0, 0.0, 0.0, 0.995]
+    H3b classes {'saturating@2': 1.0}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 0.005 ref 0.000; median R 0.080
+    1/f_c = 5600 x: median point 14291; median 99% interval [10073, 20288]

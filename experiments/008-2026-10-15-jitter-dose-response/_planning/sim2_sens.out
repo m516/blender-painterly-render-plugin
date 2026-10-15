@@ -1,0 +1,32 @@
+
+SENS: sds of f700 and f350 = f1400's x g, x g^2
+  H1/H3, f_c model, g = 1.12 [200 designs]: true q~0 0.426, rho~ [1.122, 1.065, 1.034]
+    F1 all 30 falls 1.000; any R1 rejection 0.000
+    P(estimable) [1.0, 1.0, 1.0, 1.0]; median point [0.427, 1.112, 1.077, 1.034]
+    median 99% half-widths [0.051, 0.17, 0.155, 0.161]; median union half-widths (rho) [0.189, 0.174, 0.181]
+    H3b {'inconclusive': 0.135, 'logarithmic': 0.865}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median pooled R 1.076
+    1/f_c = 5600 x: median point 14292; median 99% interval [10267, 20425]
+  H1/H3, f_c model, g = 1.41 [200 designs]: true q~0 0.426, rho~ [1.122, 1.065, 1.034]
+    F1 all 30 falls 1.000; any R1 rejection 0.000
+    P(estimable) [1.0, 1.0, 1.0, 1.0]; median point [0.425, 1.133, 1.063, 1.032]
+    median 99% half-widths [0.05, 0.178, 0.168, 0.205]; median union half-widths (rho) [0.2, 0.189, 0.235]
+    H3b {'inconclusive': 0.31, 'logarithmic': 0.69}
+    H3a-0 sup 1.000 ref 0.000; H3a-d sup 1.000 ref 0.000; median pooled R 1.074
+    1/f_c = 5600 x: median point 14524; median 99% interval [10289, 20862]
+  H2, g = 1.12 [2000 designs]:
+    r4 P(step rise) [0.998, 0.507, 0.98, 1.0, 1.0]
+    r5 P(step rise) [0.366, 0.016, 0.083, 0.384, 0.296]
+    r6 P(step rise) [1.0, 0.874, 0.994, 1.0, 1.0]
+    P(all three (a)) 1.000; P(any V2 rejection) 0.000; P(supported) 1.000; P(all 15 rises) 0.000
+  H2, g = 1.41 [2000 designs]:
+    r4 P(step rise) [0.998, 0.487, 0.982, 1.0, 1.0]
+    r5 P(step rise) [0.344, 0.016, 0.073, 0.256, 0.108]
+    r6 P(step rise) [1.0, 0.872, 0.998, 1.0, 1.0]
+    P(all three (a)) 0.999; P(any V2 rejection) 0.000; P(supported) 0.999; P(all 15 rises) 0.000
+  H4, g = 1.12, no shift [1000 designs]: P(all 18 sub-quantum) 1.000; P(any supra) 0.000
+  H4, g = 1.12, class-A shape, 400 px basis [1000 designs]: P(all 18 sub-quantum) 0.996; P(any supra) 0.000
+  H4, g = 1.12, class-A shape, 800 px basis [1000 designs]: P(all 18 sub-quantum) 0.966; P(any supra) 0.000
+  H4, g = 1.41, no shift [1000 designs]: P(all 18 sub-quantum) 0.999; P(any supra) 0.000
+  H4, g = 1.41, class-A shape, 400 px basis [1000 designs]: P(all 18 sub-quantum) 0.921; P(any supra) 0.000
+  H4, g = 1.41, class-A shape, 800 px basis [1000 designs]: P(all 18 sub-quantum) 0.810; P(any supra) 0.000

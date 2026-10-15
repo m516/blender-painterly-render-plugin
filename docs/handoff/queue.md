@@ -51,12 +51,14 @@ Gate: the cross-check reports 0 issues, and the cards and amendments are committ
   bitwise difference must be 0.
 
 ## 4. Experiments 007-009 (strong for the pre-registration review and conclusions; cheap for renders and analysis)
-- **State at handoff.**
-  - The drafts are in the session scratch (`scratchpad/prereg/00{7,8,9}/`).
-  - A writable second-round fix pass was running when this bundle was made.
-  - Its inputs, the second-round findings and the read-only proposals, are summarized in `conversation.md`.
-  - If this bundle's commit also contains `experiments/007-*` and the others, the pre-registrations are final. Otherwise
-    the drafts must be recovered and the fix pass re-run.
+- **State at handoff.** The pre-registrations are committed (2026-10-15):
+  - `experiments/007-2026-10-15-noise-locking/`;
+  - `experiments/008-2026-10-15-jitter-dose-response/`;
+  - `experiments/009-2026-10-15-scale-limits/`.
+  Each has a README (Results and Conclusion "Pending"), the analysis card `PLAN.md`, `jobs.py` (008, 009) and
+  `_planning/` (the evidence behind the power numbers, with an `OMITTED.md` for regenerable raw logs). They went
+  through two adversarial review rounds; the last recheck found no blocker. Run each PLAN.md with
+  `workflows/milestone-panel.js` (card path = the PLAN.md), in the order 007, 008, 009.
 - **Rules.**
   - The directory date is the date of the commit that creates the directory, numbered in run order 007, 008, 009.
   - Every decision interval is 99%.

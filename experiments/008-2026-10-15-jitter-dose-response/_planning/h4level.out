@@ -1,0 +1,4 @@
+sd_a=1.0 sd_b=1.0: P(hi < margin | shift = margin) = 0.0160 (MC sd 0.0020); nominal 0.005
+sd_a=0.187 sd_b=0.237: P(hi < margin | shift = margin) = 0.0158 (MC sd 0.0020); nominal 0.005
+sd_a=0.022 sd_b=0.021: P(hi < margin | shift = margin) = 0.0143 (MC sd 0.0019); nominal 0.005
+

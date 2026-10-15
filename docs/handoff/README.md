@@ -24,7 +24,7 @@ this bundle. The project has no PR. CI (`ci.yml`: Linux and Windows/MSVC) and `w
 | M6a (Cycles SVM as a vendored library) | cards T6.1-T6.8 drafted and revised once. T6.6-T6.8 have second-round findings to apply (`drafts/M6a/`) |
 | M6b (SVM inside the painterly kernel) | not drafted. Input: `research/cycles_svm_report.md` |
 | M7 (artist UX, presets), M8 (release), M9 (research) | cards drafted; only T7.1 and T7.2 are reviewed so far (`drafts/M7-M9/`) |
-| Experiments 007-009 (noise locking, jitter dose-response, scale limits) | pre-registrations in revision. See queue item 4 and `conversation.md` |
+| Experiments 007-009 (noise locking, jitter dose-response, scale limits) | pre-registered and committed (`experiments/00{7,8,9}-2026-10-15-*`); renders and analysis pending (queue item 4) |
 
 **First light of the native core** (`firstlight/README.md`). A scratch driver (`firstlight/render.cpp`) rendered the
 reference scene through `PainterlyPathTrace`.

@@ -1,0 +1,40 @@
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=0.0: {'inconclusive': 0.007, 'mixed': 0.003, 'undersampling': 0.99}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=0.25: {'inconclusive': 0.34, 'undersampling': 0.61, 'unresolved': 0.05}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=0.5: {'chain': 0.05, 'inconclusive': 0.42, 'undersampling': 0.037, 'unresolved': 0.493}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=0.6: {'chain': 0.17, 'inconclusive': 0.157, 'undersampling': 0.007, 'unresolved': 0.667}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=0.75: {'chain': 0.577, 'inconclusive': 0.057, 'unresolved': 0.367}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.0 chi=1.0: {'chain': 0.993, 'unresolved': 0.007}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=0.0: {'inconclusive': 0.003, 'mixed': 0.01, 'undersampling': 0.987}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=0.25: {'inconclusive': 0.217, 'mixed': 0.007, 'undersampling': 0.677, 'unresolved': 0.1}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=0.5: {'chain': 0.04, 'inconclusive': 0.36, 'undersampling': 0.023, 'unresolved': 0.577}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=0.6: {'chain': 0.157, 'inconclusive': 0.157, 'unresolved': 0.687}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=0.75: {'chain': 0.66, 'inconclusive': 0.023, 'unresolved': 0.317}
+f=1/1400 D={r4.slag.x} n=16 Delta x1.0 rho=0.5 chi=1.0: {'chain': 0.997, 'unresolved': 0.003}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=0.0: {'inconclusive': 0.343, 'mixed': 0.003, 'undersampling': 0.653}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=0.25: {'inconclusive': 0.76, 'undersampling': 0.23, 'unresolved': 0.01}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=0.5: {'chain': 0.03, 'inconclusive': 0.873, 'undersampling': 0.03, 'unresolved': 0.067}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=0.6: {'chain': 0.047, 'inconclusive': 0.863, 'undersampling': 0.013, 'unresolved': 0.077}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=0.75: {'chain': 0.21, 'inconclusive': 0.7, 'unresolved': 0.09}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.0 chi=1.0: {'chain': 0.55, 'inconclusive': 0.407, 'unresolved': 0.043}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=0.0: {'inconclusive': 0.32, 'undersampling': 0.673, 'unresolved': 0.007}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=0.25: {'chain': 0.007, 'inconclusive': 0.763, 'undersampling': 0.22, 'unresolved': 0.01}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=0.5: {'chain': 0.033, 'inconclusive': 0.877, 'undersampling': 0.02, 'unresolved': 0.07}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=0.6: {'chain': 0.1, 'inconclusive': 0.81, 'undersampling': 0.003, 'unresolved': 0.087}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=0.75: {'chain': 0.22, 'inconclusive': 0.7, 'unresolved': 0.08}
+f=1/1400 D={r4.slag.x} n=16 Delta x0.5 rho=0.5 chi=1.0: {'chain': 0.57, 'inconclusive': 0.407, 'unresolved': 0.023}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=0.0: {'mixed': 0.003, 'undersampling': 0.997}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=0.25: {'inconclusive': 0.087, 'mixed': 0.08, 'undersampling': 0.7, 'unresolved': 0.133}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=0.5: {'chain': 0.027, 'inconclusive': 0.11, 'mixed': 0.01, 'undersampling': 0.033, 'unresolved': 0.82}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=0.6: {'chain': 0.267, 'inconclusive': 0.033, 'unresolved': 0.7}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=0.75: {'chain': 0.773, 'unresolved': 0.227}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.0 chi=1.0: {'chain': 1.0}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=0.0: {'mixed': 0.01, 'undersampling': 0.99}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=0.25: {'inconclusive': 0.053, 'mixed': 0.07, 'undersampling': 0.773, 'unresolved': 0.103}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=0.5: {'chain': 0.027, 'inconclusive': 0.087, 'undersampling': 0.043, 'unresolved': 0.843}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=0.6: {'chain': 0.223, 'inconclusive': 0.02, 'unresolved': 0.757}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=0.75: {'chain': 0.857, 'unresolved': 0.143}
+f=1/1400 D={r4.slag.x} n=24 Delta x1.0 rho=0.5 chi=1.0: {'chain': 1.0}
+f=1/1400 D={r4.slag.x} n=24 Delta x0.5 rho=0.0 chi=0.0: {'inconclusive': 0.27, 'mixed': 0.003, 'undersampling': 0.727}
+f=1/1400 D={r4.slag.x} n=24 Delta x0.5 rho=0.0 chi=0.25: {'inconclusive': 0.757, 'undersampling': 0.213, 'unresolved': 0.03}
+f=1/1400 D={r4.slag.x} n=24 Delta x0.5 rho=0.0 chi=0.5: {'chain': 0.037, 'inconclusive': 0.79, 'undersampling': 0.02, 'unresolved': 0.153}
+f=1/1400 D={r4.slag.x} n=24 Delta x0.5 rho=0.0 chi=0.6: {'chain': 0.077, 'inconclusive': 0.763, 'undersampling': 0.01, 'unresolved': 0.15}

@@ -1,0 +1,6 @@
+f=1/1400 n=32 chi=0.0, Delta 0 for r7.slag.y and r3.slag.y {'undersampling': 1.0} | chi point median 0.023
+f=0 n=16 chi=0.0, Delta 0 for r4.slag.y and r3.slag.x {'mixed': 0.007, 'undersampling': 0.993} | chi point median 0.008
+f=1/1400 n=32 chi=0.5, Delta 0 for r7.slag.y and r3.slag.y {'chain': 0.003, 'inconclusive': 0.017, 'unresolved': 0.977, 'unresolved+flag': 0.003} | chi point median 0.515
+f=0 n=16 chi=0.5, Delta 0 for r4.slag.y and r3.slag.x {'chain': 0.003, 'unresolved': 0.973, 'unresolved+flag': 0.023} | chi point median 0.504
+f=1/1400 n=32 chi=1.0, Delta 0 for r7.slag.y and r3.slag.y {'chain': 0.943, 'chain+flag': 0.057} | chi point median 0.995
+f=0 n=16 chi=1.0, Delta 0 for r4.slag.y and r3.slag.x {'chain': 0.96, 'chain+flag': 0.04} | chi point median 1.002

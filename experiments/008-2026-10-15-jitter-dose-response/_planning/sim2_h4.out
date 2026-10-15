@@ -1,0 +1,20 @@
+
+H4: N_A(1/1400) = 0.6477
+  006 shift f1400 - f0 (bytes), 400 px: {'r2.mean.R': -0.025, 'r2.mean.G': -0.038, 'r2.mean.B': 0.239, 'r3.mean.R': -0.046, 'r3.mean.G': -0.062, 'r3.mean.B': -0.09, 'r4.mean.R': 0.042, 'r4.mean.G': -0.005, 'r4.mean.B': 0.003, 'r5.mean.R': -0.13, 'r5.mean.G': -0.013, 'r5.mean.B': -0.018, 'r6.mean.R': 0.024, 'r6.mean.G': 0.085, 'r6.mean.B': 0.014, 'r7.mean.R': 0.068, 'r7.mean.G': 0.033, 'r7.mean.B': 0.054}
+  006 shift f1400 - f0 (bytes), 800 px: {'r2.mean.R': 0.001, 'r2.mean.G': -0.009, 'r2.mean.B': 0.289, 'r3.mean.R': -0.03, 'r3.mean.G': -0.035, 'r3.mean.B': -0.02, 'r4.mean.R': 0.02, 'r4.mean.G': -0.004, 'r4.mean.B': 0.012, 'r5.mean.R': 0.022, 'r5.mean.G': 0.002, 'r5.mean.B': 0.003, 'r6.mean.R': 0.002, 'r6.mean.G': 0.015, 'r6.mean.B': 0.002, 'r7.mean.R': -0.019, 'r7.mean.G': 0.004, 'r7.mean.B': -0.018}
+  no shift: P(all 18 sub-quantum) 1.000; P(any supra) 0.000
+  P(sub-quantum) per key at shift 1 - (z_0.99 + z_0.95) se: {'r2.mean.R': (0.806, 0.886), 'r2.mean.G': (0.816, 0.881), 'r2.mean.B': (0.577, 0.893), 'r3.mean.R': (0.884, 0.896), 'r3.mean.G': (0.897, 0.899), 'r3.mean.B': (0.903, 0.893), 'r4.mean.R': (0.887, 0.89), 'r4.mean.G': (0.955, 0.881), 'r4.mean.B': (0.908, 0.871), 'r5.mean.R': (0.742, 0.896), 'r5.mean.G': (0.951, 0.902), 'r5.mean.B': (0.95, 0.888), 'r6.mean.R': (0.957, 0.887), 'r6.mean.G': (0.799, 0.89), 'r6.mean.B': (0.958, 0.894), 'r7.mean.R': (0.911, 0.9), 'r7.mean.G': (0.902, 0.888), 'r7.mean.B': (0.924, 0.876)}
+  level at the margin (TOST, shift = +1 exactly), 10,000 designs:
+    equal sds 1 (1.000, 1.000): P(p_less(f350 - 1, f0) <= 0.01) 0.0092 (MC sd 0.0010)
+    r2.mean.B sds (0.187, 0.237): P(p_less(f350 - 1, f0) <= 0.01) 0.0094 (MC sd 0.0010)
+    r6.mean.B sds (0.022, 0.021): P(p_less(f350 - 1, f0) <= 0.01) 0.0094 (MC sd 0.0010)
+  dose laws applied to 006's f1400 - f0 shifts, all 18 keys, 1000 designs:
+    400 px, A-shaped (/N_A(1/1400)): r2.mean.B shift 0.37: P(sub) 0.999 P(supra) 0.000 P(unres) 0.001; H4 supported 0.999 refuted 0.000 inconclusive 0.001; keys with |shift| >= 0.5: []
+    400 px, linear (x4): r2.mean.B shift 0.96: P(sub) 0.035 P(supra) 0.000 P(unres) 0.965; H4 supported 0.035 refuted 0.000 inconclusive 0.965; keys with |shift| >= 0.5: [('r2.mean.B', 0.96), ('r5.mean.R', -0.52)]
+    400 px, f^2 (x16): r2.mean.B shift 3.83: P(sub) 0.000 P(supra) 1.000 P(unres) 0.000; H4 supported 0.000 refuted 1.000 inconclusive 0.000; keys with |shift| >= 0.5: [('r2.mean.G', -0.6), ('r2.mean.B', 3.83), ('r3.mean.R', -0.74), ('r3.mean.G', -0.99), ('r3.mean.B', -1.44), ('r4.mean.R', 0.68), ('r5.mean.R', -2.07), ('r6.mean.G', 1.37), ('r7.mean.R', 1.09), ('r7.mean.G', 0.52), ('r7.mean.B', 0.86)]
+    800 px, A-shaped (/N_A(1/1400)): r2.mean.B shift 0.45: P(sub) 0.986 P(supra) 0.000 P(unres) 0.014; H4 supported 0.986 refuted 0.000 inconclusive 0.014; keys with |shift| >= 0.5: []
+    800 px, linear (x4): r2.mean.B shift 1.15: P(sub) 0.000 P(supra) 0.010 P(unres) 0.990; H4 supported 0.000 refuted 0.010 inconclusive 0.990; keys with |shift| >= 0.5: [('r2.mean.B', 1.15)]
+    800 px, f^2 (x16): r2.mean.B shift 4.62: P(sub) 0.000 P(supra) 1.000 P(unres) 0.000; H4 supported 0.000 refuted 1.000 inconclusive 0.000; keys with |shift| >= 0.5: [('r2.mean.B', 4.62), ('r3.mean.G', -0.57)]
+  supra power, one key shifted by 1 + (z_{1-0.01/36} + z_0.95) se, others 0:
+    r2.mean.B: shift 1.543: P(supra) 0.629
+    r6.mean.B: shift 1.054: P(supra) 0.602

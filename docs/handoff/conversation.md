@@ -34,7 +34,7 @@ are in `decisions.md`. The approved plan became `docs/plan.md`, and the normativ
 6. **Card drafting** for the M3 fix-ups, M6a and M7-M9, and pre-registrations for 007-009. On 2026-10-10 a weekly usage
    limit stopped all of them partway. On 2026-10-15 a retry ran read-only because the session was still in plan mode.
 
-## Experiments 007-009 (in flight at handoff)
+## Experiments 007-009 (pre-registered 2026-10-15; the review findings below are already applied)
 - **007 (noise locking, re-analysis of 006 renders; no new renders).** The second review found a blocker. The row chain's
   noise is exactly uncorrelated across rows (SPEC §2-§3: K0 per (row, pass); hashes per (row, col, pass)). Its 2-D
   isotropic keys can therefore never reach the "image-locked" cell: an independent simulation gave 0 of 15. The fix:

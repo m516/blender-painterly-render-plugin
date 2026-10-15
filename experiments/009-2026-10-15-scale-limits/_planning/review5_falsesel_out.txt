@@ -1,0 +1,2 @@
+n = 8 per side: per-unit false exclusion 0.0357 (se 0.0029); at least one of 4: 0.136, of 18: 0.481
+n = 16 per side: per-unit false exclusion 0.0235 (se 0.0024); at least one of 4: 0.091, of 18: 0.348

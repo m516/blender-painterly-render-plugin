@@ -13,6 +13,9 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | 004 | 2026-10-08 | resolution-dependence | Is the texture pixel-locked (lag-1 across 200/400/800 px, downsampling, jitter units)? | final | H1/H1d refuted, H2 supported (jitter units matter), but fixed-pixel filters cannot separate pixel- from image-locking; region-mean trend is an erosion artefact; question answered by 006 |
 | 005 | 2026-10-08 | native-coexistence | Do the native `_painterly` module and Blender 5.2.2's own Cycles coexist in one `blender -b` process, with no foreign bindings? | final | Linux: coexists (H1, H2 supported); H3 refuted as registered by 4 allocator bindings to Blender's process-wide TBB malloc proxy, shared coherently with libc; G1 not triggered on Linux; later CI runs (2026-10-10): coexists on Linux, macOS and Windows (20/20 each, Linux trace 0 violations under the coherence rule), G1 not triggered on any OS |
 | 006 | 2026-10-09 | jitter-units | Which jitter unit (image-plane or pixel) makes the look independent of resolution, measured with scale-equivariant metrics? | final | Image-plane jitter: 400 ≡ 800 px on all 18 texture keys (both chains, also with zero jitter); pixel jitter changes 9 of 18; every H1/H4 rejection involves 200 px; H3 Δ 0.051 vs 0.158 confirms SPEC §7 (jitter = 1/1400 of the fitted side); the jitter footprint softens strokes (zero jitter: structure +34%) without locking them |
+| 007 | 2026-10-15 | noise-locking | Is the seed-dependent texture pixel-locked, and how much does the low-pass look depend on resolution? | draft | pre-registered; analysis pending |
+| 008 | 2026-10-15 | jitter-dose-response | How does the texture respond to the jitter dose f (knob range and scale for M7)? | draft | pre-registered; analysis pending |
+| 009 | 2026-10-15 | scale-limits | Does image-locking hold above 800 px, and is the 200 px departure undersampling or a chain effect? | draft | pre-registered; analysis pending |
 
 ## How to run
 

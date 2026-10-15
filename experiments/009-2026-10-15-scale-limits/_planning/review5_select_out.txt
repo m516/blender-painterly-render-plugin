@@ -1,0 +1,64 @@
+f = 1/1400: 200 - 800 px, 99% percentile intervals (registered procedure)
+  r2.structure_std   -0.0916 [-0.3428, +0.1656] 
+  r2.slag.x          +0.0412 [-0.0751, +0.1590] 
+  r2.slag.y          +0.0355 [-0.0933, +0.1698] 
+  r3.structure_std   -0.3322 [-0.5264, -0.1438] SELECTED
+  r3.slag.x          -0.0762 [-0.1156, -0.0348] SELECTED
+  r3.slag.y          +0.0611 [+0.0137, +0.1111] SELECTED
+  r4.structure_std   +0.0316 [-0.0260, +0.0959] 
+  r4.slag.x          -0.0737 [-0.1003, -0.0447] SELECTED
+  r4.slag.y          +0.0026 [-0.0298, +0.0373] 
+  r5.structure_std   -0.1277 [-0.1823, -0.0736] SELECTED
+  r5.slag.x          -0.0102 [-0.0651, +0.0437] 
+  r5.slag.y          -0.0288 [-0.0947, +0.0421] 
+  r6.structure_std   -0.2155 [-0.3511, -0.0942] SELECTED
+  r6.slag.x          +0.0055 [-0.0191, +0.0307] 
+  r6.slag.y          +0.0088 [-0.0726, +0.0730] 
+  r7.structure_std   +0.0113 [-0.1924, +0.2133] 
+  r7.slag.x          +0.0130 [-0.1028, +0.1126] 
+  r7.slag.y          -0.0897 [-0.1622, -0.0106] SELECTED
+  A                  -0.0233 [-0.0387, -0.0079] SELECTED
+  X                  -0.0167 [-0.0423, +0.0088] 
+  Y                  -0.0017 [-0.0384, +0.0422] 
+  D_1/1400: 8 units: ['r3.structure_std', 'r3.slag.x', 'r3.slag.y', 'r4.slag.x', 'r5.structure_std', 'r6.structure_std', 'r7.slag.y', 'A']
+  bounds closest to 0: [('A', np.float64(-0.0387), np.float64(-0.0079)), ('X', np.float64(-0.0423), np.float64(0.0088)), ('r7.slag.y', np.float64(-0.1622), np.float64(-0.0106)), ('r3.slag.y', np.float64(0.0137), np.float64(0.1111))]
+f = 0: 200 - 800 px, 99% percentile intervals (registered procedure)
+  r2.structure_std   -0.0360 [-0.2059, +0.1465] 
+  r2.slag.x          -0.0683 [-0.1067, -0.0214] SELECTED
+  r2.slag.y          -0.1833 [-0.2109, -0.1521] SELECTED
+  r3.structure_std   -0.9383 [-1.0599, -0.8309] SELECTED
+  r3.slag.x          -0.0452 [-0.0720, -0.0128] SELECTED
+  r3.slag.y          -0.0187 [-0.0385, +0.0024] 
+  r4.structure_std   -0.4852 [-0.6107, -0.3409] SELECTED
+  r4.slag.x          -0.0594 [-0.0865, -0.0321] SELECTED
+  r4.slag.y          -0.0360 [-0.0657, -0.0054] SELECTED
+  r5.structure_std   -0.5684 [-0.6392, -0.4876] SELECTED
+  r5.slag.x          -0.0165 [-0.0658, +0.0355] 
+  r5.slag.y          +0.0019 [-0.0334, +0.0403] 
+  r6.structure_std   -0.6154 [-0.7124, -0.5187] SELECTED
+  r6.slag.x          -0.0040 [-0.0361, +0.0311] 
+  r6.slag.y          -0.0596 [-0.0841, -0.0331] SELECTED
+  r7.structure_std   -0.4645 [-0.5850, -0.3431] SELECTED
+  r7.slag.x          -0.0795 [-0.1221, -0.0362] SELECTED
+  r7.slag.y          -0.0426 [-0.1053, +0.0211] 
+  A                  -0.0772 [-0.0841, -0.0699] SELECTED
+  X                  -0.0455 [-0.0589, -0.0324] SELECTED
+  Y                  -0.0564 [-0.0652, -0.0453] SELECTED
+  D_0: 15 units: ['r2.slag.x', 'r2.slag.y', 'r3.structure_std', 'r3.slag.x', 'r4.structure_std', 'r4.slag.x', 'r4.slag.y', 'r5.structure_std', 'r6.structure_std', 'r6.slag.y', 'r7.structure_std', 'r7.slag.x', 'A', 'X', 'Y']
+  bounds closest to 0: [('r3.slag.y', np.float64(-0.0385), np.float64(0.0024)), ('r4.slag.y', np.float64(-0.0657), np.float64(-0.0054)), ('r3.slag.x', np.float64(-0.072), np.float64(-0.0128)), ('r7.slag.y', np.float64(-0.1053), np.float64(0.0211))]
+
+class statistics, exact 8-vs-8 permutation p (Background table)
+  f = 0 A: p 0.000155
+  f = 0 X: p 0.000155
+  f = 0 Y: p 0.000155
+  f = 1/1400 A: p 0.0014
+  f = 1/1400 X: p 0.146
+  f = 1/1400 Y: p 0.928
+
+for the record, 95%, registered order:
+  D_1/1400: ['r3.structure_std', 'r3.slag.x', 'r3.slag.y', 'r4.slag.x', 'r5.structure_std', 'r6.structure_std', 'r7.slag.y', 'A']
+  D_0: ['r2.slag.x', 'r2.slag.y', 'r3.structure_std', 'r3.slag.x', 'r3.slag.y', 'r4.structure_std', 'r4.slag.x', 'r4.slag.y', 'r5.structure_std', 'r6.structure_std', 'r6.slag.y', 'r7.structure_std', 'r7.slag.x', 'A', 'X', 'Y']
+
+for the record, 99%, f = 0 configurations drawn first:
+  D_1/1400: ['r3.structure_std', 'r3.slag.x', 'r3.slag.y', 'r4.slag.x', 'r5.structure_std', 'r6.structure_std', 'r7.slag.y', 'A']
+  D_0: ['r2.slag.x', 'r2.slag.y', 'r3.structure_std', 'r3.slag.x', 'r4.structure_std', 'r4.slag.x', 'r4.slag.y', 'r5.structure_std', 'r6.structure_std', 'r6.slag.y', 'r7.structure_std', 'r7.slag.x', 'A', 'X', 'Y']

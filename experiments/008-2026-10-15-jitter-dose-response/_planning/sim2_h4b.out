@@ -1,0 +1,7 @@
+
+H4b: one one-sided margin test at the first Holm threshold 0.01/36 (supra-quantum), 4,000 designs
+  (|shift| - 1) / s_p = 3.0: P(rejected) 0.816
+  (|shift| - 1) / s_p = 3.5: P(rejected) 0.935
+  (|shift| - 1) / s_p = 4.0: P(rejected) 0.985
+  (|shift| - 1) / s_p = 4.5: P(rejected) 0.998
+  (|shift| - 1) / s_p = 5.0: P(rejected) 1.000

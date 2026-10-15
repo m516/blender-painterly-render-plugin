@@ -1,0 +1,4 @@
+growth 1.12, Delta_400 = 0.0 x Delta_1400 (no Holm): first-draft rule {'not shown': 0.217, 'reduced': 0.027, 'supported': 0.757} | registered rule {'not shown': 0.217, 'reduced': 0.005, 'reversed': 0.022, 'supported': 0.757}
+growth 1.12, Delta_400 = -1.5 x Delta_1400 (no Holm): first-draft rule {'reduced': 1.0} | registered rule {'reversed': 1.0}
+growth 1.41, Delta_400 = 0.0 x Delta_1400 (no Holm): first-draft rule {'not shown': 0.438, 'reduced': 0.013, 'supported': 0.548} | registered rule {'not shown': 0.43, 'reversed': 0.022, 'supported': 0.548}
+growth 1.41, Delta_400 = -1.5 x Delta_1400 (no Holm): first-draft rule {'reduced': 1.0} | registered rule {'reversed': 1.0}

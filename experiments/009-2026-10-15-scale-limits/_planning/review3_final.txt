@@ -1,0 +1,24 @@
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=0.0: {'undersampling': 1.0}
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=0.25: {'inconclusive': 0.022, 'mixed': 0.087, 'undersampling': 0.782, 'unresolved': 0.107}
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=0.5: {'chain': 0.035, 'inconclusive': 0.048, 'mixed': 0.013, 'undersampling': 0.033, 'unresolved': 0.873}
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=0.6: {'chain': 0.205, 'inconclusive': 0.007, 'unresolved': 0.787}
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=0.75: {'chain': 0.875, 'unresolved': 0.125}
+f=1/1400 D={r4.slag.x} n=32 Delta x1.0 rho=0.0 chi=1.0: {'chain': 1.0}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=0.0: {'inconclusive': 0.142, 'undersampling': 0.858}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=0.25: {'chain': 0.003, 'inconclusive': 0.62, 'undersampling': 0.362, 'unresolved': 0.015}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=0.5: {'chain': 0.022, 'inconclusive': 0.787, 'undersampling': 0.028, 'unresolved': 0.163}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=0.6: {'chain': 0.08, 'inconclusive': 0.63, 'undersampling': 0.005, 'unresolved': 0.285}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=0.75: {'chain': 0.335, 'inconclusive': 0.36, 'unresolved': 0.305}
+f=1/1400 D={r4.slag.x} n=32 Delta x0.5 rho=0.0 chi=1.0: {'chain': 0.833, 'inconclusive': 0.08, 'unresolved': 0.087}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=0.0: {'undersampling': 1.0}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=0.25: {'mixed': 0.978, 'undersampling': 0.022}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=0.5: {'chain': 0.007, 'mixed': 0.007, 'unresolved': 0.985}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=0.6: {'chain': 0.953, 'unresolved': 0.048}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=0.75: {'chain': 1.0}
+f=0 D_0 (7 keys) n=16 Delta x1.0 rho=0.0 chi=1.0: {'chain': 1.0}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=0.0: {'mixed': 0.003, 'undersampling': 0.998}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=0.25: {'mixed': 0.16, 'undersampling': 0.84}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=0.5: {'chain': 0.003, 'inconclusive': 0.018, 'mixed': 0.007, 'unresolved': 0.973}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=0.6: {'chain': 0.338, 'unresolved': 0.662}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=0.75: {'chain': 0.995, 'unresolved': 0.005}
+f=0 D_0 (7 keys) n=16 Delta x0.5 rho=0.0 chi=1.0: {'chain': 1.0}
