@@ -10,19 +10,16 @@ separate git worktree, except where noted.
 
 ## 1. Finish the M3 fix-up cards T3.19-T3.28 (mid; T3.21 review strong)
 Inputs:
-- `drafts/M3-fixups/`: T3.19-T3.26 drafted. T3.27 and T3.28 still have to be drafted from their briefs in
-  `workflows/m3-fixup-cards.js` (`CARDS`).
+- `drafts/M3-fixups/`: all ten cards T3.19-T3.28 are drafted.
 - The sources the cards cite: `findings/M3-run3a-panel-confirmed.json` (#0-#19), `docs/audits/TQ.1.md` (F1-F28) and
   `decisions-M3.md` (D33-D39).
 - Review results already computed (`findings/M3-fixups-reviews.json`): T3.19, T3.20 and T3.21 on both lenses, T3.22 on
   executability only.
 
 Steps:
-1. Draft T3.27 (vendor_sync reads pinned git blobs, panel #0) and T3.28 (licences, notices, docs, and the wheels.yml path
-   filter; panel #3, #4, #8/#15, #13, #14, #16).
-2. Review every card that has no review yet, on both lenses: T3.22 correctness, T3.23-T3.28 both.
-3. Revise each card with its findings. Verify each finding against the code first.
-4. Propagate renames into the not-yet-run cards `docs/tasks/M3/T3.13-T3.18`, `M4`, `M5` and `src/blender/_painterly.pyi`:
+1. Review every card that has no review yet, on both lenses: T3.22 correctness, T3.23-T3.28 both.
+2. Revise each card with its findings. Verify each finding against the code first.
+3. Propagate renames into the not-yet-run cards `docs/tasks/M3/T3.13-T3.18`, `M4`, `M5` and `src/blender/_painterly.pyi`:
    - VERTEX_PASS becomes VERTEX_TINT (D14);
    - `KernelPainterlyObject.tfm/itfm` and `tri_vertices` give way to `normal_to_world` (D35);
    - `PAINTERLY_OBJECT_ID_MISS` moves to the kernel;
@@ -30,7 +27,7 @@ Steps:
    - the target names from T3.22;
    - F12 (the selftest through painterly_bvh) moves into T3.15 (D34);
    - `meta.json` v2 (T3.25).
-5. Run the cross-check loop until a round reports 0 issues. It checks names, file ownership and order, D33-D39
+4. Run the cross-check loop until a round reports 0 issues. It checks names, file ownership and order, D33-D39
    consistency, and that every panel finding and TQ.1 F-number has exactly one card. T3.29 is withdrawn (D39).
 
 Gate: the cross-check reports 0 issues, and the cards and amendments are committed to `docs/tasks/M3/` in one commit.

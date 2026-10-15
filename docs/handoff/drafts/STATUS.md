@@ -12,10 +12,10 @@ These drafts are **not executable** until they are reviewed, revised and cross-c
 | T3.22 build hygiene | TQ.1-2 without F12, panel #5, #6, #9, #18 | yes | executability only | no |
 | T3.23 shared test scaffolding | TQ.1-3, panel #1 | yes | no | no |
 | T3.24 kernel test coverage | TQ.1-4, panel #10, #11, #12 | yes | no | no |
-| T3.25 self-describing oracle | TQ.1-5, panel #17 | yes (its 10-10 drafter hit the usage limit; check the card is complete) | no | no |
-| T3.26 analysis constants | TQ.1-7 | yes | no | no |
-| T3.27 vendor_sync from pinned blobs | panel #0 | **no**: brief in `workflows/m3-fixup-cards.js` | — | — |
-| T3.28 licences, notices, docs, wheels path filter | panel #3, #4, #8/#15, #13, #14, #16 | **no**: brief in `workflows/m3-fixup-cards.js` | — | — |
+| T3.25 self-describing oracle | TQ.1-5, panel #17 | yes (re-drafted 2026-10-15 against `696dc0c`) | no | no |
+| T3.26 analysis constants | TQ.1-7 | yes (re-drafted 2026-10-15 against `696dc0c`) | no | no |
+| T3.27 vendor_sync from pinned blobs | panel #0 | yes (2026-10-15) | no | no |
+| T3.28 licences, notices, docs, wheels path filter | panel #3, #4, #8/#15, #13, #14, #16 | yes (2026-10-15) | no | no |
 | ~~T3.29 macOS CI job~~ | panel #2 | withdrawn (D39) | — | — |
 
 ## M6a (`M6a/`): Cycles SVM as a standalone vendored library
