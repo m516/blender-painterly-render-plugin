@@ -1,0 +1,480 @@
+=== kernel/svm/ao.h (138 lines)
+  includes: "kernel/globals.h" "kernel/integrator/path_state.h" "kernel/bvh/bvh.h" "kernel/sample/mapping.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_ao svm_node_ao 
+  sd->: sd->N sd->P sd->object sd->prim sd->time 
+  kernel_data.: kernel_data.bvh.bvh_layout kernel_data.integrator.ao_bounces_distance 
+  fetch: 
+  state: 
+  other kernel calls: path_state_rng_load scene_intersect_local scene_intersect_shadow 
+=== kernel/svm/aov.h (62 lines)
+  includes: "kernel/film/aov_passes.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_aov_check svm_node_aov_color svm_node_aov_value 
+  sd->: sd->flag 
+  kernel_data.: 
+  fetch: 
+  state: path_flag render_buffer 
+  other kernel calls: film_write_aov_pass_color film_write_aov_pass_value 
+=== kernel/svm/attribute.h (224 lines)
+  includes: "kernel/globals.h" "kernel/geom/attribute.h" "kernel/geom/object.h" "kernel/geom/primitive.h" "kernel/geom/volume.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_attr_derivative svm_node_attr_init svm_node_attr_store svm_node_attr_surface svm_node_attr_surface_eval svm_node_attr_volume 
+  sd->: sd->du sd->dv sd->object sd->type sd->u sd->v 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: attribute_not_found find_attribute object_inverse_position_transform_if_object primitive_is_volume_attribute volume_attribute_alpha 
+=== kernel/svm/bevel.h (330 lines)
+  includes: "kernel/bvh/bvh.h" "kernel/geom/motion_triangle.h" "kernel/geom/triangle.h" "kernel/geom/triangle_intersect.h" "kernel/integrator/path_state.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_bevel svm_bevel_cubic_eval svm_bevel_cubic_pdf svm_bevel_cubic_quintic_root_find svm_bevel_cubic_sample svm_node_bevel 
+  sd->: sd->N sd->Ng sd->P sd->flag sd->object sd->time sd->type 
+  kernel_data.: kernel_data.bvh.bvh_layout 
+  fetch: object_flag tri_shader 
+  state: INTEGRATOR_STATE(state, path, min_ray_pdf) INTEGRATOR_STATE(state, path, rng_offset) INTEGRATOR_STATE(state, path, rng_pixel) INTEGRATOR_STATE(state, path, sample) lcg_state lcg_state_init 
+  other kernel calls: object_negative_scale_applied object_normal_transform path_state_rng_load scene_intersect_local triangle_point_from_uv triangle_point_from_uv_and_verts triangle_smooth_normal 
+=== kernel/svm/blackbody.h (35 lines)
+  includes: "kernel/globals.h" "kernel/svm/math_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/colorspace.h" 
+  funcs: svm_math_blackbody_color_rec709 svm_node_blackbody 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: rec709_to_rgb 
+=== kernel/svm/brick.h (113 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_brick svm_node_tex_brick 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/brightness.h (28 lines)
+  includes: "kernel/svm/color_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_brightness_contrast svm_node_brightness 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/bump.h (63 lines)
+  includes: "kernel/globals.h" "kernel/geom/attribute.h" "kernel/geom/object.h" "kernel/geom/primitive.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/differential.h" 
+  funcs: svm_node_enter_bump_eval svm_node_leave_bump_eval 
+  sd->: sd->N sd->P sd->dP 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: find_attribute object_position_transform primitive_normal_set_undisplaced 
+=== kernel/svm/camera.h (37 lines)
+  includes: "kernel/globals.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_camera 
+  sd->: sd->P 
+  kernel_data.: kernel_data.cam.worldtocamera 
+  fetch: 
+  state: 
+  other kernel calls: transform_point 
+=== kernel/svm/checker.h (46 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_checker svm_node_tex_checker 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/clamp.h (29 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_clamp 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/closure.h (1528 lines)
+  includes: "kernel/closure/alloc.h" "kernel/closure/bsdf.h" "kernel/closure/bsdf_util.h" "kernel/closure/bssrdf.h" "kernel/closure/emissive.h" "kernel/closure/volume.h" "kernel/geom/curve.h" "kernel/geom/object.h" "kernel/geom/primitive.h" "kernel/svm/math_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/colorspace.h" "util/defines.h" 
+  funcs: svm_alloc_closure_volume_scatter svm_math_blackbody_color_rec709 svm_node_closure_background svm_node_closure_bsdf svm_node_closure_bsdf_skip svm_node_closure_emission svm_node_closure_holdout svm_node_closure_set_weight svm_node_closure_volume svm_node_closure_weight svm_node_emission_weight svm_node_mix_closure svm_node_principled_volume svm_node_set_normal svm_node_volume_coefficients 
+  sd->: sd->N sd->P sd->dP sd->dPdu sd->dPdv sd->flag sd->object sd->prim sd->type sd->u sd->wi 
+  kernel_data.: kernel_data.integrator.caustics_reflective kernel_data.integrator.caustics_refractive 
+  fetch: curve_keys curves objects 
+  state: path_flag path_visibility 
+  other kernel calls: background_setup bsdf_albedo bsdf_alloc bsdf_alloc_maybe_emission bsdf_ashikhmin_shirley_setup bsdf_ashikhmin_velvet_setup bsdf_diffuse_setup bsdf_diffuse_toon_setup bsdf_glossy_toon_setup bsdf_hair_chiang_setup bsdf_hair_huang_setup bsdf_hair_reflection_setup bsdf_hair_transmission_setup bsdf_microfacet_beckmann_glass_setup bsdf_microfacet_beckmann_refraction_setup bsdf_microfacet_beckmann_setup bsdf_microfacet_ggx_glass_setup bsdf_microfacet_ggx_refraction_setup bsdf_microfacet_ggx_setup bsdf_microfacet_setup_fresnel_conductor bsdf_microfacet_setup_fresnel_constant bsdf_microfacet_setup_fresnel_dielectric bsdf_microfacet_setup_fresnel_generalized_schlick bsdf_oren_nayar_setup bsdf_principled_hair_sigma_from_concentration bsdf_principled_hair_sigma_from_reflectance bsdf_ray_portal_setup bsdf_sheen_setup bsdf_thin_glass_setup bsdf_thin_subsurface_setup bsdf_translucent_setup bsdf_transparent_setup bssrdf_alloc bssrdf_setup closure_alloc closure_alloc_extra closure_layering_weight emission_setup find_attribute object_volume_density rec709_to_rgb volume_draine_setup volume_extinction_setup volume_fournier_forand_setup volume_henyey_greenstein_setup volume_rayleigh_setup 
+=== kernel/svm/color_util.h (409 lines)
+  includes: "kernel/svm/types.h" "util/color.h" 
+  funcs: svm_brightness_contrast svm_combine_color svm_mix svm_mix_add svm_mix_blend svm_mix_burn svm_mix_clamp svm_mix_clamped_factor svm_mix_color svm_mix_dark svm_mix_diff svm_mix_div svm_mix_dodge svm_mix_exclusion svm_mix_hue svm_mix_light svm_mix_linear svm_mix_mul svm_mix_overlay svm_mix_sat svm_mix_screen svm_mix_soft svm_mix_sub svm_mix_val svm_separate_color 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hsv_to_rgb rgb_to_hsv svm_mix svm_mix_add svm_mix_blend svm_mix_burn svm_mix_clamp svm_mix_clamped_factor svm_mix_color svm_mix_dark svm_mix_diff svm_mix_div svm_mix_dodge svm_mix_exclusion svm_mix_hue svm_mix_light svm_mix_linear svm_mix_mul svm_mix_overlay svm_mix_sat svm_mix_screen svm_mix_soft svm_mix_sub svm_mix_val 
+=== kernel/svm/convert.h (72 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/colorspace.h" 
+  funcs: svm_node_convert 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: linear_rgb_to_gray 
+=== kernel/svm/displace.h (197 lines)
+  includes: "kernel/geom/attribute.h" "kernel/geom/object.h" "kernel/geom/primitive.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/differential.h" 
+  funcs: svm_node_displacement svm_node_set_bump svm_node_set_displacement svm_node_vector_displacement 
+  sd->: sd->N sd->Ng sd->P sd->dP sd->dPdu 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: find_attribute object_dir_transform object_inverse_dir_transform object_inverse_normal_transform object_normal_transform 
+=== kernel/svm/fractal_noise.h (550 lines)
+  includes: "kernel/svm/noise.h" 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: noise_fbm noise_hetero_terrain noise_hybrid_multi_fractal noise_multi_fractal noise_ridged_multi_fractal 
+=== kernel/svm/fresnel.h (65 lines)
+  includes: "kernel/closure/bsdf_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_fresnel svm_node_layer_weight 
+  sd->: sd->N sd->flag sd->wi 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/gabor.h (362 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "util/hash.h" 
+  funcs: svm_node_tex_gabor 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hash_float3_to_float hash_float3_to_float2 hash_float4_to_float hash_float4_to_float2 hash_float4_to_float3 
+=== kernel/svm/gamma.h (26 lines)
+  includes: "kernel/svm/math_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_math_gamma_color svm_node_gamma 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: svm_math_gamma_color 
+=== kernel/svm/geometry.h (248 lines)
+  includes: "kernel/geom/curve.h" "kernel/geom/primitive.h" "kernel/svm/attribute.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "util/hash.h" 
+  funcs: svm_node_geometry svm_node_geometry_eval svm_node_hair_info svm_node_object_info svm_node_particle_info svm_node_point_info 
+  sd->: sd->N sd->Ng sd->du sd->dv sd->object sd->type sd->u sd->v 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: curve_tangent_normal curve_thickness hash_uint2_to_float object_alpha object_color object_location object_particle_id object_pass_id object_random_number point_position point_radius shader_pass_id 
+=== kernel/svm/gradient.h (75 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_gradient svm_node_tex_gradient 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/hsv.h (47 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "util/color.h" 
+  funcs: svm_node_hsv 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hsv_to_rgb rgb_to_hsv 
+=== kernel/svm/ies.h (33 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/ies.h" 
+  funcs: svm_node_ies 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/image.h (207 lines)
+  includes: "kernel/globals.h" "kernel/image.h" "kernel/camera/projection.h" "kernel/geom/object.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "util/color.h" "util/types_image.h" 
+  funcs: svm_image_texture svm_node_tex_environment svm_node_tex_environment_projection svm_node_tex_image svm_node_tex_image_box svm_node_tex_image_mapping 
+  sd->: sd->N 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: kernel_image_interp_with_udim object_inverse_normal_transform 
+=== kernel/svm/invert.h (32 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_invert 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/light_path.h (144 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_light_falloff svm_node_light_path 
+  sd->: sd->flag sd->ray_length 
+  kernel_data.: 
+  fetch: 
+  state: path_flag path_visibility 
+  other kernel calls: 
+=== kernel/svm/magic.h (119 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_magic svm_node_tex_magic 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/map_range.h (119 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_map_range svm_node_vector_map_range 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/mapping.h (54 lines)
+  includes: "kernel/svm/mapping_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_mapping svm_node_mapping svm_node_min_max svm_node_texture_mapping 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: transform_point 
+=== kernel/svm/mapping_util.h (38 lines)
+  includes: "kernel/svm/types.h" "util/math.h" "util/transform.h" "util/types.h" 
+  funcs: svm_mapping 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: transform_direction transform_direction_transposed 
+=== kernel/svm/math.h (47 lines)
+  includes: "kernel/svm/math_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_math svm_node_math svm_node_vector_math svm_vector_math 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: svm_math 
+=== kernel/svm/math_util.h (282 lines)
+  includes: "kernel/svm/types.h" "kernel/tables.h" "util/math.h" "util/types.h" 
+  funcs: svm_math svm_math_blackbody_color_rec709 svm_math_gamma_color svm_math_wavelength_color_xyz svm_vector_math 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: svm_math svm_math_gamma_color svm_math_wavelength_color_xyz 
+=== kernel/svm/mix.h (83 lines)
+  includes: "kernel/svm/color_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_mix svm_mix_clamped_factor svm_node_mix svm_node_mix_color svm_node_mix_float svm_node_mix_vector svm_node_mix_vector_non_uniform 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: svm_mix svm_mix_clamped_factor 
+=== kernel/svm/node_types.h (1309 lines)
+  includes: "kernel/svm/types.h" 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/node_types_template.h (114 lines)
+  includes: 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/noise.h (761 lines)
+  includes: "util/hash.h" "util/math.h" "util/types.h" 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hash_int4_2 hash_int4_3 hash_int4_4 hash_int8_3 hash_int8_4 hash_uint hash_uint2 hash_uint3 hash_uint4 noise_1d noise_2d noise_3d noise_4d noise_scale1 noise_scale2 noise_scale3 noise_scale4 
+=== kernel/svm/noisetex.h (336 lines)
+  includes: "kernel/svm/fractal_noise.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_tex_noise 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hash_float2_to_float hash_float_to_float noise_fbm noise_hetero_terrain noise_hybrid_multi_fractal noise_multi_fractal noise_ridged_multi_fractal noise_select noise_texture_1d noise_texture_2d noise_texture_3d noise_texture_4d 
+=== kernel/svm/normal.h (29 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_normal 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/radial_tiling.h (65 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "radial_tiling_shared.h" 
+  funcs: svm_node_radial_tiling 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/radial_tiling_shared.h (1183 lines)
+  includes: 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/ramp.h (156 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_curve svm_node_curves svm_node_get_data_float4 svm_node_rgb_ramp 
+  sd->: 
+  kernel_data.: 
+  fetch: svm_nodes 
+  state: 
+  other kernel calls: float_ramp_lookup rgb_ramp_lookup 
+=== kernel/svm/ramp_util.h (80 lines)
+  includes: "util/math.h" "util/types.h" 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: float_ramp_lookup rgb_ramp_lookup 
+=== kernel/svm/raycast.h (195 lines)
+  includes: "kernel/globals.h" "kernel/integrator/path_state.h" "kernel/bvh/bvh.h" "kernel/sample/mapping.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/geom/shader_data.h" 
+  funcs: svm_node_attr_init svm_node_attr_store svm_node_raycast svm_raycast svm_raycast_attr_eval_and_store 
+  sd->: sd->P sd->dP sd->object sd->prim sd->time 
+  kernel_data.: kernel_data.bvh.bvh_layout 
+  fetch: svm_nodes 
+  state: 
+  other kernel calls: scene_intersect scene_intersect_local shader_setup_from_ray 
+=== kernel/svm/scene_time.h (26 lines)
+  includes: "kernel/globals.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_scene_time 
+  sd->: 
+  kernel_data.: kernel_data.scene_time.frame kernel_data.scene_time.time 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/sepcomb_color.h (48 lines)
+  includes: "kernel/svm/color_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_combine_color svm_node_combine_color svm_node_separate_color svm_separate_color 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/sepcomb_vector.h (65 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_combine_vector svm_node_separate_vector 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/sky.h (265 lines)
+  includes: "kernel/image.h" "kernel/svm/node_types.h" "kernel/svm/types.h" "kernel/svm/util.h" "kernel/util/colorspace.h" "kernel/util/differential.h" "util/color.h" "util/defines.h" 
+  funcs: svm_node_tex_sky 
+  sd->: 
+  kernel_data.: kernel_data.background.use_sun_guiding 
+  fetch: svm_nodes 
+  state: path_flag 
+  other kernel calls: kernel_image_interp xyz_to_rgb_clamped 
+=== kernel/svm/svm.h (624 lines)
+  includes: "kernel/globals.h" "kernel/types.h" "kernel/svm/types.h" "kernel/svm/util.h" "kernel/svm/aov.h" "kernel/svm/attribute.h" "kernel/svm/blackbody.h" "kernel/svm/brick.h" "kernel/svm/brightness.h" "kernel/svm/bump.h" "kernel/svm/camera.h" "kernel/svm/checker.h" "kernel/svm/clamp.h" "kernel/svm/closure.h" "kernel/svm/convert.h" "kernel/svm/displace.h" "kernel/svm/fresnel.h" "kernel/svm/gabor.h" "kernel/svm/gamma.h" "kernel/svm/geometry.h" "kernel/svm/gradient.h" "kernel/svm/hsv.h" "kernel/svm/ies.h" "kernel/svm/image.h" "kernel/svm/invert.h" "kernel/svm/light_path.h" "kernel/svm/magic.h" "kernel/svm/map_range.h" "kernel/svm/mapping.h" "kernel/svm/math.h" "kernel/svm/mix.h" "kernel/svm/noisetex.h" "kernel/svm/normal.h" "kernel/svm/radial_tiling.h" "kernel/svm/ramp.h" "kernel/svm/scene_time.h" "kernel/svm/sepcomb_color.h" "kernel/svm/sepcomb_vector.h" "kernel/svm/sky.h" "kernel/svm/tex_coord.h" "kernel/svm/value.h" "kernel/svm/vector_rotate.h" "kernel/svm/vector_transform.h" "kernel/svm/vertex_color.h" "kernel/svm/voronoi.h" "kernel/svm/wave.h" "kernel/svm/wavelength.h" "kernel/svm/white_noise.h" "kernel/svm/wireframe.h" "util/defines.h" 
+  funcs: svm_eval_nodes svm_node_aov_check svm_node_attr_derivative svm_node_attr_surface svm_node_attr_volume svm_node_blackbody svm_node_brightness svm_node_camera svm_node_clamp svm_node_closure_background svm_node_closure_emission svm_node_closure_holdout svm_node_closure_set_weight svm_node_closure_weight svm_node_combine_color svm_node_curve svm_node_curves svm_node_emission_weight svm_node_enter_bump_eval svm_node_fresnel svm_node_gamma svm_node_hair_info svm_node_hsv svm_node_ies svm_node_invert svm_node_layer_weight svm_node_leave_bump_eval svm_node_light_falloff svm_node_map_range svm_node_math svm_node_min_max svm_node_mix svm_node_mix_closure svm_node_mix_color svm_node_mix_float svm_node_mix_vector svm_node_mix_vector_non_uniform svm_node_normal svm_node_normal_map svm_node_object_info svm_node_particle_info svm_node_point_info svm_node_rgb_ramp svm_node_scene_time svm_node_separate_color svm_node_set_normal svm_node_tex_brick svm_node_tex_checker svm_node_tex_coord svm_node_tex_coord_derivative svm_node_tex_gabor svm_node_tex_gradient svm_node_tex_magic svm_node_tex_noise svm_node_tex_sky svm_node_tex_wave svm_node_tex_white_noise svm_node_vector_map_range svm_node_vector_rotate svm_node_vector_transform svm_node_vertex_color svm_node_vertex_color_derivative svm_node_wavelength svm_node_wireframe 
+  sd->: sd->shader 
+  kernel_data.: 
+  fetch: svm_nodes 
+  state: path_flag path_visibility render_buffer 
+  other kernel calls: 
+=== kernel/svm/tex_coord.h (419 lines)
+  includes: "kernel/camera/camera.h" "kernel/geom/motion_triangle.h" "kernel/geom/object.h" "kernel/geom/primitive.h" "kernel/svm/attribute.h" "kernel/svm/node_types.h" "kernel/svm/types.h" "kernel/svm/util.h" "util/math_base.h" 
+  funcs: svm_node_normal_map svm_node_tangent svm_node_tex_coord svm_node_tex_coord_derivative svm_node_tex_coord_eval svm_texco_camera svm_texco_reflection svm_texco_smooth_normal 
+  sd->: sd->N sd->Ng sd->P sd->du sd->dv sd->flag sd->object sd->object_flag sd->prim sd->ray_P sd->shader sd->time sd->type sd->u sd->v 
+  kernel_data.: kernel_data.cam.height kernel_data.cam.type kernel_data.cam.width kernel_data.cam.worldtocamera 
+  fetch: 
+  state: path_visibility 
+  other kernel calls: attribute_not_found camera_position camera_world_to_ndc find_attribute object_dupli_generated object_dupli_uv object_inverse_normal_transform object_inverse_position_transform_if_object object_normal_transform transform_point triangle_smooth_normal triangle_smooth_normal_unnormalized_object_space 
+=== kernel/svm/types.h (579 lines)
+  includes: "util/transform.h" "util/types.h" "node_types_template.h" 
+  funcs: 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/util.h (269 lines)
+  includes: "kernel/globals.h" "kernel/types.h" "kernel/svm/types.h" 
+  funcs: svm_node_get svm_node_get_data_float4 
+  sd->: sd->P sd->dI sd->dPdu sd->dPdv sd->du sd->dv sd->wi 
+  kernel_data.: 
+  fetch: svm_nodes 
+  state: 
+  other kernel calls: 
+=== kernel/svm/value.h (30 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_value_f svm_node_value_v 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: 
+=== kernel/svm/vector_rotate.h (65 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_vector_rotate 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: transform_direction transform_direction_transposed 
+=== kernel/svm/vector_transform.h (123 lines)
+  includes: "kernel/geom/object.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_vector_transform 
+  sd->: sd->object 
+  kernel_data.: kernel_data.cam.cameratoworld kernel_data.cam.worldtocamera 
+  fetch: 
+  state: 
+  other kernel calls: object_dir_transform object_inverse_dir_transform object_inverse_normal_transform object_inverse_position_transform object_normal_transform object_position_transform transform_direction transform_direction_transposed transform_point 
+=== kernel/svm/vertex_color.h (96 lines)
+  includes: "kernel/geom/attribute.h" "kernel/geom/primitive.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "util/math_base.h" 
+  funcs: svm_node_vertex_color svm_node_vertex_color_derivative 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: find_attribute 
+=== kernel/svm/voronoi.h (1203 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "util/hash.h" 
+  funcs: svm_node_tex_voronoi svm_voronoi_output 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: fractal_voronoi_distance_to_edge fractal_voronoi_x_fx hash_float_to_float hash_float_to_float3 hash_int2_to_float2 hash_int2_to_float3 hash_int3_to_float3 hash_int4_to_float3 hash_int4_to_float4 voronoi_distance voronoi_distance_bound voronoi_distance_to_edge voronoi_f1 voronoi_f2 voronoi_n_sphere_radius voronoi_position voronoi_smooth_f1 
+=== kernel/svm/wave.h (109 lines)
+  includes: "kernel/svm/fractal_noise.h" "kernel/svm/node_types.h" "kernel/svm/util.h" 
+  funcs: svm_node_tex_wave svm_wave 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: noise_fbm 
+=== kernel/svm/wavelength.h (36 lines)
+  includes: "kernel/svm/math_util.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/colorspace.h" 
+  funcs: svm_math_wavelength_color_xyz svm_node_wavelength 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: svm_math_wavelength_color_xyz xyz_to_rgb 
+=== kernel/svm/white_noise.h (67 lines)
+  includes: "kernel/svm/node_types.h" "kernel/svm/util.h" "util/hash.h" 
+  funcs: svm_node_tex_white_noise 
+  sd->: 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: hash_float2_to_float hash_float2_to_float3 hash_float3_to_float hash_float3_to_float3 hash_float4_to_float hash_float4_to_float3 hash_float_to_float hash_float_to_float3 
+=== kernel/svm/wireframe.h (110 lines)
+  includes: "kernel/geom/motion_triangle.h" "kernel/geom/object.h" "kernel/geom/triangle.h" "kernel/svm/node_types.h" "kernel/svm/util.h" "kernel/util/differential.h" "util/math_base.h" 
+  funcs: svm_node_wireframe 
+  sd->: sd->Ng sd->P sd->dP sd->object sd->object_flag sd->prim sd->time sd->type sd->wi 
+  kernel_data.: 
+  fetch: 
+  state: 
+  other kernel calls: object_position_transform triangle_vertices 

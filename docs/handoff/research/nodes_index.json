@@ -1,0 +1,3971 @@
+{
+ "TextureMapping": {
+  "funcs": {
+   "TextureMapping": [
+    79,
+    142
+   ],
+   "skip": [
+    144,
+    164
+   ],
+   "compile_svm": [
+    166,
+    204
+   ],
+   "compile_begin": [
+    208,
+    223
+   ],
+   "compile_end": [
+    225,
+    232
+   ],
+   "compile_osl": [
+    234,
+    240
+   ]
+  }
+ },
+ "ImageTextureNode": {
+  "funcs": {
+   "ImageTextureNode": [
+    295,
+    299
+   ],
+   "clone": [
+    301,
+    306
+   ],
+   "image_params": [
+    308,
+    317
+   ],
+   "cull_tiles": [
+    319,
+    381
+   ],
+   "attributes": [
+    383,
+    396
+   ],
+   "shader_node_type": [
+    398,
+    404
+   ],
+   "update_images": [
+    406,
+    430
+   ],
+   "compile_svm": [
+    432,
+    485
+   ],
+   "compile_osl": [
+    487,
+    531
+   ]
+  },
+  "define": [
+   244,
+   293
+  ],
+  "type_name": "image_texture",
+  "sockets": [
+   "SOCKET_STRING(filename, \"Filename\", ustring())",
+   "SOCKET_STRING(colorspace, \"Colorspace\", u_colorspace_auto)",
+   "SOCKET_ENUM(alpha_type, \"Alpha Type\", alpha_type_enum, IMAGE_ALPHA_AUTO)",
+   "SOCKET_ENUM(interpolation, \"Interpolation\", interpolation_enum, INTERPOLATION_LINEAR)",
+   "SOCKET_ENUM(extension, \"Extension\", extension_enum, EXTENSION_REPEAT)",
+   "SOCKET_ENUM(projection, \"Projection\", projection_enum, NODE_IMAGE_PROJ_FLAT)",
+   "SOCKET_FLOAT(projection_blend, \"Projection Blend\", 0.0f)",
+   "SOCKET_INT_ARRAY(tiles, \"Tiles\", array<int>())",
+   "SOCKET_BOOLEAN(animated, \"Animated\", false)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_UV)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")"
+  ],
+  "enums": {
+   "alpha_type_enum": [
+    "auto",
+    "unassociated",
+    "associated",
+    "channel_packed",
+    "ignore"
+   ],
+   "interpolation_enum": [
+    "closest",
+    "linear",
+    "cubic",
+    "smart"
+   ],
+   "extension_enum": [
+    "periodic",
+    "clamp",
+    "black",
+    "mirror"
+   ],
+   "projection_enum": [
+    "flat",
+    "box",
+    "sphere",
+    "tube"
+   ]
+  }
+ },
+ "EnvironmentTextureNode": {
+  "funcs": {
+   "EnvironmentTextureNode": [
+    574,
+    578
+   ],
+   "clone": [
+    580,
+    585
+   ],
+   "image_params": [
+    587,
+    596
+   ],
+   "attributes": [
+    598,
+    609
+   ],
+   "update_images": [
+    611,
+    622
+   ],
+   "compile_svm": [
+    624,
+    652
+   ],
+   "compile_osl": [
+    654,
+    674
+   ]
+  },
+  "define": [
+   535,
+   572
+  ],
+  "type_name": "environment_texture",
+  "sockets": [
+   "SOCKET_STRING(filename, \"Filename\", ustring())",
+   "SOCKET_STRING(colorspace, \"Colorspace\", u_colorspace_auto)",
+   "SOCKET_ENUM(alpha_type, \"Alpha Type\", alpha_type_enum, IMAGE_ALPHA_AUTO)",
+   "SOCKET_ENUM(interpolation, \"Interpolation\", interpolation_enum, INTERPOLATION_LINEAR)",
+   "SOCKET_ENUM(projection, \"Projection\", projection_enum, NODE_ENVIRONMENT_EQUIRECTANGULAR)",
+   "SOCKET_BOOLEAN(animated, \"Animated\", false)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_POSITION)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")"
+  ],
+  "enums": {
+   "alpha_type_enum": [
+    "auto",
+    "unassociated",
+    "associated",
+    "channel_packed",
+    "ignore"
+   ],
+   "interpolation_enum": [
+    "closest",
+    "linear",
+    "cubic",
+    "smart"
+   ],
+   "projection_enum": [
+    "equirectangular",
+    "mirror_ball"
+   ]
+  }
+ },
+ "SkyTextureNode": {
+  "funcs": {
+   "get_sun_average_radiance": [
+    852,
+    906
+   ],
+   "SkyTextureNode": [
+    940,
+    940
+   ],
+   "simplify_settings": [
+    942,
+    975
+   ],
+   "compile_svm": [
+    977,
+    1058
+   ],
+   "compile_osl": [
+    1060,
+    1114
+   ]
+  },
+  "define": [
+   908,
+   938
+  ],
+  "type_name": "sky_texture",
+  "sockets": [
+   "SOCKET_ENUM(sky_type, \"Type\", type_enum, NODE_SKY_MULTIPLE_SCATTERING)",
+   "SOCKET_BOOLEAN(sun_disc, \"Sun Disc\", true)",
+   "SOCKET_FLOAT(sun_size, \"Sun Size\", 0.009512f)",
+   "SOCKET_FLOAT(sun_intensity, \"Sun Intensity\", 1.0f)",
+   "SOCKET_FLOAT(sun_elevation, \"Sun Elevation\", 15.0f * M_PI_F / 180.0f)",
+   "SOCKET_FLOAT(sun_rotation, \"Sun Rotation\", 0.0f)",
+   "SOCKET_FLOAT(altitude, \"Altitude\", 100.0f)",
+   "SOCKET_FLOAT(air_density, \"Air\", 1.0f)",
+   "SOCKET_FLOAT(aerosol_density, \"Aerosol\", 1.0f)",
+   "SOCKET_FLOAT(ozone_density, \"Ozone\", 1.0f)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_VECTOR(sun_direction, \"Sun Direction\", make_float3(0.0f, 0.0f, 1.0f))",
+   "SOCKET_FLOAT(turbidity, \"Turbidity\", 2.2f)",
+   "SOCKET_FLOAT(ground_albedo, \"Ground Albedo\", 0.3f)"
+  ],
+  "enums": {
+   "type_enum": [
+    "preetham",
+    "hosek_wilkie",
+    "single_scattering",
+    "multiple_scattering"
+   ]
+  }
+ },
+ "GradientTextureNode": {
+  "funcs": {
+   "GradientTextureNode": [
+    1142,
+    1142
+   ],
+   "compile_svm": [
+    1144,
+    1159
+   ],
+   "compile_osl": [
+    1161,
+    1167
+   ]
+  },
+  "define": [
+   1118,
+   1140
+  ],
+  "type_name": "gradient_texture",
+  "sockets": [
+   "SOCKET_ENUM(gradient_type, \"Type\", type_enum, NODE_BLEND_LINEAR)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "linear",
+    "quadratic",
+    "easing",
+    "diagonal",
+    "radial",
+    "quadratic_sphere",
+    "spherical"
+   ]
+  }
+ },
+ "NoiseTextureNode": {
+  "funcs": {
+   "NoiseTextureNode": [
+    1210,
+    1210
+   ],
+   "compile_svm": [
+    1212,
+    1238
+   ],
+   "compile_osl": [
+    1240,
+    1247
+   ]
+  },
+  "define": [
+   1171,
+   1208
+  ],
+  "type_name": "noise_texture",
+  "sockets": [
+   "SOCKET_ENUM(dimensions, \"Dimensions\", dimensions_enum, 3)",
+   "SOCKET_ENUM(type, \"Type\", type_enum, NODE_NOISE_FBM)",
+   "SOCKET_BOOLEAN(use_normalize, \"Normalize\", true)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_FLOAT(w, \"W\", 0.0f)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_IN_FLOAT(detail, \"Detail\", 2.0f)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(lacunarity, \"Lacunarity\", 2.0f)",
+   "SOCKET_IN_FLOAT(offset, \"Offset\", 0.0f)",
+   "SOCKET_IN_FLOAT(gain, \"Gain\", 1.0f)",
+   "SOCKET_IN_FLOAT(distortion, \"Distortion\", 0.0f)",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {
+   "dimensions_enum": [
+    "1D",
+    "2D",
+    "3D",
+    "4D"
+   ],
+   "type_enum": [
+    "multifractal",
+    "fBM",
+    "hybrid_multifractal",
+    "ridged_multifractal",
+    "hetero_terrain"
+   ]
+  }
+ },
+ "GaborTextureNode": {
+  "funcs": {
+   "GaborTextureNode": [
+    1276,
+    1276
+   ],
+   "compile_svm": [
+    1278,
+    1300
+   ],
+   "compile_osl": [
+    1302,
+    1307
+   ]
+  },
+  "define": [
+   1251,
+   1274
+  ],
+  "type_name": "gabor_texture",
+  "sockets": [
+   "SOCKET_ENUM(type, \"Type\", type_enum, NODE_GABOR_TYPE_2D)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 5.0f)",
+   "SOCKET_IN_FLOAT(frequency, \"Frequency\", 2.0f)",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 1.0f)",
+   "SOCKET_IN_FLOAT(orientation_2d, \"Orientation 2D\", M_PI_F / 4.0f)",
+   "SOCKET_IN_VECTOR(orientation_3d, \"Orientation 3D\", make_float3(M_SQRT2_F, M_SQRT2_F, 0.0f))",
+   "SOCKET_OUT_FLOAT(value, \"Value\")",
+   "SOCKET_OUT_FLOAT(phase, \"Phase\")",
+   "SOCKET_OUT_FLOAT(intensity, \"Intensity\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "2D",
+    "3D"
+   ]
+  }
+ },
+ "VoronoiTextureNode": {
+  "funcs": {
+   "VoronoiTextureNode": [
+    1360,
+    1360
+   ],
+   "compile_svm": [
+    1362,
+    1391
+   ],
+   "compile_osl": [
+    1393,
+    1402
+   ]
+  },
+  "define": [
+   1311,
+   1358
+  ],
+  "type_name": "voronoi_texture",
+  "sockets": [
+   "SOCKET_ENUM(dimensions, \"Dimensions\", dimensions_enum, 3)",
+   "SOCKET_ENUM(metric, \"Distance Metric\", metric_enum, NODE_VORONOI_EUCLIDEAN)",
+   "SOCKET_ENUM(feature, \"Feature\", feature_enum, NODE_VORONOI_F1)",
+   "SOCKET_BOOLEAN(use_normalize, \"Normalize\", false)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_FLOAT(w, \"W\", 0.0f)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 5.0f)",
+   "SOCKET_IN_FLOAT(detail, \"Detail\", 0.0f)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(lacunarity, \"Lacunarity\", 2.0f)",
+   "SOCKET_IN_FLOAT(smoothness, \"Smoothness\", 5.0f)",
+   "SOCKET_IN_FLOAT(exponent, \"Exponent\", 0.5f)",
+   "SOCKET_IN_FLOAT(randomness, \"Randomness\", 1.0f)",
+   "SOCKET_OUT_FLOAT(distance, \"Distance\")",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_POINT(position, \"Position\")",
+   "SOCKET_OUT_FLOAT(w, \"W\")",
+   "SOCKET_OUT_FLOAT(radius, \"Radius\")"
+  ],
+  "enums": {
+   "dimensions_enum": [
+    "1D",
+    "2D",
+    "3D",
+    "4D"
+   ],
+   "metric_enum": [
+    "euclidean",
+    "manhattan",
+    "chebychev",
+    "minkowski"
+   ],
+   "feature_enum": [
+    "f1",
+    "f2",
+    "smooth_f1",
+    "distance_to_edge",
+    "n_sphere_radius"
+   ]
+  }
+ },
+ "IESLightNode": {
+  "funcs": {
+   "IESLightNode": [
+    1423,
+    1427
+   ],
+   "clone": [
+    1429,
+    1437
+   ],
+   "~IESLightNode": [
+    1439,
+    1444
+   ],
+   "get_slot": [
+    1446,
+    1458
+   ],
+   "compile_svm": [
+    1460,
+    1477
+   ],
+   "compile_osl": [
+    1479,
+    1488
+   ]
+  },
+  "define": [
+   1406,
+   1421
+  ],
+  "type_name": "ies_light",
+  "sockets": [
+   "SOCKET_STRING(ies, \"IES\", ustring())",
+   "SOCKET_STRING(filename, \"File Name\", ustring())",
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 1.0f)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_INCOMING)",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "WhiteNoiseTextureNode": {
+  "funcs": {
+   "WhiteNoiseTextureNode": [
+    1512,
+    1512
+   ],
+   "compile_svm": [
+    1514,
+    1525
+   ],
+   "compile_osl": [
+    1527,
+    1531
+   ]
+  },
+  "define": [
+   1492,
+   1510
+  ],
+  "type_name": "white_noise_texture",
+  "sockets": [
+   "SOCKET_ENUM(dimensions, \"Dimensions\", dimensions_enum, 3)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_FLOAT(w, \"W\", 0.0f)",
+   "SOCKET_OUT_FLOAT(value, \"Value\")",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {
+   "dimensions_enum": [
+    "1D",
+    "2D",
+    "3D",
+    "4D"
+   ]
+  }
+ },
+ "WaveTextureNode": {
+  "funcs": {
+   "WaveTextureNode": [
+    1581,
+    1581
+   ],
+   "compile_svm": [
+    1583,
+    1607
+   ],
+   "compile_osl": [
+    1609,
+    1619
+   ]
+  },
+  "define": [
+   1535,
+   1579
+  ],
+  "type_name": "wave_texture",
+  "sockets": [
+   "SOCKET_ENUM(wave_type, \"Type\", type_enum, NODE_WAVE_BANDS)",
+   "SOCKET_ENUM(profile, \"Profile\", profile_enum, NODE_WAVE_PROFILE_SIN)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_IN_FLOAT(distortion, \"Distortion\", 0.0f)",
+   "SOCKET_IN_FLOAT(detail, \"Detail\", 2.0f)",
+   "SOCKET_IN_FLOAT(detail_scale, \"Detail Scale\", 0.0f)",
+   "SOCKET_IN_FLOAT(detail_roughness, \"Detail Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(phase, \"Phase Offset\", 0.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "bands",
+    "rings"
+   ],
+   "bands_direction_enum": [
+    "x",
+    "y",
+    "z",
+    "diagonal"
+   ],
+   "rings_direction_enum": [
+    "x",
+    "y",
+    "z",
+    "spherical"
+   ],
+   "profile_enum": [
+    "sine",
+    "saw",
+    "tri"
+   ]
+  }
+ },
+ "MagicTextureNode": {
+  "funcs": {
+   "MagicTextureNode": [
+    1641,
+    1641
+   ],
+   "compile_svm": [
+    1643,
+    1660
+   ],
+   "compile_osl": [
+    1662,
+    1668
+   ]
+  },
+  "define": [
+   1623,
+   1639
+  ],
+  "type_name": "magic_texture",
+  "sockets": [
+   "SOCKET_INT(depth, \"Depth\", 2)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 5.0f)",
+   "SOCKET_IN_FLOAT(distortion, \"Distortion\", 1.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "CheckerTextureNode": {
+  "funcs": {
+   "CheckerTextureNode": [
+    1689,
+    1689
+   ],
+   "compile_svm": [
+    1691,
+    1708
+   ],
+   "compile_osl": [
+    1710,
+    1715
+   ]
+  },
+  "define": [
+   1672,
+   1687
+  ],
+  "type_name": "checker_texture",
+  "sockets": [
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_COLOR(color1, \"Color1\", zero_float3())",
+   "SOCKET_IN_COLOR(color2, \"Color2\", zero_float3())",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "BrickTextureNode": {
+  "funcs": {
+   "BrickTextureNode": [
+    1748,
+    1748
+   ],
+   "compile_svm": [
+    1750,
+    1777
+   ],
+   "compile_osl": [
+    1779,
+    1788
+   ]
+  },
+  "define": [
+   1719,
+   1746
+  ],
+  "type_name": "brick_texture",
+  "sockets": [
+   "SOCKET_FLOAT(offset, \"Offset\", 0.5f)",
+   "SOCKET_INT(offset_frequency, \"Offset Frequency\", 2)",
+   "SOCKET_FLOAT(squash, \"Squash\", 1.0f)",
+   "SOCKET_INT(squash_frequency, \"Squash Frequency\", 2)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3(), SocketType::LINK_TEXTURE_GENERATED)",
+   "SOCKET_IN_COLOR(color1, \"Color1\", zero_float3())",
+   "SOCKET_IN_COLOR(color2, \"Color2\", zero_float3())",
+   "SOCKET_IN_COLOR(mortar, \"Mortar\", zero_float3())",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 5.0f)",
+   "SOCKET_IN_FLOAT(mortar_size, \"Mortar Size\", 0.02f)",
+   "SOCKET_IN_FLOAT(mortar_smooth, \"Mortar Smooth\", 0.0f)",
+   "SOCKET_IN_FLOAT(bias, \"Bias\", 0.0f)",
+   "SOCKET_IN_FLOAT(brick_width, \"Brick Width\", 0.5f)",
+   "SOCKET_IN_FLOAT(row_height, \"Row Height\", 0.25f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "NormalNode": {
+  "funcs": {
+   "NormalNode": [
+    1806,
+    1806
+   ],
+   "compile_svm": [
+    1808,
+    1820
+   ],
+   "compile_osl": [
+    1822,
+    1826
+   ]
+  },
+  "define": [
+   1792,
+   1804
+  ],
+  "type_name": "normal",
+  "sockets": [
+   "SOCKET_VECTOR(direction, \"direction\", zero_float3())",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3())",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")",
+   "SOCKET_OUT_FLOAT(dot, \"Dot\")"
+  ],
+  "enums": {}
+ },
+ "MappingNode": {
+  "funcs": {
+   "MappingNode": [
+    1851,
+    1851
+   ],
+   "constant_fold": [
+    1853,
+    1862
+   ],
+   "compile_svm": [
+    1864,
+    1876
+   ],
+   "compile_osl": [
+    1878,
+    1882
+   ]
+  },
+  "define": [
+   1830,
+   1849
+  ],
+  "type_name": "mapping",
+  "sockets": [
+   "SOCKET_ENUM(mapping_type, \"Type\", type_enum, NODE_MAPPING_TYPE_POINT)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_POINT(location, \"Location\", zero_float3())",
+   "SOCKET_IN_POINT(rotation, \"Rotation\", zero_float3())",
+   "SOCKET_IN_POINT(scale, \"Scale\", one_float3())",
+   "SOCKET_OUT_POINT(vector, \"Vector\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "point",
+    "texture",
+    "vector",
+    "normal"
+   ]
+  }
+ },
+ "RGBToBWNode": {
+  "funcs": {
+   "RGBToBWNode": [
+    1896,
+    1896
+   ],
+   "constant_fold": [
+    1898,
+    1904
+   ],
+   "compile_svm": [
+    1906,
+    1915
+   ],
+   "compile_osl": [
+    1917,
+    1920
+   ]
+  },
+  "define": [
+   1886,
+   1894
+  ],
+  "type_name": "rgb_to_bw",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_OUT_FLOAT(val, \"Val\")"
+  ],
+  "enums": {}
+ },
+ "ConvertNode": {
+  "funcs": {
+   "create": [
+    1979,
+    1982
+   ],
+   "ConvertNode": [
+    1999,
+    2006
+   ],
+   "constant_fold": [
+    2008,
+    2067
+   ],
+   "convert_type": [
+    2069,
+    2104
+   ],
+   "compile_svm": [
+    2106,
+    2135
+   ],
+   "compile_osl": [
+    2137,
+    2163
+   ]
+  }
+ },
+ "BsdfBaseNode": {
+  "funcs": {
+   "BsdfBaseNode": [
+    2167,
+    2170
+   ],
+   "has_bump": [
+    2172,
+    2178
+   ]
+  }
+ },
+ "BsdfNode": {
+  "funcs": {
+   "BsdfNode": [
+    2182,
+    2182
+   ],
+   "compile_svm": [
+    2189,
+    2214
+   ],
+   "compile_osl": [
+    2216,
+    2219
+   ]
+  }
+ },
+ "MetallicBsdfNode": {
+  "funcs": {
+   "MetallicBsdfNode": [
+    2262,
+    2265
+   ],
+   "is_isotropic": [
+    2267,
+    2272
+   ],
+   "attributes": [
+    2274,
+    2283
+   ],
+   "simplify_settings": [
+    2285,
+    2291
+   ],
+   "compile_svm": [
+    2293,
+    2316
+   ],
+   "compile_osl": [
+    2318,
+    2323
+   ]
+  },
+  "define": [
+   2223,
+   2260
+  ],
+  "type_name": "metallic_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Base Color\", make_float3(0.617f, 0.577f, 0.540f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_ENUM(fresnel_type, \"fresnel_type\", fresnel_type_enum, CLOSURE_BSDF_F82_CONDUCTOR)",
+   "SOCKET_IN_COLOR(edge_tint, \"Edge Tint\", make_float3(0.695f, 0.726f, 0.770f))",
+   "SOCKET_IN_VECTOR(ior, \"IOR\", make_float3(2.757f, 2.513f, 2.231f))",
+   "SOCKET_IN_VECTOR(k, \"Extinction\", make_float3(3.867f, 3.404f, 3.009f))",
+   "SOCKET_IN_VECTOR(tangent, \"Tangent\", zero_float3(), SocketType::LINK_TANGENT)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_IN_FLOAT(rotation, \"Rotation\", 0.0f)",
+   "SOCKET_IN_FLOAT(thin_film_thickness, \"Thin Film Thickness\", 0.0f)",
+   "SOCKET_IN_FLOAT(thin_film_ior, \"Thin Film IOR\", 1.33f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "beckmann",
+    "ggx",
+    "multi_ggx"
+   ],
+   "fresnel_type_enum": [
+    "f82",
+    "physical_conductor"
+   ]
+  }
+ },
+ "GlossyBsdfNode": {
+  "funcs": {
+   "GlossyBsdfNode": [
+    2353,
+    2356
+   ],
+   "is_isotropic": [
+    2358,
+    2363
+   ],
+   "attributes": [
+    2365,
+    2374
+   ],
+   "simplify_settings": [
+    2376,
+    2382
+   ],
+   "compile_svm": [
+    2384,
+    2400
+   ],
+   "compile_osl": [
+    2402,
+    2406
+   ]
+  },
+  "define": [
+   2327,
+   2351
+  ],
+  "type_name": "glossy_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_ENUM(distribution, \"Distribution\", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID)",
+   "SOCKET_IN_VECTOR(tangent, \"Tangent\", zero_float3(), SocketType::LINK_TANGENT)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_IN_FLOAT(rotation, \"Rotation\", 0.0f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "beckmann",
+    "ggx",
+    "ashikhmin_shirley",
+    "multi_ggx"
+   ]
+  }
+ },
+ "GlassBsdfNode": {
+  "funcs": {
+   "GlassBsdfNode": [
+    2435,
+    2438
+   ],
+   "compile_svm": [
+    2440,
+    2452
+   ],
+   "compile_osl": [
+    2454,
+    2458
+   ]
+  },
+  "define": [
+   2410,
+   2433
+  ],
+  "type_name": "glass_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.0f)",
+   "SOCKET_IN_FLOAT(IOR, \"IOR\", 1.5f)",
+   "SOCKET_IN_FLOAT(thin_film_thickness, \"Thin Film Thickness\", 0.0f)",
+   "SOCKET_IN_FLOAT(thin_film_ior, \"Thin Film IOR\", 1.33f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "beckmann",
+    "ggx",
+    "multi_ggx"
+   ]
+  }
+ },
+ "RefractionBsdfNode": {
+  "funcs": {
+   "RefractionBsdfNode": [
+    2484,
+    2487
+   ],
+   "compile_svm": [
+    2489,
+    2498
+   ],
+   "compile_osl": [
+    2500,
+    2504
+   ]
+  },
+  "define": [
+   2462,
+   2482
+  ],
+  "type_name": "refraction_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.0f)",
+   "SOCKET_IN_FLOAT(IOR, \"IOR\", 0.3f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "beckmann",
+    "ggx"
+   ]
+  }
+ },
+ "ToonBsdfNode": {
+  "funcs": {
+   "ToonBsdfNode": [
+    2528,
+    2531
+   ],
+   "compile_svm": [
+    2533,
+    2542
+   ],
+   "compile_osl": [
+    2544,
+    2548
+   ]
+  },
+  "define": [
+   2508,
+   2526
+  ],
+  "type_name": "toon_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_ENUM(component, \"Component\", component_enum, CLOSURE_BSDF_DIFFUSE_TOON_ID)",
+   "SOCKET_IN_FLOAT(size, \"Size\", 0.5f)",
+   "SOCKET_IN_FLOAT(smooth, \"Smooth\", 0.0f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "component_enum": [
+    "diffuse",
+    "glossy"
+   ]
+  }
+ },
+ "SheenBsdfNode": {
+  "funcs": {
+   "SheenBsdfNode": [
+    2571,
+    2574
+   ],
+   "compile_svm": [
+    2576,
+    2584
+   ],
+   "compile_osl": [
+    2586,
+    2590
+   ]
+  },
+  "define": [
+   2552,
+   2569
+  ],
+  "type_name": "sheen_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 1.0f)",
+   "SOCKET_ENUM(distribution, \"Distribution\", distribution_enum, CLOSURE_BSDF_SHEEN_ID)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "ashikhmin",
+    "microfiber"
+   ]
+  }
+ },
+ "DiffuseBsdfNode": {
+  "funcs": {
+   "DiffuseBsdfNode": [
+    2608,
+    2611
+   ],
+   "compile_svm": [
+    2613,
+    2619
+   ],
+   "compile_osl": [
+    2621,
+    2624
+   ]
+  },
+  "define": [
+   2594,
+   2606
+  ],
+  "type_name": "diffuse_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.0f)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {}
+ },
+ "PrincipledBsdfNode": {
+  "funcs": {
+   "PrincipledBsdfNode": [
+    2695,
+    2699
+   ],
+   "simplify_settings": [
+    2701,
+    2745
+   ],
+   "has_surface_transparent": [
+    2747,
+    2765
+   ],
+   "is_thin_wall": [
+    2767,
+    2770
+   ],
+   "has_surface_emission": [
+    2772,
+    2778
+   ],
+   "subsurface_has_positive_weight": [
+    2780,
+    2785
+   ],
+   "has_surface_bssrdf": [
+    2787,
+    2796
+   ],
+   "has_nonzero_weight": [
+    2798,
+    2808
+   ],
+   "attributes": [
+    2810,
+    2820
+   ],
+   "compile_svm": [
+    2822,
+    2879
+   ],
+   "compile_osl": [
+    2881,
+    2886
+   ],
+   "has_bssrdf_bump": [
+    2888,
+    2891
+   ]
+  },
+  "define": [
+   2627,
+   2693
+  ],
+  "type_name": "principled_bsdf",
+  "sockets": [
+   "SOCKET_IN_FLOAT(metallic, \"Metallic\", 0.0f)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.5f)",
+   "SOCKET_IN_FLOAT(ior, \"IOR\", 1.5f)",
+   "SOCKET_IN_FLOAT(alpha, \"Alpha\", 1.0f)",
+   "SOCKET_IN_INT(thin_wall, \"Thin Wall\", int(false))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(diffuse_roughness, \"Diffuse Roughness\", 0.0f)",
+   "SOCKET_IN_FLOAT(subsurface_weight, \"Subsurface Weight\", 0.0f)",
+   "SOCKET_IN_FLOAT(subsurface_scale, \"Subsurface Scale\", 0.005f)",
+   "SOCKET_IN_VECTOR(subsurface_radius, \"Subsurface Radius\", make_float3(1.0f, 0.2f, 0.1f))",
+   "SOCKET_IN_FLOAT(subsurface_ior, \"Subsurface IOR\", 1.4f)",
+   "SOCKET_IN_FLOAT(subsurface_anisotropy, \"Subsurface Anisotropy\", 0.0f)",
+   "SOCKET_IN_FLOAT(specular_ior_level, \"Specular IOR Level\", 0.5f)",
+   "SOCKET_IN_COLOR(specular_tint, \"Specular Tint\", one_float3())",
+   "SOCKET_IN_FLOAT(anisotropic, \"Anisotropic\", 0.0f)",
+   "SOCKET_IN_FLOAT(anisotropic_rotation, \"Anisotropic Rotation\", 0.0f)",
+   "SOCKET_IN_NORMAL(tangent, \"Tangent\", zero_float3(), SocketType::LINK_TANGENT)",
+   "SOCKET_IN_FLOAT(transmission_weight, \"Transmission Weight\", 0.0f)",
+   "SOCKET_IN_FLOAT(sheen_weight, \"Sheen Weight\", 0.0f)",
+   "SOCKET_IN_FLOAT(sheen_roughness, \"Sheen Roughness\", 0.5f)",
+   "SOCKET_IN_COLOR(sheen_tint, \"Sheen Tint\", one_float3())",
+   "SOCKET_IN_FLOAT(coat_weight, \"Coat Weight\", 0.0f)",
+   "SOCKET_IN_FLOAT(coat_roughness, \"Coat Roughness\", 0.03f)",
+   "SOCKET_IN_FLOAT(coat_ior, \"Coat IOR\", 1.5f)",
+   "SOCKET_IN_COLOR(coat_tint, \"Coat Tint\", one_float3())",
+   "SOCKET_IN_NORMAL(coat_normal, \"Coat Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_COLOR(emission_color, \"Emission Color\", one_float3())",
+   "SOCKET_IN_FLOAT(emission_strength, \"Emission Strength\", 0.0f)",
+   "SOCKET_IN_FLOAT(thin_film_thickness, \"Thin Film Thickness\", 0.0f)",
+   "SOCKET_IN_FLOAT(thin_film_ior, \"Thin Film IOR\", 1.33f)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "distribution_enum": [
+    "ggx",
+    "multi_ggx"
+   ],
+   "subsurface_method_enum": [
+    "burley",
+    "random_walk",
+    "random_walk_skin",
+    "random_walk_legacy"
+   ]
+  }
+ },
+ "TranslucentBsdfNode": {
+  "funcs": {
+   "TranslucentBsdfNode": [
+    2908,
+    2911
+   ],
+   "compile_svm": [
+    2913,
+    2919
+   ],
+   "compile_osl": [
+    2921,
+    2924
+   ]
+  },
+  "define": [
+   2895,
+   2906
+  ],
+  "type_name": "translucent_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {}
+ },
+ "TransparentBsdfNode": {
+  "funcs": {
+   "TransparentBsdfNode": [
+    2940,
+    2943
+   ],
+   "compile_svm": [
+    2945,
+    2948
+   ],
+   "compile_osl": [
+    2950,
+    2953
+   ]
+  },
+  "define": [
+   2928,
+   2938
+  ],
+  "type_name": "transparent_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", one_float3())",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {}
+ },
+ "RayPortalBsdfNode": {
+  "funcs": {
+   "RayPortalBsdfNode": [
+    2972,
+    2975
+   ],
+   "compile_svm": [
+    2977,
+    2984
+   ],
+   "compile_osl": [
+    2986,
+    2989
+   ]
+  },
+  "define": [
+   2957,
+   2970
+  ],
+  "type_name": "ray_portal_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", one_float3())",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_VECTOR(position, \"Position\", zero_float3(), SocketType::LINK_POSITION)",
+   "SOCKET_IN_VECTOR(direction, \"Direction\", zero_float3())",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {}
+ },
+ "SubsurfaceScatteringNode": {
+  "funcs": {
+   "SubsurfaceScatteringNode": [
+    3020,
+    3023
+   ],
+   "compile_svm": [
+    3025,
+    3037
+   ],
+   "compile_osl": [
+    3039,
+    3044
+   ],
+   "has_bssrdf_bump": [
+    3046,
+    3052
+   ]
+  },
+  "define": [
+   2993,
+   3018
+  ],
+  "type_name": "subsurface_scattering",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_ENUM(method, \"Method\", method_enum, CLOSURE_BSSRDF_RANDOM_WALK_ID)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 0.005f)",
+   "SOCKET_IN_VECTOR(radius, \"Radius\", make_float3(1.0f, 0.2f, 0.1f))",
+   "SOCKET_IN_FLOAT(subsurface_ior, \"IOR\", 1.4f)",
+   "SOCKET_IN_FLOAT(subsurface_roughness, \"Roughness\", 1.0f)",
+   "SOCKET_IN_FLOAT(subsurface_anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_OUT_CLOSURE(BSSRDF, \"BSSRDF\")"
+  ],
+  "enums": {
+   "method_enum": [
+    "burley",
+    "random_walk",
+    "random_walk_skin",
+    "random_walk_legacy"
+   ]
+  }
+ },
+ "EmissionNode": {
+  "funcs": {
+   "EmissionNode": [
+    3070,
+    3070
+   ],
+   "compile_svm": [
+    3072,
+    3099
+   ],
+   "compile_osl": [
+    3101,
+    3104
+   ],
+   "constant_fold": [
+    3106,
+    3114
+   ]
+  },
+  "define": [
+   3056,
+   3068
+  ],
+  "type_name": "emission",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 10.0f)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(emission, \"Emission\")"
+  ],
+  "enums": {}
+ },
+ "BackgroundNode": {
+  "funcs": {
+   "BackgroundNode": [
+    3131,
+    3131
+   ],
+   "compile_svm": [
+    3133,
+    3160
+   ],
+   "compile_osl": [
+    3162,
+    3165
+   ],
+   "constant_fold": [
+    3167,
+    3175
+   ]
+  },
+  "define": [
+   3118,
+   3129
+  ],
+  "type_name": "background_shader",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 1.0f)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(background, \"Background\")"
+  ],
+  "enums": {}
+ },
+ "HoldoutNode": {
+  "funcs": {
+   "HoldoutNode": [
+    3191,
+    3191
+   ],
+   "compile_svm": [
+    3193,
+    3206
+   ],
+   "compile_osl": [
+    3208,
+    3211
+   ]
+  },
+  "define": [
+   3179,
+   3189
+  ],
+  "type_name": "holdout",
+  "sockets": [
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(holdout, \"Holdout\")"
+  ],
+  "enums": {}
+ },
+ "AmbientOcclusionNode": {
+  "funcs": {
+   "AmbientOcclusionNode": [
+    3234,
+    3234
+   ],
+   "compile_svm": [
+    3236,
+    3257
+   ],
+   "compile_osl": [
+    3259,
+    3265
+   ]
+  },
+  "define": [
+   3215,
+   3232
+  ],
+  "type_name": "ambient_occlusion",
+  "sockets": [
+   "SOCKET_INT(samples, \"Samples\", 16)",
+   "SOCKET_IN_COLOR(color, \"Color\", one_float3())",
+   "SOCKET_IN_FLOAT(distance, \"Distance\", 1.0f)",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_BOOLEAN(inside, \"Inside\", false)",
+   "SOCKET_BOOLEAN(only_local, \"Only Local\", false)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(ao, \"AO\")"
+  ],
+  "enums": {}
+ },
+ "VolumeNode": {
+  "funcs": {
+   "VolumeNode": [
+    3269,
+    3272
+   ],
+   "compile_svm": [
+    3313,
+    3316
+   ],
+   "compile_osl": [
+    3318,
+    3321
+   ]
+  }
+ },
+ "AbsorptionVolumeNode": {
+  "funcs": {
+   "AbsorptionVolumeNode": [
+    3338,
+    3341
+   ],
+   "compile_svm": [
+    3343,
+    3346
+   ],
+   "compile_osl": [
+    3348,
+    3351
+   ]
+  },
+  "define": [
+   3325,
+   3336
+  ],
+  "type_name": "absorption_volume",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_FLOAT(density, \"Density\", 1.0f)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(volume, \"Volume\")"
+  ],
+  "enums": {}
+ },
+ "ScatterVolumeNode": {
+  "funcs": {
+   "ScatterVolumeNode": [
+    3387,
+    3390
+   ],
+   "compile_svm": [
+    3392,
+    3416
+   ],
+   "compile_osl": [
+    3418,
+    3422
+   ]
+  },
+  "define": [
+   3355,
+   3380
+  ],
+  "type_name": "scatter_volume",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_FLOAT(density, \"Density\", 1.0f)",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_IN_FLOAT(IOR, \"IOR\", 1.33f)",
+   "SOCKET_IN_FLOAT(backscatter, \"Backscatter\", 0.1f)",
+   "SOCKET_IN_FLOAT(alpha, \"Alpha\", 0.5f)",
+   "SOCKET_IN_FLOAT(diameter, \"Diameter\", 20.0f)",
+   "SOCKET_ENUM(phase, \"Phase\", phase_enum, CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(volume, \"Volume\")"
+  ],
+  "enums": {
+   "phase_enum": [
+    "Henyey-Greenstein",
+    "Fournier-Forand",
+    "Draine",
+    "Rayleigh",
+    "Mie"
+   ]
+  }
+ },
+ "VolumeCoefficientsNode": {
+  "funcs": {
+   "VolumeCoefficientsNode": [
+    3454,
+    3457
+   ],
+   "compile_svm": [
+    3459,
+    3514
+   ],
+   "compile_osl": [
+    3516,
+    3520
+   ]
+  },
+  "define": [
+   3426,
+   3452
+  ],
+  "type_name": "volume_coefficients",
+  "sockets": [
+   "SOCKET_IN_VECTOR(scatter_coeffs, \"Scatter Coefficients\", make_float3(1.0f, 1.0f, 1.0f))",
+   "SOCKET_IN_VECTOR(absorption_coeffs, \"Absorption Coefficients\", make_float3(1.0f, 1.0f, 1.0f))",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_IN_FLOAT(IOR, \"IOR\", 1.33f)",
+   "SOCKET_IN_FLOAT(backscatter, \"Backscatter\", 0.1f)",
+   "SOCKET_IN_FLOAT(alpha, \"Alpha\", 0.5f)",
+   "SOCKET_IN_FLOAT(diameter, \"Diameter\", 20.0f)",
+   "SOCKET_IN_VECTOR(emission_coeffs, \"Emission Coefficients\", make_float3(0.0f, 0.0f, 0.0f))",
+   "SOCKET_ENUM(phase, \"Phase\", phase_enum, CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(volume, \"Volume\")"
+  ],
+  "enums": {
+   "phase_enum": [
+    "Henyey-Greenstein",
+    "Fournier-Forand",
+    "Draine",
+    "Rayleigh",
+    "Mie"
+   ]
+  }
+ },
+ "PrincipledVolumeNode": {
+  "funcs": {
+   "PrincipledVolumeNode": [
+    3548,
+    3553
+   ],
+   "attributes": [
+    3555,
+    3572
+   ],
+   "compile_svm": [
+    3574,
+    3610
+   ],
+   "compile_osl": [
+    3612,
+    3625
+   ]
+  },
+  "define": [
+   3524,
+   3546
+  ],
+  "type_name": "principled_volume",
+  "sockets": [
+   "SOCKET_IN_STRING(density_attribute, \"Density Attribute\", ustring())",
+   "SOCKET_IN_STRING(color_attribute, \"Color Attribute\", ustring())",
+   "SOCKET_IN_STRING(temperature_attribute, \"Temperature Attribute\", ustring())",
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.5f, 0.5f, 0.5f))",
+   "SOCKET_IN_FLOAT(density, \"Density\", 1.0f)",
+   "SOCKET_IN_FLOAT(anisotropy, \"Anisotropy\", 0.0f)",
+   "SOCKET_IN_COLOR(absorption_color, \"Absorption Color\", zero_float3())",
+   "SOCKET_IN_FLOAT(emission_strength, \"Emission Strength\", 0.0f)",
+   "SOCKET_IN_COLOR(emission_color, \"Emission Color\", one_float3())",
+   "SOCKET_IN_FLOAT(blackbody_intensity, \"Blackbody Intensity\", 0.0f)",
+   "SOCKET_IN_COLOR(blackbody_tint, \"Blackbody Tint\", one_float3())",
+   "SOCKET_IN_FLOAT(temperature, \"Temperature\", 1000.0f)",
+   "SOCKET_IN_FLOAT(volume_mix_weight, \"VolumeMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(volume, \"Volume\")"
+  ],
+  "enums": {}
+ },
+ "PrincipledHairBsdfNode": {
+  "funcs": {
+   "PrincipledHairBsdfNode": [
+    3678,
+    3681
+   ],
+   "has_surface_transparent": [
+    3684,
+    3692
+   ],
+   "attributes": [
+    3694,
+    3706
+   ],
+   "compile_svm": [
+    3709,
+    3751
+   ],
+   "compile_osl": [
+    3754,
+    3759
+   ]
+  },
+  "define": [
+   3629,
+   3676
+  ],
+  "type_name": "principled_hair_bsdf",
+  "sockets": [
+   "SOCKET_ENUM(model, \"Model\", model_enum, NODE_PRINCIPLED_HAIR_HUANG)",
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.017513f, 0.005763f, 0.002059f))",
+   "SOCKET_IN_FLOAT(melanin, \"Melanin\", 0.8f)",
+   "SOCKET_IN_FLOAT(melanin_redness, \"Melanin Redness\", 1.0f)",
+   "SOCKET_IN_COLOR(tint, \"Tint\", make_float3(1.f, 1.f, 1.f))",
+   "SOCKET_IN_FLOAT(aspect_ratio, \"Aspect Ratio\", 0.85f)",
+   "SOCKET_IN_FLOAT(offset, \"Offset\", 2.f * M_PI_F / 180.f)",
+   "SOCKET_IN_FLOAT(roughness, \"Roughness\", 0.3f)",
+   "SOCKET_IN_FLOAT(radial_roughness, \"Radial Roughness\", 0.3f)",
+   "SOCKET_IN_FLOAT(coat, \"Coat\", 0.0f)",
+   "SOCKET_IN_FLOAT(ior, \"IOR\", 1.55f)",
+   "SOCKET_IN_FLOAT(random_roughness, \"Random Roughness\", 0.0f)",
+   "SOCKET_IN_FLOAT(random_color, \"Random Color\", 0.0f)",
+   "SOCKET_IN_FLOAT(random, \"Random\", 0.0f)",
+   "SOCKET_IN_FLOAT(R, \"R lobe\", 1.0f)",
+   "SOCKET_IN_FLOAT(TT, \"TT lobe\", 1.0f)",
+   "SOCKET_IN_FLOAT(TRT, \"TRT lobe\", 1.0f)",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "model_enum": [
+    "Chiang",
+    "Huang"
+   ],
+   "parametrization_enum": [
+    "Direct coloring",
+    "Melanin concentration",
+    "Absorption coefficient"
+   ]
+  }
+ },
+ "HairBsdfNode": {
+  "funcs": {
+   "HairBsdfNode": [
+    3784,
+    3787
+   ],
+   "compile_svm": [
+    3789,
+    3800
+   ],
+   "compile_osl": [
+    3802,
+    3806
+   ]
+  },
+  "define": [
+   3763,
+   3782
+  ],
+  "type_name": "hair_bsdf",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.8f, 0.8f, 0.8f))",
+   "SOCKET_IN_FLOAT(surface_mix_weight, \"SurfaceMixWeight\", 0.0f, SocketType::SVM_INTERNAL)",
+   "SOCKET_ENUM(component, \"Component\", component_enum, CLOSURE_BSDF_HAIR_REFLECTION_ID)",
+   "SOCKET_IN_FLOAT(offset, \"Offset\", 0.0f)",
+   "SOCKET_IN_FLOAT(roughness_u, \"RoughnessU\", 0.2f)",
+   "SOCKET_IN_FLOAT(roughness_v, \"RoughnessV\", 0.2f)",
+   "SOCKET_IN_VECTOR(tangent, \"Tangent\", zero_float3())",
+   "SOCKET_OUT_CLOSURE(BSDF, \"BSDF\")"
+  ],
+  "enums": {
+   "component_enum": [
+    "reflection",
+    "transmission"
+   ]
+  }
+ },
+ "GeometryNode": {
+  "funcs": {
+   "GeometryNode": [
+    3827,
+    3830
+   ],
+   "attributes": [
+    3832,
+    3847
+   ],
+   "shader_node_type": [
+    3849,
+    3852
+   ],
+   "compile_svm": [
+    3866,
+    4006
+   ],
+   "compile_osl": [
+    4008,
+    4022
+   ]
+  },
+  "define": [
+   3810,
+   3825
+  ],
+  "type_name": "geometry",
+  "sockets": [
+   "SOCKET_OUT_POINT(position, \"Position\")",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")",
+   "SOCKET_OUT_NORMAL(tangent, \"Tangent\")",
+   "SOCKET_OUT_NORMAL(true_normal, \"True Normal\")",
+   "SOCKET_OUT_VECTOR(incoming, \"Incoming\")",
+   "SOCKET_OUT_POINT(parametric, \"Parametric\")",
+   "SOCKET_OUT_FLOAT(backfacing, \"Backfacing\")",
+   "SOCKET_OUT_FLOAT(pointiness, \"Pointiness\")",
+   "SOCKET_OUT_FLOAT(random_per_island, \"Random Per Island\")"
+  ],
+  "enums": {}
+ },
+ "TextureCoordinateNode": {
+  "funcs": {
+   "TextureCoordinateNode": [
+    4045,
+    4045
+   ],
+   "attributes": [
+    4047,
+    4069
+   ],
+   "shader_node_type": [
+    4071,
+    4074
+   ],
+   "compile_svm": [
+    4076,
+    4258
+   ],
+   "compile_osl": [
+    4260,
+    4286
+   ]
+  },
+  "define": [
+   4026,
+   4043
+  ],
+  "type_name": "texture_coordinate",
+  "sockets": [
+   "SOCKET_BOOLEAN(from_dupli, \"From Dupli\", false)",
+   "SOCKET_BOOLEAN(use_transform, \"Use Transform\", false)",
+   "SOCKET_TRANSFORM(ob_tfm, \"Object Transform\", transform_identity())",
+   "SOCKET_OUT_POINT(generated, \"Generated\")",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")",
+   "SOCKET_OUT_POINT(UV, \"UV\")",
+   "SOCKET_OUT_POINT(object, \"Object\")",
+   "SOCKET_OUT_POINT(camera, \"Camera\")",
+   "SOCKET_OUT_POINT(window, \"Window\")",
+   "SOCKET_OUT_NORMAL(reflection, \"Reflection\")"
+  ],
+  "enums": {}
+ },
+ "UVMapNode": {
+  "funcs": {
+   "UVMapNode": [
+    4302,
+    4302
+   ],
+   "attributes": [
+    4304,
+    4320
+   ],
+   "shader_node_type": [
+    4322,
+    4325
+   ],
+   "compile_svm": [
+    4327,
+    4370
+   ],
+   "compile_osl": [
+    4372,
+    4388
+   ]
+  },
+  "define": [
+   4290,
+   4300
+  ],
+  "type_name": "uvmap",
+  "sockets": [
+   "SOCKET_STRING(attribute, \"attribute\", ustring())",
+   "SOCKET_IN_BOOLEAN(from_dupli, \"from dupli\", false)",
+   "SOCKET_OUT_POINT(UV, \"UV\")"
+  ],
+  "enums": {}
+ },
+ "LightPathNode": {
+  "funcs": {
+   "LightPathNode": [
+    4415,
+    4418
+   ],
+   "compile_svm": [
+    4420,
+    4573
+   ],
+   "compile_osl": [
+    4575,
+    4578
+   ]
+  },
+  "define": [
+   4392,
+   4413
+  ],
+  "type_name": "light_path",
+  "sockets": [
+   "SOCKET_OUT_FLOAT(is_camera_ray, \"Is Camera Ray\")",
+   "SOCKET_OUT_FLOAT(is_shadow_ray, \"Is Shadow Ray\")",
+   "SOCKET_OUT_FLOAT(is_diffuse_ray, \"Is Diffuse Ray\")",
+   "SOCKET_OUT_FLOAT(is_glossy_ray, \"Is Glossy Ray\")",
+   "SOCKET_OUT_FLOAT(is_singular_ray, \"Is Singular Ray\")",
+   "SOCKET_OUT_FLOAT(is_reflection_ray, \"Is Reflection Ray\")",
+   "SOCKET_OUT_FLOAT(is_transmission_ray, \"Is Transmission Ray\")",
+   "SOCKET_OUT_FLOAT(is_volume_scatter_ray, \"Is Volume Scatter Ray\")",
+   "SOCKET_OUT_FLOAT(ray_length, \"Ray Length\")",
+   "SOCKET_OUT_FLOAT(ray_depth, \"Ray Depth\")",
+   "SOCKET_OUT_FLOAT(diffuse_depth, \"Diffuse Depth\")",
+   "SOCKET_OUT_FLOAT(glossy_depth, \"Glossy Depth\")",
+   "SOCKET_OUT_FLOAT(transparent_depth, \"Transparent Depth\")",
+   "SOCKET_OUT_FLOAT(transmission_depth, \"Transmission Depth\")",
+   "SOCKET_OUT_FLOAT(portal_depth, \"Portal Depth\")"
+  ],
+  "enums": {}
+ },
+ "LightFalloffNode": {
+  "funcs": {
+   "LightFalloffNode": [
+    4596,
+    4596
+   ],
+   "compile_svm": [
+    4598,
+    4635
+   ],
+   "compile_osl": [
+    4637,
+    4640
+   ]
+  },
+  "define": [
+   4582,
+   4594
+  ],
+  "type_name": "light_falloff",
+  "sockets": [
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 100.0f)",
+   "SOCKET_IN_FLOAT(smooth, \"Smooth\", 0.0f)",
+   "SOCKET_OUT_FLOAT(quadratic, \"Quadratic\")",
+   "SOCKET_OUT_FLOAT(linear, \"Linear\")",
+   "SOCKET_OUT_FLOAT(constant, \"Constant\")"
+  ],
+  "enums": {}
+ },
+ "ObjectInfoNode": {
+  "funcs": {
+   "ObjectInfoNode": [
+    4658,
+    4658
+   ],
+   "compile_svm": [
+    4660,
+    4721
+   ],
+   "compile_osl": [
+    4723,
+    4726
+   ]
+  },
+  "define": [
+   4644,
+   4656
+  ],
+  "type_name": "object_info",
+  "sockets": [
+   "SOCKET_OUT_VECTOR(location, \"Location\")",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")",
+   "SOCKET_OUT_FLOAT(object_index, \"Object Index\")",
+   "SOCKET_OUT_FLOAT(material_index, \"Material Index\")",
+   "SOCKET_OUT_FLOAT(random, \"Random\")"
+  ],
+  "enums": {}
+ },
+ "ParticleInfoNode": {
+  "funcs": {
+   "ParticleInfoNode": [
+    4749,
+    4749
+   ],
+   "attributes": [
+    4751,
+    4784
+   ],
+   "compile_svm": [
+    4786,
+    4881
+   ],
+   "compile_osl": [
+    4883,
+    4886
+   ]
+  },
+  "define": [
+   4730,
+   4747
+  ],
+  "type_name": "particle_info",
+  "sockets": [
+   "SOCKET_OUT_FLOAT(index, \"Index\")",
+   "SOCKET_OUT_FLOAT(random, \"Random\")",
+   "SOCKET_OUT_FLOAT(age, \"Age\")",
+   "SOCKET_OUT_FLOAT(lifetime, \"Lifetime\")",
+   "SOCKET_OUT_POINT(location, \"Location\")",
+   "SOCKET_OUT_QUATERNION(rotation, \"Rotation\")",
+   "SOCKET_OUT_FLOAT(size, \"Size\")",
+   "SOCKET_OUT_VECTOR(velocity, \"Velocity\")",
+   "SOCKET_OUT_VECTOR(angular_velocity, \"Angular Velocity\")"
+  ],
+  "enums": {}
+ },
+ "HairInfoNode": {
+  "funcs": {
+   "HairInfoNode": [
+    4904,
+    4904
+   ],
+   "attributes": [
+    4906,
+    4924
+   ],
+   "compile_svm": [
+    4926,
+    4992
+   ],
+   "compile_osl": [
+    4994,
+    4997
+   ]
+  },
+  "define": [
+   4890,
+   4902
+  ],
+  "type_name": "hair_info",
+  "sockets": [
+   "SOCKET_OUT_FLOAT(is_strand, \"Is Strand\")",
+   "SOCKET_OUT_FLOAT(intercept, \"Intercept\")",
+   "SOCKET_OUT_FLOAT(size, \"Length\")",
+   "SOCKET_OUT_FLOAT(thickness, \"Thickness\")",
+   "SOCKET_OUT_NORMAL(tangent_normal, \"Tangent Normal\")",
+   "SOCKET_OUT_FLOAT(index, \"Random\")"
+  ],
+  "enums": {}
+ },
+ "PointInfoNode": {
+  "funcs": {
+   "PointInfoNode": [
+    5012,
+    5012
+   ],
+   "attributes": [
+    5014,
+    5023
+   ],
+   "compile_svm": [
+    5025,
+    5059
+   ],
+   "compile_osl": [
+    5061,
+    5064
+   ]
+  },
+  "define": [
+   5001,
+   5010
+  ],
+  "type_name": "point_info",
+  "sockets": [
+   "SOCKET_OUT_POINT(position, \"Position\")",
+   "SOCKET_OUT_FLOAT(radius, \"Radius\")",
+   "SOCKET_OUT_FLOAT(random, \"Random\")"
+  ],
+  "enums": {}
+ },
+ "VolumeInfoNode": {
+  "funcs": {
+   "VolumeInfoNode": [
+    5080,
+    5080
+   ],
+   "attributes": [
+    5085,
+    5103
+   ],
+   "expand": [
+    5105,
+    5134
+   ],
+   "compile_svm": [
+    5136,
+    5136
+   ],
+   "compile_osl": [
+    5138,
+    5138
+   ]
+  },
+  "define": [
+   5068,
+   5078
+  ],
+  "type_name": "volume_info",
+  "sockets": [
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(density, \"Density\")",
+   "SOCKET_OUT_FLOAT(flame, \"Flame\")",
+   "SOCKET_OUT_FLOAT(temperature, \"Temperature\")"
+  ],
+  "enums": {}
+ },
+ "VertexColorNode": {
+  "funcs": {
+   "VertexColorNode": [
+    5151,
+    5151
+   ],
+   "attributes": [
+    5153,
+    5164
+   ],
+   "shader_node_type": [
+    5166,
+    5169
+   ],
+   "compile_svm": [
+    5171,
+    5192
+   ],
+   "compile_osl": [
+    5194,
+    5220
+   ]
+  },
+  "define": [
+   5140,
+   5149
+  ],
+  "type_name": "vertex_color",
+  "sockets": [
+   "SOCKET_STRING(layer_name, \"Layer Name\", ustring())",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")"
+  ],
+  "enums": {}
+ },
+ "ValueNode": {
+  "funcs": {
+   "ValueNode": [
+    5234,
+    5234
+   ],
+   "constant_fold": [
+    5236,
+    5239
+   ],
+   "compile_svm": [
+    5241,
+    5244
+   ],
+   "compile_osl": [
+    5246,
+    5250
+   ]
+  },
+  "define": [
+   5224,
+   5232
+  ],
+  "type_name": "value",
+  "sockets": [
+   "SOCKET_FLOAT(value, \"Value\", 0.0f)",
+   "SOCKET_OUT_FLOAT(value, \"Value\")"
+  ],
+  "enums": {}
+ },
+ "ColorNode": {
+  "funcs": {
+   "ColorNode": [
+    5264,
+    5264
+   ],
+   "constant_fold": [
+    5266,
+    5269
+   ],
+   "compile_svm": [
+    5271,
+    5278
+   ],
+   "compile_osl": [
+    5280,
+    5285
+   ]
+  },
+  "define": [
+   5254,
+   5262
+  ],
+  "type_name": "color",
+  "sockets": [
+   "SOCKET_COLOR(value, \"Value\", zero_float3())",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "AddClosureNode": {
+  "funcs": {
+   "AddClosureNode": [
+    5300,
+    5303
+   ],
+   "compile_svm": [
+    5305,
+    5308
+   ],
+   "compile_osl": [
+    5310,
+    5313
+   ],
+   "constant_fold": [
+    5315,
+    5327
+   ]
+  },
+  "define": [
+   5289,
+   5298
+  ],
+  "type_name": "add_closure",
+  "sockets": [
+   "SOCKET_IN_CLOSURE(closure1, \"Closure1\")",
+   "SOCKET_IN_CLOSURE(closure2, \"Closure2\")",
+   "SOCKET_OUT_CLOSURE(closure, \"Closure\")"
+  ],
+  "enums": {}
+ },
+ "MixClosureNode": {
+  "funcs": {
+   "MixClosureNode": [
+    5344,
+    5347
+   ],
+   "compile_svm": [
+    5349,
+    5352
+   ],
+   "compile_osl": [
+    5354,
+    5357
+   ],
+   "constant_fold": [
+    5359,
+    5380
+   ]
+  },
+  "define": [
+   5331,
+   5342
+  ],
+  "type_name": "mix_closure",
+  "sockets": [
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 0.5f)",
+   "SOCKET_IN_CLOSURE(closure1, \"Closure1\")",
+   "SOCKET_IN_CLOSURE(closure2, \"Closure2\")",
+   "SOCKET_OUT_CLOSURE(closure, \"Closure\")"
+  ],
+  "enums": {}
+ },
+ "MixClosureWeightNode": {
+  "funcs": {
+   "MixClosureWeightNode": [
+    5397,
+    5397
+   ],
+   "compile_svm": [
+    5399,
+    5409
+   ],
+   "compile_osl": [
+    5411,
+    5414
+   ]
+  },
+  "define": [
+   5384,
+   5395
+  ],
+  "type_name": "mix_closure_weight",
+  "sockets": [
+   "SOCKET_IN_FLOAT(weight, \"Weight\", 1.0f)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 1.0f)",
+   "SOCKET_OUT_FLOAT(weight1, \"Weight1\")",
+   "SOCKET_OUT_FLOAT(weight2, \"Weight2\")"
+  ],
+  "enums": {}
+ },
+ "InvertNode": {
+  "funcs": {
+   "InvertNode": [
+    5430,
+    5430
+   ],
+   "constant_fold": [
+    5432,
+    5446
+   ],
+   "compile_svm": [
+    5448,
+    5457
+   ],
+   "compile_osl": [
+    5459,
+    5462
+   ]
+  },
+  "define": [
+   5418,
+   5428
+  ],
+  "type_name": "invert",
+  "sockets": [
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 1.0f)",
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "MixNode": {
+  "funcs": {
+   "MixNode": [
+    5503,
+    5503
+   ],
+   "compile_svm": [
+    5505,
+    5530
+   ],
+   "compile_osl": [
+    5532,
+    5537
+   ],
+   "constant_fold": [
+    5539,
+    5547
+   ],
+   "is_linear_operation": [
+    5549,
+    5561
+   ]
+  },
+  "define": [
+   5466,
+   5501
+  ],
+  "type_name": "mix",
+  "sockets": [
+   "SOCKET_ENUM(mix_type, \"Type\", type_enum, NODE_MIX_BLEND)",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", false)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 0.5f)",
+   "SOCKET_IN_COLOR(color1, \"Color1\", zero_float3())",
+   "SOCKET_IN_COLOR(color2, \"Color2\", zero_float3())",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "mix",
+    "add",
+    "multiply",
+    "screen",
+    "overlay",
+    "subtract",
+    "divide",
+    "difference",
+    "darken",
+    "lighten",
+    "dodge",
+    "burn",
+    "hue",
+    "saturation",
+    "value",
+    "color",
+    "soft_light",
+    "linear_light",
+    "exclusion"
+   ]
+  }
+ },
+ "MixColorNode": {
+  "funcs": {
+   "MixColorNode": [
+    5602,
+    5602
+   ],
+   "compile_svm": [
+    5604,
+    5617
+   ],
+   "compile_osl": [
+    5619,
+    5625
+   ],
+   "constant_fold": [
+    5627,
+    5638
+   ],
+   "is_linear_operation": [
+    5640,
+    5652
+   ]
+  },
+  "define": [
+   5565,
+   5600
+  ],
+  "type_name": "mix_color",
+  "sockets": [
+   "SOCKET_ENUM(blend_type, \"Type\", type_enum, NODE_MIX_BLEND)",
+   "SOCKET_IN_FLOAT(fac, \"Factor\", 0.5f)",
+   "SOCKET_IN_COLOR(a, \"A\", zero_float3())",
+   "SOCKET_IN_COLOR(b, \"B\", zero_float3())",
+   "SOCKET_BOOLEAN(use_clamp_result, \"Use Clamp Result\", false)",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", true)",
+   "SOCKET_OUT_COLOR(result, \"Result\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "mix",
+    "add",
+    "multiply",
+    "screen",
+    "overlay",
+    "subtract",
+    "divide",
+    "difference",
+    "darken",
+    "lighten",
+    "dodge",
+    "burn",
+    "hue",
+    "saturation",
+    "value",
+    "color",
+    "soft_light",
+    "linear_light",
+    "exclusion"
+   ]
+  }
+ },
+ "MixFloatNode": {
+  "funcs": {
+   "MixFloatNode": [
+    5669,
+    5669
+   ],
+   "compile_svm": [
+    5671,
+    5682
+   ],
+   "compile_osl": [
+    5684,
+    5688
+   ],
+   "constant_fold": [
+    5690,
+    5701
+   ],
+   "is_linear_operation": [
+    5703,
+    5706
+   ]
+  },
+  "define": [
+   5656,
+   5667
+  ],
+  "type_name": "mix_float",
+  "sockets": [
+   "SOCKET_IN_FLOAT(fac, \"Factor\", 0.5f)",
+   "SOCKET_IN_FLOAT(a, \"A\", 0.0f)",
+   "SOCKET_IN_FLOAT(b, \"B\", 0.0f)",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", true)",
+   "SOCKET_OUT_FLOAT(result, \"Result\")"
+  ],
+  "enums": {}
+ },
+ "MixVectorNode": {
+  "funcs": {
+   "MixVectorNode": [
+    5724,
+    5724
+   ],
+   "compile_svm": [
+    5726,
+    5737
+   ],
+   "compile_osl": [
+    5739,
+    5743
+   ],
+   "constant_fold": [
+    5745,
+    5756
+   ],
+   "is_linear_operation": [
+    5758,
+    5761
+   ]
+  },
+  "define": [
+   5710,
+   5722
+  ],
+  "type_name": "mix_vector",
+  "sockets": [
+   "SOCKET_IN_FLOAT(fac, \"Factor\", 0.5f)",
+   "SOCKET_IN_VECTOR(a, \"A\", zero_float3())",
+   "SOCKET_IN_VECTOR(b, \"B\", zero_float3())",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", true)",
+   "SOCKET_OUT_VECTOR(result, \"Result\")"
+  ],
+  "enums": {}
+ },
+ "MixVectorNonUniformNode": {
+  "funcs": {
+   "MixVectorNonUniformNode": [
+    5779,
+    5779
+   ],
+   "compile_svm": [
+    5781,
+    5792
+   ],
+   "compile_osl": [
+    5794,
+    5798
+   ],
+   "constant_fold": [
+    5800,
+    5808
+   ],
+   "is_linear_operation": [
+    5810,
+    5813
+   ]
+  },
+  "define": [
+   5765,
+   5777
+  ],
+  "type_name": "mix_vector_non_uniform",
+  "sockets": [
+   "SOCKET_IN_VECTOR(fac, \"Factor\", make_float3(0.5f, 0.5f, 0.5f))",
+   "SOCKET_IN_VECTOR(a, \"A\", zero_float3())",
+   "SOCKET_IN_VECTOR(b, \"B\", zero_float3())",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", true)",
+   "SOCKET_OUT_VECTOR(result, \"Result\")"
+  ],
+  "enums": {}
+ },
+ "CombineColorNode": {
+  "funcs": {
+   "CombineColorNode": [
+    5836,
+    5836
+   ],
+   "constant_fold": [
+    5838,
+    5843
+   ],
+   "compile_svm": [
+    5845,
+    5856
+   ],
+   "compile_osl": [
+    5858,
+    5862
+   ]
+  },
+  "define": [
+   5817,
+   5834
+  ],
+  "type_name": "combine_color",
+  "sockets": [
+   "SOCKET_ENUM(color_type, \"Type\", type_enum, NODE_COMBSEP_COLOR_RGB)",
+   "SOCKET_IN_FLOAT(r, \"Red\", 0.0f)",
+   "SOCKET_IN_FLOAT(g, \"Green\", 0.0f)",
+   "SOCKET_IN_FLOAT(b, \"Blue\", 0.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "rgb",
+    "hsv",
+    "hsl"
+   ]
+  }
+ },
+ "CombineXYZNode": {
+  "funcs": {
+   "CombineXYZNode": [
+    5879,
+    5879
+   ],
+   "constant_fold": [
+    5881,
+    5886
+   ],
+   "compile_svm": [
+    5888,
+    5912
+   ],
+   "compile_osl": [
+    5914,
+    5917
+   ]
+  },
+  "define": [
+   5866,
+   5877
+  ],
+  "type_name": "combine_xyz",
+  "sockets": [
+   "SOCKET_IN_FLOAT(x, \"X\", 0.0f)",
+   "SOCKET_IN_FLOAT(y, \"Y\", 0.0f)",
+   "SOCKET_IN_FLOAT(z, \"Z\", 0.0f)",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")"
+  ],
+  "enums": {}
+ },
+ "GammaNode": {
+  "funcs": {
+   "GammaNode": [
+    5932,
+    5932
+   ],
+   "constant_fold": [
+    5934,
+    5952
+   ],
+   "compile_svm": [
+    5954,
+    5963
+   ],
+   "compile_osl": [
+    5965,
+    5968
+   ]
+  },
+  "define": [
+   5921,
+   5930
+  ],
+  "type_name": "gamma",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_IN_FLOAT(gamma, \"Gamma\", 1.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "BrightContrastNode": {
+  "funcs": {
+   "BrightContrastNode": [
+    5985,
+    5985
+   ],
+   "constant_fold": [
+    5987,
+    5992
+   ],
+   "compile_svm": [
+    5994,
+    6004
+   ],
+   "compile_osl": [
+    6006,
+    6009
+   ]
+  },
+  "define": [
+   5972,
+   5983
+  ],
+  "type_name": "brightness_contrast",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_IN_FLOAT(bright, \"Bright\", 0.0f)",
+   "SOCKET_IN_FLOAT(contrast, \"Contrast\", 0.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "SeparateColorNode": {
+  "funcs": {
+   "SeparateColorNode": [
+    6032,
+    6032
+   ],
+   "constant_fold": [
+    6034,
+    6046
+   ],
+   "compile_svm": [
+    6048,
+    6059
+   ],
+   "compile_osl": [
+    6061,
+    6065
+   ]
+  },
+  "define": [
+   6013,
+   6030
+  ],
+  "type_name": "separate_color",
+  "sockets": [
+   "SOCKET_ENUM(color_type, \"Type\", type_enum, NODE_COMBSEP_COLOR_RGB)",
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_OUT_FLOAT(r, \"Red\")",
+   "SOCKET_OUT_FLOAT(g, \"Green\")",
+   "SOCKET_OUT_FLOAT(b, \"Blue\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "rgb",
+    "hsv",
+    "hsl"
+   ]
+  }
+ },
+ "SeparateXYZNode": {
+  "funcs": {
+   "SeparateXYZNode": [
+    6082,
+    6082
+   ],
+   "constant_fold": [
+    6084,
+    6094
+   ],
+   "compile_svm": [
+    6096,
+    6120
+   ],
+   "compile_osl": [
+    6122,
+    6125
+   ]
+  },
+  "define": [
+   6069,
+   6080
+  ],
+  "type_name": "separate_xyz",
+  "sockets": [
+   "SOCKET_IN_COLOR(vector, \"Vector\", zero_float3())",
+   "SOCKET_OUT_FLOAT(x, \"X\")",
+   "SOCKET_OUT_FLOAT(y, \"Y\")",
+   "SOCKET_OUT_FLOAT(z, \"Z\")"
+  ],
+  "enums": {}
+ },
+ "HSVNode": {
+  "funcs": {
+   "HSVNode": [
+    6144,
+    6144
+   ],
+   "compile_svm": [
+    6146,
+    6158
+   ],
+   "compile_osl": [
+    6160,
+    6163
+   ]
+  },
+  "define": [
+   6129,
+   6142
+  ],
+  "type_name": "hsv",
+  "sockets": [
+   "SOCKET_IN_FLOAT(hue, \"Hue\", 0.5f)",
+   "SOCKET_IN_FLOAT(saturation, \"Saturation\", 1.0f)",
+   "SOCKET_IN_FLOAT(value, \"Value\", 1.0f)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 1.0f)",
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "AttributeNode": {
+  "funcs": {
+   "AttributeNode": [
+    6181,
+    6181
+   ],
+   "attributes": [
+    6183,
+    6197
+   ],
+   "add_named_attribute_request": [
+    6199,
+    6221
+   ],
+   "shader_node_type": [
+    6223,
+    6226
+   ],
+   "compile_svm": [
+    6228,
+    6298
+   ],
+   "compile_osl": [
+    6300,
+    6321
+   ]
+  },
+  "define": [
+   6167,
+   6179
+  ],
+  "type_name": "attribute",
+  "sockets": [
+   "SOCKET_STRING(attribute, \"Attribute\", ustring())",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")"
+  ],
+  "enums": {}
+ },
+ "CameraNode": {
+  "funcs": {
+   "CameraNode": [
+    6336,
+    6336
+   ],
+   "compile_svm": [
+    6338,
+    6347
+   ],
+   "compile_osl": [
+    6349,
+    6352
+   ]
+  },
+  "define": [
+   6325,
+   6334
+  ],
+  "type_name": "camera_info",
+  "sockets": [
+   "SOCKET_OUT_VECTOR(view_vector, \"View Vector\")",
+   "SOCKET_OUT_FLOAT(view_z_depth, \"View Z Depth\")",
+   "SOCKET_OUT_FLOAT(view_distance, \"View Distance\")"
+  ],
+  "enums": {}
+ },
+ "FresnelNode": {
+  "funcs": {
+   "FresnelNode": [
+    6369,
+    6369
+   ],
+   "compile_svm": [
+    6371,
+    6380
+   ],
+   "compile_osl": [
+    6382,
+    6385
+   ]
+  },
+  "define": [
+   6356,
+   6367
+  ],
+  "type_name": "fresnel",
+  "sockets": [
+   "SOCKET_IN_FLOAT(IOR, \"IOR\", 1.5f)",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "LayerWeightNode": {
+  "funcs": {
+   "LayerWeightNode": [
+    6403,
+    6403
+   ],
+   "compile_svm": [
+    6405,
+    6431
+   ],
+   "compile_osl": [
+    6433,
+    6436
+   ]
+  },
+  "define": [
+   6389,
+   6401
+  ],
+  "type_name": "layer_weight",
+  "sockets": [
+   "SOCKET_IN_FLOAT(blend, \"Blend\", 0.5f)",
+   "SOCKET_OUT_FLOAT(fresnel, \"Fresnel\")",
+   "SOCKET_OUT_FLOAT(facing, \"Facing\")"
+  ],
+  "enums": {}
+ },
+ "WireframeNode": {
+  "funcs": {
+   "WireframeNode": [
+    6451,
+    6451
+   ],
+   "compile_svm": [
+    6453,
+    6471
+   ],
+   "compile_osl": [
+    6473,
+    6488
+   ]
+  },
+  "define": [
+   6440,
+   6449
+  ],
+  "type_name": "wireframe",
+  "sockets": [
+   "SOCKET_BOOLEAN(use_pixel_size, \"Use Pixel Size\", false)",
+   "SOCKET_IN_FLOAT(size, \"Size\", 0.01f)",
+   "SOCKET_OUT_FLOAT(fac, \"Fac\")"
+  ],
+  "enums": {}
+ },
+ "WavelengthNode": {
+  "funcs": {
+   "WavelengthNode": [
+    6502,
+    6502
+   ],
+   "compile_svm": [
+    6504,
+    6512
+   ],
+   "compile_osl": [
+    6514,
+    6517
+   ]
+  },
+  "define": [
+   6492,
+   6500
+  ],
+  "type_name": "wavelength",
+  "sockets": [
+   "SOCKET_IN_FLOAT(wavelength, \"Wavelength\", 500.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "BlackbodyNode": {
+  "funcs": {
+   "BlackbodyNode": [
+    6531,
+    6531
+   ],
+   "constant_fold": [
+    6533,
+    6540
+   ],
+   "compile_svm": [
+    6542,
+    6550
+   ],
+   "compile_osl": [
+    6552,
+    6555
+   ]
+  },
+  "define": [
+   6521,
+   6529
+  ],
+  "type_name": "blackbody",
+  "sockets": [
+   "SOCKET_IN_FLOAT(temperature, \"Temperature\", 1200.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "OutputNode": {
+  "funcs": {
+   "OutputNode": [
+    6571,
+    6574
+   ],
+   "compile_svm": [
+    6576,
+    6587
+   ],
+   "compile_osl": [
+    6589,
+    6600
+   ]
+  },
+  "define": [
+   6559,
+   6569
+  ],
+  "type_name": "output",
+  "sockets": [
+   "SOCKET_IN_CLOSURE(surface, \"Surface\")",
+   "SOCKET_IN_CLOSURE(volume, \"Volume\")",
+   "SOCKET_IN_VECTOR(displacement, \"Displacement\", zero_float3())",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3())"
+  ],
+  "enums": {}
+ },
+ "MapRangeNode": {
+  "funcs": {
+   "MapRangeNode": [
+    6628,
+    6628
+   ],
+   "expand": [
+    6630,
+    6653
+   ],
+   "is_linear_operation": [
+    6655,
+    6662
+   ],
+   "compile_svm": [
+    6664,
+    6678
+   ],
+   "compile_osl": [
+    6680,
+    6684
+   ]
+  },
+  "define": [
+   6604,
+   6626
+  ],
+  "type_name": "map_range",
+  "sockets": [
+   "SOCKET_ENUM(range_type, \"Type\", type_enum, NODE_MAP_RANGE_LINEAR)",
+   "SOCKET_IN_FLOAT(value, \"Value\", 1.0f)",
+   "SOCKET_IN_FLOAT(from_min, \"From Min\", 0.0f)",
+   "SOCKET_IN_FLOAT(from_max, \"From Max\", 1.0f)",
+   "SOCKET_IN_FLOAT(to_min, \"To Min\", 0.0f)",
+   "SOCKET_IN_FLOAT(to_max, \"To Max\", 1.0f)",
+   "SOCKET_IN_FLOAT(steps, \"Steps\", 4.0f)",
+   "SOCKET_IN_BOOLEAN(clamp, \"Clamp\", false)",
+   "SOCKET_OUT_FLOAT(result, \"Result\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "linear",
+    "stepped",
+    "smoothstep",
+    "smootherstep"
+   ]
+  }
+ },
+ "VectorMapRangeNode": {
+  "funcs": {
+   "VectorMapRangeNode": [
+    6712,
+    6712
+   ],
+   "expand": [
+    6714,
+    6714
+   ],
+   "is_linear_operation": [
+    6716,
+    6723
+   ],
+   "compile_svm": [
+    6725,
+    6740
+   ],
+   "compile_osl": [
+    6742,
+    6747
+   ]
+  },
+  "define": [
+   6688,
+   6710
+  ],
+  "type_name": "vector_map_range",
+  "sockets": [
+   "SOCKET_ENUM(range_type, \"Type\", type_enum, NODE_MAP_RANGE_LINEAR)",
+   "SOCKET_IN_VECTOR(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_VECTOR(from_min, \"From_Min_FLOAT3\", zero_float3())",
+   "SOCKET_IN_VECTOR(from_max, \"From_Max_FLOAT3\", one_float3())",
+   "SOCKET_IN_VECTOR(to_min, \"To_Min_FLOAT3\", zero_float3())",
+   "SOCKET_IN_VECTOR(to_max, \"To_Max_FLOAT3\", one_float3())",
+   "SOCKET_IN_VECTOR(steps, \"Steps_FLOAT3\", make_float3(4.0f))",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", false)",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "linear",
+    "stepped",
+    "smoothstep",
+    "smootherstep"
+   ]
+  }
+ },
+ "ClampNode": {
+  "funcs": {
+   "ClampNode": [
+    6769,
+    6769
+   ],
+   "constant_fold": [
+    6771,
+    6781
+   ],
+   "compile_svm": [
+    6783,
+    6794
+   ],
+   "compile_osl": [
+    6796,
+    6800
+   ]
+  },
+  "define": [
+   6751,
+   6767
+  ],
+  "type_name": "clamp",
+  "sockets": [
+   "SOCKET_ENUM(clamp_type, \"Type\", type_enum, NODE_CLAMP_MINMAX)",
+   "SOCKET_IN_FLOAT(value, \"Value\", 1.0f)",
+   "SOCKET_IN_FLOAT(min, \"Min\", 0.0f)",
+   "SOCKET_IN_FLOAT(max, \"Max\", 1.0f)",
+   "SOCKET_OUT_FLOAT(result, \"Result\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "minmax",
+    "range"
+   ]
+  }
+ },
+ "OutputAOVNode": {
+  "funcs": {
+   "OutputAOVNode": [
+    6816,
+    6820
+   ],
+   "simplify_settings": [
+    6822,
+    6832
+   ],
+   "compile_svm": [
+    6834,
+    6854
+   ],
+   "compile_osl": [
+    6856,
+    6859
+   ]
+  },
+  "define": [
+   6804,
+   6814
+  ],
+  "type_name": "aov_output",
+  "sockets": [
+   "SOCKET_IN_COLOR(color, \"Color\", zero_float3())",
+   "SOCKET_IN_FLOAT(value, \"Value\", 0.0f)",
+   "SOCKET_STRING(name, \"AOV Name\", ustring(\"\"))"
+  ],
+  "enums": {}
+ },
+ "MathNode": {
+  "funcs": {
+   "MathNode": [
+    6922,
+    6922
+   ],
+   "expand": [
+    6924,
+    6937
+   ],
+   "constant_fold": [
+    6939,
+    6947
+   ],
+   "is_linear_operation": [
+    6949,
+    6968
+   ],
+   "compile_svm": [
+    6970,
+    6981
+   ],
+   "compile_osl": [
+    6983,
+    6987
+   ]
+  },
+  "define": [
+   6863,
+   6920
+  ],
+  "type_name": "math",
+  "sockets": [
+   "SOCKET_ENUM(math_type, \"Type\", type_enum, NODE_MATH_ADD)",
+   "SOCKET_BOOLEAN(use_clamp, \"Use Clamp\", false)",
+   "SOCKET_IN_FLOAT(value1, \"Value1\", 0.5f)",
+   "SOCKET_IN_FLOAT(value2, \"Value2\", 0.5f)",
+   "SOCKET_IN_FLOAT(value3, \"Value3\", 0.0f)",
+   "SOCKET_OUT_FLOAT(value, \"Value\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "multiply_add",
+    "sine",
+    "cosine",
+    "tangent",
+    "sinh",
+    "cosh",
+    "tanh",
+    "arcsine",
+    "arccosine",
+    "arctangent",
+    "power",
+    "logarithm",
+    "minimum",
+    "maximum",
+    "round",
+    "less_than",
+    "greater_than",
+    "modulo",
+    "floored_modulo",
+    "absolute",
+    "arctan2",
+    "floor",
+    "ceil",
+    "fraction",
+    "trunc",
+    "snap",
+    "wrap",
+    "pingpong",
+    "sqrt",
+    "inversesqrt",
+    "sign",
+    "exponent",
+    "radians",
+    "degrees",
+    "smoothmin",
+    "smoothmax",
+    "compare"
+   ]
+  }
+ },
+ "VectorMathNode": {
+  "funcs": {
+   "VectorMathNode": [
+    7044,
+    7044
+   ],
+   "constant_fold": [
+    7046,
+    7063
+   ],
+   "is_linear_operation": [
+    7065,
+    7084
+   ],
+   "compile_svm": [
+    7086,
+    7099
+   ],
+   "compile_osl": [
+    7101,
+    7105
+   ]
+  },
+  "define": [
+   6991,
+   7042
+  ],
+  "type_name": "vector_math",
+  "sockets": [
+   "SOCKET_ENUM(math_type, \"Type\", type_enum, NODE_VECTOR_MATH_ADD)",
+   "SOCKET_IN_VECTOR(vector1, \"Vector1\", zero_float3())",
+   "SOCKET_IN_VECTOR(vector2, \"Vector2\", zero_float3())",
+   "SOCKET_IN_VECTOR(vector3, \"Vector3\", zero_float3())",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_OUT_FLOAT(value, \"Value\")",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "cross_product",
+    "project",
+    "reflect",
+    "refract",
+    "faceforward",
+    "multiply_add",
+    "dot_product",
+    "distance",
+    "length",
+    "scale",
+    "normalize",
+    "snap",
+    "round",
+    "floor",
+    "ceil",
+    "modulo",
+    "wrap",
+    "fraction",
+    "absolute",
+    "power",
+    "sign",
+    "minimum",
+    "maximum",
+    "sine",
+    "cosine",
+    "tangent"
+   ]
+  }
+ },
+ "VectorRotateNode": {
+  "funcs": {
+   "VectorRotateNode": [
+    7133,
+    7133
+   ],
+   "compile_svm": [
+    7135,
+    7149
+   ],
+   "compile_osl": [
+    7151,
+    7156
+   ]
+  },
+  "define": [
+   7109,
+   7131
+  ],
+  "type_name": "vector_rotate",
+  "sockets": [
+   "SOCKET_ENUM(rotate_type, \"Type\", type_enum, NODE_VECTOR_ROTATE_TYPE_AXIS)",
+   "SOCKET_BOOLEAN(invert, \"Invert\", false)",
+   "SOCKET_IN_VECTOR(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_POINT(rotation, \"Rotation\", zero_float3())",
+   "SOCKET_IN_POINT(center, \"Center\", zero_float3())",
+   "SOCKET_IN_VECTOR(axis, \"Axis\", make_float3(0.0f, 0.0f, 1.0f))",
+   "SOCKET_IN_FLOAT(angle, \"Angle\", 0.0f)",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "axis",
+    "x_axis",
+    "y_axis",
+    "z_axis",
+    "euler_xyz"
+   ]
+  }
+ },
+ "VectorTransformNode": {
+  "funcs": {
+   "VectorTransformNode": [
+    7183,
+    7183
+   ],
+   "compile_svm": [
+    7185,
+    7196
+   ],
+   "compile_osl": [
+    7198,
+    7204
+   ]
+  },
+  "define": [
+   7160,
+   7181
+  ],
+  "type_name": "vector_transform",
+  "sockets": [
+   "SOCKET_ENUM(transform_type, \"Type\", type_enum, NODE_VECTOR_TRANSFORM_TYPE_VECTOR)",
+   "SOCKET_ENUM(convert_from, \"Convert From\", space_enum, NODE_VECTOR_TRANSFORM_CONVERT_SPACE_WORLD)",
+   "SOCKET_ENUM(convert_to, \"Convert To\", space_enum, NODE_VECTOR_TRANSFORM_CONVERT_SPACE_OBJECT)",
+   "SOCKET_IN_VECTOR(vector, \"Vector\", zero_float3())",
+   "SOCKET_OUT_VECTOR(vector, \"Vector\")"
+  ],
+  "enums": {
+   "type_enum": [
+    "vector",
+    "point",
+    "normal"
+   ],
+   "space_enum": [
+    "world",
+    "object",
+    "camera"
+   ]
+  }
+ },
+ "BumpNode": {
+  "funcs": {
+   "BumpNode": [
+    7232,
+    7235
+   ],
+   "compile_svm": [
+    7237,
+    7252
+   ],
+   "compile_osl": [
+    7254,
+    7259
+   ],
+   "constant_fold": [
+    7261,
+    7276
+   ]
+  },
+  "define": [
+   7208,
+   7230
+  ],
+  "type_name": "bump",
+  "sockets": [
+   "SOCKET_BOOLEAN(invert, \"Invert\", false)",
+   "SOCKET_BOOLEAN(use_object_space, \"UseObjectSpace\", false)",
+   "SOCKET_IN_FLOAT(height, \"Height\", 1.0f)",
+   "SOCKET_IN_FLOAT(sample_center, \"SampleCenter\", 0.0f)",
+   "SOCKET_IN_FLOAT(sample_x, \"SampleX\", 0.0f)",
+   "SOCKET_IN_FLOAT(sample_y, \"SampleY\", 0.0f)",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 1.0f)",
+   "SOCKET_IN_FLOAT(distance, \"Distance\", 0.1f)",
+   "SOCKET_IN_FLOAT(filter_width, \"Filter Width\", 0.1f)",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")"
+  ],
+  "enums": {}
+ },
+ "CurvesNode": {
+  "funcs": {
+   "CurvesNode": [
+    7280,
+    7280
+   ],
+   "constant_fold": [
+    7282,
+    7305
+   ],
+   "compile_svm": [
+    7340,
+    7343
+   ],
+   "compile_osl": [
+    7345,
+    7348
+   ]
+  }
+ },
+ "RGBCurvesNode": {
+  "funcs": {
+   "RGBCurvesNode": [
+    7369,
+    7369
+   ],
+   "constant_fold": [
+    7371,
+    7374
+   ],
+   "compile_svm": [
+    7376,
+    7379
+   ],
+   "compile_osl": [
+    7381,
+    7384
+   ]
+  },
+  "define": [
+   7352,
+   7367
+  ],
+  "type_name": "rgb_curves",
+  "sockets": [
+   "SOCKET_COLOR_ARRAY(curves, \"Curves\", array<packed_float3>())",
+   "SOCKET_FLOAT(min_x, \"Min X\", 0.0f)",
+   "SOCKET_FLOAT(max_x, \"Max X\", 1.0f)",
+   "SOCKET_BOOLEAN(extrapolate, \"Extrapolate\", true)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 0.0f)",
+   "SOCKET_IN_COLOR(value, \"Color\", zero_float3())",
+   "SOCKET_OUT_COLOR(value, \"Color\")"
+  ],
+  "enums": {}
+ },
+ "VectorCurvesNode": {
+  "funcs": {
+   "VectorCurvesNode": [
+    7405,
+    7405
+   ],
+   "constant_fold": [
+    7407,
+    7410
+   ],
+   "compile_svm": [
+    7412,
+    7415
+   ],
+   "compile_osl": [
+    7417,
+    7420
+   ]
+  },
+  "define": [
+   7388,
+   7403
+  ],
+  "type_name": "vector_curves",
+  "sockets": [
+   "SOCKET_VECTOR_ARRAY(curves, \"Curves\", array<packed_float3>())",
+   "SOCKET_FLOAT(min_x, \"Min X\", 0.0f)",
+   "SOCKET_FLOAT(max_x, \"Max X\", 1.0f)",
+   "SOCKET_BOOLEAN(extrapolate, \"Extrapolate\", true)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 0.0f)",
+   "SOCKET_IN_VECTOR(value, \"Vector\", zero_float3())",
+   "SOCKET_OUT_VECTOR(value, \"Vector\")"
+  ],
+  "enums": {}
+ },
+ "FloatCurveNode": {
+  "funcs": {
+   "FloatCurveNode": [
+    7441,
+    7441
+   ],
+   "constant_fold": [
+    7443,
+    7462
+   ],
+   "compile_svm": [
+    7464,
+    7484
+   ],
+   "compile_osl": [
+    7486,
+    7497
+   ]
+  },
+  "define": [
+   7424,
+   7439
+  ],
+  "type_name": "float_curve",
+  "sockets": [
+   "SOCKET_FLOAT_ARRAY(curve, \"Curve\", array<float>())",
+   "SOCKET_FLOAT(min_x, \"Min X\", 0.0f)",
+   "SOCKET_FLOAT(max_x, \"Max X\", 1.0f)",
+   "SOCKET_BOOLEAN(extrapolate, \"Extrapolate\", true)",
+   "SOCKET_IN_FLOAT(fac, \"Factor\", 0.0f)",
+   "SOCKET_IN_FLOAT(value, \"Value\", 0.0f)",
+   "SOCKET_OUT_FLOAT(value, \"Value\")"
+  ],
+  "enums": {}
+ },
+ "RGBRampNode": {
+  "funcs": {
+   "RGBRampNode": [
+    7517,
+    7517
+   ],
+   "constant_fold": [
+    7519,
+    7544
+   ],
+   "compile_svm": [
+    7546,
+    7562
+   ],
+   "compile_osl": [
+    7564,
+    7575
+   ]
+  },
+  "define": [
+   7501,
+   7515
+  ],
+  "type_name": "rgb_ramp",
+  "sockets": [
+   "SOCKET_COLOR_ARRAY(ramp, \"Ramp\", array<packed_float3>())",
+   "SOCKET_FLOAT_ARRAY(ramp_alpha, \"Ramp Alpha\", array<float>())",
+   "SOCKET_BOOLEAN(interpolate, \"Interpolate\", true)",
+   "SOCKET_IN_FLOAT(fac, \"Fac\", 0.0f)",
+   "SOCKET_OUT_COLOR(color, \"Color\")",
+   "SOCKET_OUT_FLOAT(alpha, \"Alpha\")"
+  ],
+  "enums": {}
+ },
+ "SetNormalNode": {
+  "funcs": {
+   "SetNormalNode": [
+    7589,
+    7589
+   ],
+   "compile_svm": [
+    7591,
+    7599
+   ],
+   "compile_osl": [
+    7601,
+    7604
+   ]
+  },
+  "define": [
+   7579,
+   7587
+  ],
+  "type_name": "set_normal",
+  "sockets": [
+   "SOCKET_IN_VECTOR(direction, \"Direction\", zero_float3())",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")"
+  ],
+  "enums": {}
+ },
+ "OSLNode": {
+  "funcs": {
+   "OSLNode": [
+    7608,
+    7612
+   ],
+   "~OSLNode": [
+    7614,
+    7617
+   ],
+   "clone": [
+    7619,
+    7622
+   ],
+   "attributes": [
+    7624,
+    7642
+   ],
+   "create": [
+    7644,
+    7663
+   ],
+   "input_default_value": [
+    7665,
+    7671
+   ],
+   "add_input": [
+    7673,
+    7679
+   ],
+   "add_output": [
+    7681,
+    7684
+   ],
+   "compile_svm": [
+    7686,
+    7689
+   ],
+   "compile_osl": [
+    7691,
+    7699
+   ]
+  }
+ },
+ "NormalMapNode": {
+  "funcs": {
+   "NormalMapNode": [
+    7735,
+    7735
+   ],
+   "attributes": [
+    7737,
+    7769
+   ],
+   "compile_svm": [
+    7771,
+    7814
+   ],
+   "compile_osl": [
+    7816,
+    7850
+   ]
+  },
+  "define": [
+   7703,
+   7733
+  ],
+  "type_name": "normal_map",
+  "sockets": [
+   "SOCKET_ENUM(space, \"Space\", space_enum, NODE_NORMAL_MAP_TANGENT)",
+   "SOCKET_ENUM(convention, \"Convention\", convention_enum, NODE_NORMAL_MAP_CONVENTION_OPENGL)",
+   "SOCKET_ENUM(base, \"Base\", base_enum, NODE_NORMAL_MAP_BASE_ORIGINAL)",
+   "SOCKET_STRING(attribute, \"Attribute\", ustring())",
+   "SOCKET_IN_FLOAT(strength, \"Strength\", 1.0f)",
+   "SOCKET_IN_COLOR(color, \"Color\", make_float3(0.5f, 0.5f, 1.0f))",
+   "SOCKET_OUT_NORMAL(normal, \"Normal\")"
+  ],
+  "enums": {
+   "space_enum": [
+    "tangent",
+    "object",
+    "world",
+    "blender_object",
+    "blender_world"
+   ],
+   "convention_enum": [
+    "opengl",
+    "directx"
+   ],
+   "base_enum": [
+    "original",
+    "displaced"
+   ]
+  }
+ },
+ "RadialTilingNode": {
+  "funcs": {
+   "RadialTilingNode": [
+    7871,
+    7871
+   ],
+   "compile_svm": [
+    7873,
+    7887
+   ],
+   "compile_osl": [
+    7889,
+    7893
+   ]
+  },
+  "define": [
+   7854,
+   7869
+  ],
+  "type_name": "radial_tiling",
+  "sockets": [
+   "SOCKET_BOOLEAN(use_normalize, \"Normalize\", false)",
+   "SOCKET_IN_POINT(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_FLOAT(r_gon_sides, \"Sides\", 5.0f)",
+   "SOCKET_IN_FLOAT(r_gon_roundness, \"Roundness\", 0.0f)",
+   "SOCKET_OUT_POINT(segment_coordinates, \"Segment Coordinates\")",
+   "SOCKET_OUT_FLOAT(segment_id, \"Segment ID\")",
+   "SOCKET_OUT_FLOAT(max_unit_parameter, \"Segment Width\")",
+   "SOCKET_OUT_FLOAT(x_axis_A_angle_bisector, \"Segment Rotation\")"
+  ],
+  "enums": {}
+ },
+ "TangentNode": {
+  "funcs": {
+   "TangentNode": [
+    7919,
+    7919
+   ],
+   "attributes": [
+    7921,
+    7941
+   ],
+   "compile_svm": [
+    7943,
+    7967
+   ],
+   "compile_osl": [
+    7969,
+    7983
+   ]
+  },
+  "define": [
+   7897,
+   7917
+  ],
+  "type_name": "tangent",
+  "sockets": [
+   "SOCKET_ENUM(direction_type, \"Direction Type\", direction_type_enum, NODE_TANGENT_RADIAL)",
+   "SOCKET_ENUM(axis, \"Axis\", axis_enum, NODE_TANGENT_AXIS_X)",
+   "SOCKET_STRING(attribute, \"Attribute\", ustring())",
+   "SOCKET_OUT_NORMAL(tangent, \"Tangent\")"
+  ],
+  "enums": {
+   "direction_type_enum": [
+    "radial",
+    "uv_map"
+   ],
+   "axis_enum": [
+    "x",
+    "y",
+    "z"
+   ]
+  }
+ },
+ "BevelNode": {
+  "funcs": {
+   "BevelNode": [
+    8001,
+    8001
+   ],
+   "compile_svm": [
+    8003,
+    8013
+   ],
+   "compile_osl": [
+    8015,
+    8019
+   ]
+  },
+  "define": [
+   7987,
+   7999
+  ],
+  "type_name": "bevel",
+  "sockets": [
+   "SOCKET_INT(samples, \"Samples\", 4)",
+   "SOCKET_IN_FLOAT(radius, \"Radius\", 0.05f)",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_OUT_NORMAL(bevel, \"Normal\")"
+  ],
+  "enums": {}
+ },
+ "DisplacementNode": {
+  "funcs": {
+   "DisplacementNode": [
+    8043,
+    8043
+   ],
+   "constant_fold": [
+    8045,
+    8052
+   ],
+   "compile_svm": [
+    8054,
+    8064
+   ],
+   "compile_osl": [
+    8066,
+    8070
+   ]
+  },
+  "define": [
+   8023,
+   8041
+  ],
+  "type_name": "displacement",
+  "sockets": [
+   "SOCKET_ENUM(space, \"Space\", space_enum, NODE_NORMAL_MAP_OBJECT)",
+   "SOCKET_IN_FLOAT(height, \"Height\", 0.0f)",
+   "SOCKET_IN_FLOAT(midlevel, \"Midlevel\", 0.5f)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_IN_NORMAL(normal, \"Normal\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_OUT_VECTOR(displacement, \"Displacement\")"
+  ],
+  "enums": {
+   "space_enum": [
+    "object",
+    "world"
+   ]
+  }
+ },
+ "VectorDisplacementNode": {
+  "funcs": {
+   "VectorDisplacementNode": [
+    8095,
+    8095
+   ],
+   "constant_fold": [
+    8097,
+    8104
+   ],
+   "attributes": [
+    8106,
+    8122
+   ],
+   "compile_svm": [
+    8124,
+    8152
+   ],
+   "compile_osl": [
+    8154,
+    8172
+   ]
+  },
+  "define": [
+   8074,
+   8093
+  ],
+  "type_name": "vector_displacement",
+  "sockets": [
+   "SOCKET_ENUM(space, \"Space\", space_enum, NODE_NORMAL_MAP_TANGENT)",
+   "SOCKET_STRING(attribute, \"Attribute\", ustring())",
+   "SOCKET_IN_COLOR(vector, \"Vector\", zero_float3())",
+   "SOCKET_IN_FLOAT(midlevel, \"Midlevel\", 0.0f)",
+   "SOCKET_IN_FLOAT(scale, \"Scale\", 1.0f)",
+   "SOCKET_OUT_VECTOR(displacement, \"Displacement\")"
+  ],
+  "enums": {
+   "space_enum": [
+    "tangent",
+    "object",
+    "world"
+   ]
+  }
+ },
+ "RaycastNode": {
+  "funcs": {
+   "RaycastNode": [
+    8227,
+    8242
+   ],
+   "global_attributes": [
+    8244,
+    8251
+   ],
+   "add_output_attribute_socket": [
+    8253,
+    8279
+   ],
+   "compile_svm": [
+    8281,
+    8326
+   ],
+   "compile_osl": [
+    8328,
+    8392
+   ]
+  },
+  "define": [
+   8206,
+   8223
+  ],
+  "type_name": "raycast",
+  "sockets": [
+   "SOCKET_IN_POINT(position, \"Position\", zero_float3(), SocketType::LINK_POSITION)",
+   "SOCKET_IN_NORMAL(direction, \"Direction\", zero_float3(), SocketType::LINK_NORMAL)",
+   "SOCKET_IN_FLOAT(length, \"Length\", 1.0f)",
+   "SOCKET_OUT_FLOAT(is_hit, \"Is Hit\")",
+   "SOCKET_OUT_FLOAT(is_self_hit, \"Self Hit\")",
+   "SOCKET_OUT_FLOAT(hit_distance, \"Hit Distance\")",
+   "SOCKET_OUT_POINT(hit_position, \"Hit Position\")",
+   "SOCKET_OUT_NORMAL(hit_normal, \"Hit Normal\")",
+   "SOCKET_BOOLEAN(only_local, \"Only Local\", false)"
+  ],
+  "enums": {}
+ },
+ "SceneTimeNode": {
+  "funcs": {
+   "SceneTimeNode": [
+    8406,
+    8409
+   ],
+   "compile_svm": [
+    8411,
+    8417
+   ],
+   "compile_osl": [
+    8419,
+    8422
+   ]
+  },
+  "define": [
+   8396,
+   8404
+  ],
+  "type_name": "scene_time",
+  "sockets": [
+   "SOCKET_OUT_FLOAT(seconds, \"Seconds\")",
+   "SOCKET_OUT_FLOAT(frame, \"Frame\")"
+  ],
+  "enums": {}
+ }
+}

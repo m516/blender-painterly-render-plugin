@@ -17,7 +17,12 @@ The rules are in `CLAUDE.md`, section "Experiments".
 ## How to run
 
 Experiments use their own oracle, built into `.cache/oracle-build`. `make clean` does not touch that directory, so the
-renders in `.cache/renders` stay valid. Build it with `make oracle`, and again after any change to the oracle source:
+renders in `.cache/renders` stay valid.
+- The render cache is keyed by that binary's sha256. Rebuilding it orphans every cached render.
+- Since 2026-10-09 the experiments run on the pre-T3.4 binary (sha256 `066bb5d4…828a`). The oracle source changed after
+  that (T3.4, TQ.1) without changing default renders, so **do not run `make oracle`** unless an experiment's
+  pre-registration needs a newer oracle feature and accepts re-rendering.
+- On a fresh checkout with no `.cache/oracle-build`, build it once:
 
 ```
 make oracle
