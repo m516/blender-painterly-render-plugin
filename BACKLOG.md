@@ -312,3 +312,4 @@ Outcome: the JSON parses, and covers each of the 10 cards on both lenses. The co
 `MAIN/.venv/bin/python -c "import json;d=json.load(open('docs/handoff/findings/M7-M9-review-2.json'));print(len(d))"`
 prints 20.
 allowedPaths: `docs/handoff/findings/M7-M9-review-2.json`.
+Depends on: BOOT-0a, so that no task is verified against `CHECK` before the knobs exist.
