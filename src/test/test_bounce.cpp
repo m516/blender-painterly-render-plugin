@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Tests of painterly/kernel/closure/bounce.h (T3.9). The reference is smallpaint's own code: Vec,
-// hemisphere() and the three bounce blocks of trace() (smallpaint_painterly.cpp:183-238), copied
-// below with their inputs turned into arguments. The comparisons are bitwise (std::memcmp), so
-// they allow no tolerance and tell -0.0 from +0.0. The one comparison with a tolerance is the |d|
-// = 1 check of alpha = 1, whose bound is justified where it is defined.
+// Tests of painterly/kernel/closure/bounce.h (T3.9, T3.19). The reference is smallpaint's code:
+// Vec, hemisphere() and the three bounce blocks of trace() (smallpaint_painterly.cpp:183-238),
+// copied below with their inputs turned into arguments. For alpha > 0 it is the oracle's --alpha
+// lines on top of smallpaint's diffuse block, and the zero-length d of SPEC §4 is checked against
+// exact constants. The comparisons are bitwise (std::memcmp), so they allow no tolerance and tell
+// -0.0 from +0.0. The one comparison with a tolerance is the |d| = 1 check of alpha = 1, whose
+// bound is justified where it is defined.
 
 #include <doctest/doctest.h>
 
@@ -127,6 +129,15 @@ constexpr std::uint32_t U2_TEST_SEED = 7;
 // round-off bound that CLAUDE.md allows for an analytic identity, so it is not a hand-picked
 // tolerance.
 constexpr double FLOAT64_ROUND_OFF_RTOL = 1e-12;
+// alpha > 0 values of the bitwise test against the oracle's --alpha lines: the alphas of the
+// first-light renders alpha_025, alpha_05 and alpha_1. alpha = 0 is the smallpaint test above.
+constexpr double ORACLE_ALPHAS[] = {0.25, 0.5, 1.0};
+// K before the zero draw of the zero-length test (T3.19). The draw is vdc(2^23) = vdc(0) = 0
+// (SPEC §2), so u1 = u2 = 0 and s = (1, 0, 0).
+constexpr std::uint64_t ZERO_DRAW_K0 = (std::uint64_t(1) << PAINTERLY_VDC_BITS) - 1;
+// alpha values of the zero-length test: 0 (the default, where the rule changes nothing) and the
+// three alphas of ORACLE_ALPHAS, whose first-light renders held NaN pixels before the rule.
+constexpr double ZERO_LENGTH_ALPHAS[] = {0.0, 0.25, 0.5, 1.0};
 
 struct Triple {
   double x, y, z;
@@ -236,6 +247,22 @@ void set_identity_frame(KernelPainterlyIntegrator &p)
   p.spiral_frame[8] = 1.0;
 }
 
+// The oracle's diffuse lines with --alpha (trace() in src/app/smallpaint_oracle.cpp, items 13 and
+// 22 of src/app/CHANGES.md): smallpaint's d = N + hemisphere(u1, u2), then d * |d|^-alpha, which
+// is skipped for d = 0 (SPEC §4), then the cost of the rescaled d. Returns the cost.
+double oracle_alpha_block(const smallpaint_bounce_ref::Vec &N,
+                          smallpaint_bounce_ref::Vec &d,
+                          const double u1,
+                          const double u2,
+                          const double alpha)
+{
+  d = (N + smallpaint_bounce_ref::hemisphere(u1, u2));
+  if (d.x != 0 || d.y != 0 || d.z != 0) {
+    d = d * std::pow(d.length(), -alpha);
+  }
+  return d.dot(N);
+}
+
 }  // namespace
 
 TEST_CASE(
@@ -323,6 +350,77 @@ TEST_CASE("diffuse bounce with alpha = 1 gives |d| = 1 within float64 round-off"
     worst = std::max(worst, std::fabs(len(ray.d) - 1.0));
   }
   CHECK(worst <= FLOAT64_ROUND_OFF_RTOL);
+}
+
+TEST_CASE("diffuse bounce with alpha > 0 is bitwise the oracle's --alpha lines")
+{
+  for (const double alpha : ORACLE_ALPHAS) {
+    CAPTURE(alpha);
+    std::mt19937_64 rng(BOUNCE_TEST_SEED);
+    KernelPainterlyIntegrator p{};
+    p.u2_mode = U2_SAME;
+    p.alpha = alpha;
+    set_identity_frame(p);
+
+    int mismatches = 0;
+    for (int draw = 0; draw < BITWISE_TEST_DRAWS; draw++) {
+      const BounceCase c = draw_case(rng);
+      PainterlyRay ray = make_ray(c.origin, c.incoming);
+      std::uint64_t K = c.K0;
+      const double cost = painterly_diffuse_bounce(
+          p, to_double3(c.normal), &K, c.row, c.col, c.pass, c.depth, &ray);
+
+      const double u = painterly_vdc(c.K0 + 1);
+      smallpaint_bounce_ref::Vec d_ref;
+      const double cost_ref = oracle_alpha_block(to_ref(c.normal), d_ref, u, u, alpha);
+
+      const bool same = K == c.K0 + 1 && same_bits(cost, cost_ref) &&
+                        same_vec(ray.d, to_double3(d_ref)) &&
+                        same_vec(ray.o, to_double3(c.origin));
+      mismatches += !same;
+    }
+    CHECK_EQ(mismatches, 0);
+  }
+}
+
+TEST_CASE("zero-length diffuse d stays 0 with cost +0.0 for every alpha (SPEC §4)")
+{
+  // F = I and N = (-1, 0, 0), the normal of smallpaint's bottom plane (SPEC §9). The draw after
+  // ZERO_DRAW_K0 is 0, so s = (1, 0, 0) and d = N + F s = (+0, +0, +0) exactly. The origin is a
+  // point of the bottom plane, x = 2.5; the bounce must leave it unchanged. The incoming direction
+  // is overwritten.
+  const double3 N = make_double3(-1.0, 0.0, 0.0);
+  const double3 origin = make_double3(2.5, 0.0, -3.0);
+  const double3 incoming = make_double3(1.0, 0.0, 0.0);
+  const double3 zero_direction = make_double3(0.0, 0.0, 0.0);
+  REQUIRE(same_bits(painterly_vdc(ZERO_DRAW_K0 + 1), 0.0));
+
+  for (const double alpha : ZERO_LENGTH_ALPHAS) {
+    CAPTURE(alpha);
+    KernelPainterlyIntegrator p{};
+    p.u2_mode = U2_SAME;
+    p.alpha = alpha;
+    set_identity_frame(p);
+    PainterlyRay ray{origin, incoming};
+    std::uint64_t K = ZERO_DRAW_K0;
+    const double cost = painterly_diffuse_bounce(p, N, &K, 0, 0, 0, 0, &ray);
+
+    CHECK_EQ(K, ZERO_DRAW_K0 + 1);
+    CHECK(same_vec(ray.d, zero_direction));
+    CHECK(same_bits(cost, 0.0));
+    CHECK(same_vec(ray.o, origin));
+  }
+
+  // The expression before the rule, d * pow(|d|, -alpha), on the same d. For alpha = 0 (-alpha is
+  // -0.0) it is d * pow(0, -0) = d * 1 = d, the result checked above, so the rule changes nothing
+  // there. For alpha > 0 it is 0 * inf = NaN in every component: the case that the rule removes.
+  const double3 d_before_rule = zero_direction * std::pow(len(zero_direction), -0.0);
+  CHECK(same_vec(d_before_rule, zero_direction));
+  for (const double alpha : ORACLE_ALPHAS) {
+    CAPTURE(alpha);
+    const double3 d_literal = zero_direction * std::pow(len(zero_direction), -alpha);
+    CHECK((std::isnan(d_literal.x) && std::isnan(d_literal.y) && std::isnan(d_literal.z)));
+  }
 }
 
 TEST_CASE("mirror bounce is bitwise smallpaint's mirror block for unnormalized incoming d")

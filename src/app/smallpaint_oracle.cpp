@@ -285,7 +285,8 @@ void trace(Ray &ray, const Scene& scene, int depth, Vec& clr, pl& params, Halton
 			? rng_unit(g_path.seed, PURPOSE_U2, (uint32_t)depth, (uint32_t)g_path.row, (uint32_t)g_path.col, (uint32_t)g_path.pass)
 			: hal2.get();
 		ray.d = (N + hemisphere(hal.get(), u2));
-		ray.d = ray.d * pow(ray.d.length(), -g_alpha); // --alpha (SPEC §4)
+		// --alpha (SPEC §4). Zero-length d (SPEC §4, CHANGES.md 22): d = 0 stays 0, and pow is not evaluated.
+		if (ray.d.x != 0 || ray.d.y != 0 || ray.d.z != 0) ray.d = ray.d * pow(ray.d.length(), -g_alpha);
 		double cost = ray.d.dot(N);
 		Vec tmp = Vec();
 		trace(ray, scene, depth + 1, tmp, params, hal, hal2);

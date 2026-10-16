@@ -23,7 +23,8 @@ CCL_NAMESPACE_BEGIN
 
 /* SPEC §4. ray->o is already the hit point. Advances *K by one, and the increment comes before the
  * draw (smallpaint_painterly.cpp:203-205). Writes the new unnormalized direction into ray->d and
- * returns cost = dot(d, N). The cost uses the unnormalized d (smallpaint_painterly.cpp:206). */
+ * returns cost = dot(d, N). The cost uses the unnormalized d (smallpaint_painterly.cpp:206).
+ * A zero d stays zero, and its cost is 0 (SPEC §4, zero-length d). */
 ccl_device_inline double painterly_diffuse_bounce(const KernelPainterlyIntegrator &p,
                                                   double3 N,
                                                   uint64_t *K,
@@ -50,8 +51,14 @@ ccl_device_inline double painterly_diffuse_bounce(const KernelPainterlyIntegrato
   /* d = N + F s (smallpaint_painterly.cpp:205). The spiral is not rotated into N's frame
    * (SPEC §4). */
   double3 d = N + transform_direction_3x3(p.spiral_frame, s);
-  /* Normalization blend (SPEC §4). For alpha = 0, pow(|d|, -0) = 1 exactly, so d is unchanged. */
-  d = d * std::pow(len(d), -p.alpha);
+  /* Normalization blend (SPEC §4). For alpha = 0, pow(|d|, -0) = 1 exactly, so d is unchanged.
+   * Zero-length d (SPEC §4): d = 0 stays 0 and pow is not evaluated, because 0 * |0|^-alpha is
+   * 0 * inf = NaN for alpha > 0. The cost is then dot(0, N) = 0. d = 0 needs F s = -N exactly,
+   * for example u1 = u2 = 0 at K = 0 mod 2^23 (SPEC §2) on a surface with N = -F (1, 0, 0).
+   * -0.0 == 0, so a signed zero component counts as zero. */
+  if (d.x != 0.0 || d.y != 0.0 || d.z != 0.0) {
+    d = d * std::pow(len(d), -p.alpha);
+  }
 
   ray->d = d;
   return dot(d, N);

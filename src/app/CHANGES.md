@@ -42,7 +42,8 @@ glass and mirror branches are unchanged except where listed.
       - `u2` selection: `hal2.get()` for `same` and `base3`; `rng_unit(seed, PURPOSE_U2, depth, row, col, pass)` for
         `independent`. `hal.next()` and `hal2.next()` (lines 203-204) are unchanged.
       - The same line with `hemisphere(hal.get(), u2)`.
-      - New line `ray.d = ray.d * pow(ray.d.length(), -g_alpha);` (`--alpha`; exact no-op at 0).
+      - New line `ray.d = ray.d * pow(ray.d.length(), -g_alpha);` (`--alpha`; exact no-op at 0). It is skipped when
+        `ray.d` is the zero vector (item 22).
     - The remaining lines (depth limit 190, intersection 192-200, diffuse gain 209-211, mirror 214-220, glass 222-238)
       are unchanged.
 14. **render()** (lines 240-305) is replaced by the functions below. Its statements map as follows:
@@ -101,3 +102,19 @@ glass and mirror branches are unchanged except where listed.
       printed with `%.17g` parses back to itself, so a float32 socket value such as `0.1` (0.100000001490116119...) passed as
       text reproduces the same double.
     - `meta.json` does not record the new knobs, so its fields are the same as before T3.4.
+22. **Zero-length diffuse direction (T3.19, SPEC §4).** The `--alpha` line of item 13 runs only when `ray.d` is not the
+    zero vector:
+    `if (ray.d.x != 0 || ray.d.y != 0 || ray.d.z != 0) ray.d = ray.d * pow(ray.d.length(), -g_alpha);`
+    - Cause. With `--halton exact`, the draw at K ≡ 0 mod 2^23 is `halton_vdc2(K) = 0` (SPEC §2), so u1 = u2 = 0 and
+      `hemisphere(0, 0)` is (1, 0, 0). On the bottom plane, whose normal is (-1, 0, 0) (SPEC §9), `N + hemisphere(...)`
+      is then (0, 0, 0). For alpha > 0, `pow(0, -alpha)` is inf, so the line computed 0 * inf = NaN in all three
+      channels of the pixel. Example: `--size 64 --passes 129 --seed 7 --chain image --halton exact --alpha 0.5` held
+      NaN at pixel (row 12, col 11), from the draw K = 2^23 in pass 128 at depth 9.
+    - Now d stays (0, 0, 0), the cost `ray.d.dot(N)` is 0, the bounce adds nothing, and the path continues as for
+      alpha = 0. The rule itself draws nothing. Before T3.19 the NaN direction missed every object and ended the path;
+      now the path continues, so an alpha > 0 `--halton exact` render can consume more draws after a zero draw whose
+      hit point lies inside a sphere (the left and right spheres reach x = 2.55, through the bottom plane at x = 2.5).
+      In the example above it does not: `k_consumed.npy` is unchanged.
+    - Default output is unchanged. For alpha = 0, `pow(0, -0) = 1` already left d unchanged, and `--halton incremental`
+      never draws exactly 0 (SPEC §4). `sum.npy` and `k_consumed.npy` for `--size 64 --passes 2 --seed 7` are
+      byte-identical to the build before T3.19.

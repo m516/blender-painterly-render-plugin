@@ -1,9 +1,10 @@
 """Fast contract tests for ``smallpaint_oracle`` (T1.3).
 
-They pin determinism, thread invariance, exact Halton equivalence below the 2^23 period, K
-accounting, the SPEC §9 scene geometry, the alpha and ghost knobs, and the default values of the
-gain, epsilon and depth knobs. Renders are 64 pixels square unless a test says otherwise. Arrays
-are compared for exact equality, so no tolerance is used anywhere in this file.
+They pin determinism, thread invariance, exact Halton equivalence below the 2^23 period, the SPEC
+§4 zero-length d at the 2^23 wrap, K accounting, the SPEC §9 scene geometry, the alpha and ghost
+knobs, and the default values of the gain, epsilon and depth knobs. Renders are 64 pixels square
+unless a test says otherwise. Arrays are compared for exact equality, so no tolerance is used
+anywhere in this file.
 """
 
 import numpy as np
@@ -38,6 +39,17 @@ GHOST_PASSES = 4
 # Seeds 0..GHOST_SEEDS-1 render ghost=all and the next GHOST_SEEDS render ghost=none, so the two
 # groups are independent.
 GHOST_SEEDS = 8
+# SPEC §4 zero-length d (T3.19). With --halton exact, the draw at K = 2^23 is vdc(2^23) = 0 (SPEC
+# §2), so u1 = u2 = 0 and the spiral sample is s = (1, 0, 0). On the bottom plane, whose normal is
+# (-1, 0, 0) (SPEC §9), d = N + s is then 0. In the image chain of ZERO_DRAW_SEED with
+# ZERO_DRAW_ALPHA at SIZE pixels, the draw K = 2^23 falls on the bottom plane (pixel row 12, col
+# 11, pass 128, depth 9). 128 passes consume 8375930 draws and 129 consume 8441263, so
+# ZERO_DRAW_PASSES is the smallest pass count that reaches it. The oracle before T3.19 (commit
+# 696dc0c) evaluated d * |d|^-alpha = 0 * inf there and left NaN in all three channels of that
+# pixel.
+ZERO_DRAW_SEED = 7
+ZERO_DRAW_PASSES = 129
+ZERO_DRAW_ALPHA = 0.5
 
 
 def test_deterministic(oracle, tmp_path) -> None:
@@ -69,6 +81,26 @@ def test_halton_exact_equals_incremental_below_period(oracle, tmp_path) -> None:
     assert incremental.meta["total_k_consumed"] < HALTON_PERIOD
     assert np.array_equal(exact.sum, incremental.sum)
     assert np.array_equal(exact.k_consumed, incremental.k_consumed)
+
+
+def test_zero_length_diffuse_direction_stays_finite(oracle, tmp_path) -> None:
+    # SPEC §4: d = 0 stays 0, so the zero draw on the bottom plane adds nothing, and no NaN appears.
+    # The image chain is one chain (SPEC §3), so --threads must not change the output.
+    options = {
+        "size": SIZE,
+        "passes": ZERO_DRAW_PASSES,
+        "seed": ZERO_DRAW_SEED,
+        "chain": "image",
+        "halton": "exact",
+        "alpha": ZERO_DRAW_ALPHA,
+    }
+    one = oracle.run_oracle(tmp_path / "one", **options, threads=1)
+    four = oracle.run_oracle(tmp_path / "four", **options, threads=4)
+    # The render reaches the zero draw K = 2^23 and stops before the next one, K = 2 * 2^23.
+    assert HALTON_PERIOD <= one.meta["total_k_consumed"] < 2 * HALTON_PERIOD
+    assert np.all(np.isfinite(one.sum))
+    assert np.array_equal(one.sum, four.sum)
+    assert np.array_equal(one.k_consumed, four.k_consumed)
 
 
 def test_total_k_matches_k_consumed(oracle, tmp_path) -> None:
