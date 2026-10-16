@@ -10,7 +10,7 @@ first.
 - `KNOBS` (write them out in full in every command; they exist once item BOOT-0a has landed):
   `VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest"`
 - `CHECK`, the standard verify, which must exit 0:
-  `CMAKE_BUILD_PARALLEL_LEVEL=4 make check <KNOBS>`
+  `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check <KNOBS>` (run from the clone root; R12)
   `Q/RULINGS.md` may extend `CHECK`, for example with a prebuilt Embree after BOOT-0b. The latest ruling wins.
 - Translating a card's commands:
 
@@ -21,6 +21,7 @@ first.
 | `build/dev` | `build/q` |
 | `build/dev/_deps/embree-src`, `build/dev/_deps/doctest-src` | `MAIN/.cache/src/embree`, `MAIN/.cache/src/doctest` |
 | `.venv/bin/<tool>` | `MAIN/.venv/bin/<tool>` |
+| any Python command (pytest, an `analyze.py`, a `tools/` script) | the same, prefixed with `PYTHONPATH="$PWD/analysis"`; an explicit `PAINTERLY_BUILD_DIR` is absolute: `"$PWD/build/q"` (R12) |
 | `make env`, `make oracle`, `make blender`, `make wheel`, the network, CI, GitHub, "the orchestrator verifies" | host-only: don't run; report "host-only, not run" |
 
 **General rules.**
@@ -64,8 +65,7 @@ Outcome:
   `git show HEAD:Makefile > /tmp/Makefile.orig && make -n check | sed 's/ *$//'`
   and `make -n -f /tmp/Makefile.orig check | sed 's/ *$//'`
   (no knobs; trailing spaces stripped).
-allowedPaths: `Makefile`; and, only for GCC 15 compile fixes, `src/painterly/**`, `src/cycles/shim/**`, `src/blender/**`,
-`src/app/**`, `src/test/**`.
+allowedPaths: `Makefile`; and, only for GCC 15 compile fixes, `src/painterly/**`, `src/cycles/shim/**`, `src/blender/**`, `src/app/**`, `src/test/**`.
 
 ## M3-FIX-T3.19: zero-length diffuse direction (SPEC §4, D33)
 Card: `docs/handoff/drafts/M3-fixups/T3.19-zero-length-bounce.md`.
@@ -127,8 +127,7 @@ Outcome:
 - `CHECK`, with `-Dembree_DIR=<clone>/build/embree-install/lib/cmake/embree-4.4.1` appended to `CMAKE_ARGS`, exits 0.
   Its configure log shows the `prebuilt` line, its build compiles no Embree source, and the symbol audit passes.
 - `CHECK` without `embree_DIR` also exits 0, so the default path is unchanged.
-allowedPaths: `CMakeLists.txt`, `cmake/**`, `tools/embree_prebuilt.py`, `tests/core/test_embree_prebuilt.py`, `Makefile`,
-`docs/architecture.md`.
+allowedPaths: `CMakeLists.txt`, `cmake/**`, `tools/embree_prebuilt.py`, `tests/core/test_embree_prebuilt.py`, `Makefile`, `docs/architecture.md`.
 Depends on: M3-FIX-T3.22.
 
 ## M3-FIX-T3.23: shared test scaffolding (TQ.1 F14, F16-F18; panel #1)
@@ -176,9 +175,7 @@ Outcome:
   prints nothing.
 - `docs/tasks/M3/AMENDMENTS-fixups.md` lists every edit: file, old text, new text and reason (the commit or decision).
 - `make lint` with the `KNOBS` passes.
-allowedPaths: `docs/tasks/M3/T3.13-scene.md`, `docs/tasks/M3/T3.14-session.md`, `docs/tasks/M3/T3.15-bindings.md`,
-`docs/tasks/M3/T3.16-oracle-parity.md`, `docs/tasks/M3/T3.17-triangle-path.md`, `docs/tasks/M3/T3.18-exp-throughput.md`,
-`docs/tasks/M4/**`, `docs/tasks/M5/**`, `docs/tasks/M3/AMENDMENTS-fixups.md`.
+allowedPaths: `docs/tasks/M3/T3.13-scene.md`, `docs/tasks/M3/T3.14-session.md`, `docs/tasks/M3/T3.15-bindings.md`, `docs/tasks/M3/T3.16-oracle-parity.md`, `docs/tasks/M3/T3.17-triangle-path.md`, `docs/tasks/M3/T3.18-exp-throughput.md`, `docs/tasks/M4/**`, `docs/tasks/M5/**`, `docs/tasks/M3/AMENDMENTS-fixups.md`.
 Depends on: M3-FIX-T3.24.
 
 ## M3-T3.13: painterly/scene (host scene, reflected PainterlyIntegrator, device_update)
@@ -313,3 +310,30 @@ Outcome: the JSON parses, and covers each of the 10 cards on both lenses. The co
 prints 20.
 allowedPaths: `docs/handoff/findings/M7-M9-review-2.json`.
 Depends on: BOOT-0a, so that no task is verified against `CHECK` before the knobs exist.
+
+## EXP-REPRO: the committed results of experiments 001-006 reproduce on this machine
+Why:
+- On 2026-10-15 the project moved from a cloud container to this machine, and the render cache did not move.
+- The host regenerated every render with the experiments' oracle, rebuilt from the pre-T3.4 source; its sha256 is in
+  Q/RULINGS.md.
+- Every later analysis, and the designs of experiments 007-009, rest on the committed results of 001-006.
+Do:
+- For each of 001, 002, 003, 004 and 006, run that experiment's `analyze.py` with `--out-dir <clone>/repro/<NNN>`.
+  Run it with
+  `PAINTERLY_BUILD_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`.
+  It must render nothing: if it reports a missing render, call `report_blocked`.
+- Compare every output file with the committed file of the same name, using `cmp`.
+- Write `tools/compare_results.py`, with tests in `tests/core/test_compare_results.py`. It loads two `results.json`
+  files and walks every leaf.
+  - For numeric leaves, it reports committed, new, the absolute difference and the relative difference.
+  - For non-numeric leaves (verdicts, rejected-key lists, strings, booleans), it reports identical or not.
+- Write `docs/handoff/repro/REPRO.json` with these fields:
+  - per experiment and per file: `identical` (from cmp);
+  - for each `results.json` that is not identical: the leaf report and `non_numeric_identical` (true or false);
+  - the top-level field `"all_identical"`: true only if every file of every experiment is byte-identical.
+- Write `docs/handoff/repro/REPRO.md`: a table of the same facts. Report numbers only, with no interpretation.
+Outcome:
+- `MAIN/.venv/bin/python -m pytest -q tests/core/test_compare_results.py` passes.
+- REPRO.json parses and has entries for 001, 002, 003, 004 and 006.
+- `make lint` with the KNOBS passes.
+allowedPaths: `tools/compare_results.py`, `tests/core/test_compare_results.py`, `docs/handoff/repro/**`.
