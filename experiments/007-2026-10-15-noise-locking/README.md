@@ -880,6 +880,34 @@ oracle binary (`066bb5d4…`) did not move. Nothing of this experiment had been 
   experiment's data is examined.
 - **Unchanged:** Background, Hypothesis, and every decision rule, level, key list, exclusion, seed and block in Method.
 
+### Amendment 2 (Opus, 2026-10-16, before any analysis of this experiment): the reproduction check
+
+EXP-REPRO (commit `d36ae71`, `docs/handoff/repro/REPRO.md`) re-ran the analyses of experiments 001-004 and 006 on the
+regenerated renders. Amendment 1 asked for every committed output to be byte-identical, and they are not all:
+- The 24 committed figures are byte-identical.
+- The five `results.json` files differ. In each, every non-numeric leaf is identical, so every verdict and every
+  rejected-key list reproduces. Numeric leaves differ in 48 of 1535 (001), 80 of 4513 (002), 7 of 1067 (003), 60 of
+  2544 (004) and 2539 of 8013 (006), by at most 1.8e-13 relative.
+- The differing leaves are `spectral_slope` statistics (every experiment), `slag` and `structure_std` statistics (006),
+  and summaries in 001 (the H4 convergence fit) and 006 (the slag profile and the hypothesis summaries). `mean.R`,
+  `mean.G` and `mean.B` are bit-identical in all 5778 of their leaves.
+- The audit re-ran the five analyses independently and got the same report.
+
+Reading, not tested: the renders reproduce, and the last bits of these metrics depend on the CPU. This host is an AMD
+Ryzen 5 5600H (AVX2); the cloud container's CPU was not recorded.
+
+Decision:
+- This replaces Amendment 1's "Reproduction first" bullet. The analysis starts when its backlog dependencies are done.
+- The committed `results.json` files of 001-006 do not change: they are the record of the cloud run. Nothing is
+  re-pinned and no tolerance is added.
+- Backlog item EXP-REPRO-HOST commits this machine's outputs of the same analyses as
+  `docs/handoff/repro/host/<NNN>/results.json`, and checks that they give EXP-REPRO's report exactly.
+- Every exact check (`==`, `cmp`) that PLAN.md makes against a committed 001-006 `results.json` compares, still exactly,
+  with `docs/handoff/repro/host/<NNN>/results.json` instead. A mismatch still fails the check.
+- PLAN.md makes no exact check against a committed 001-006 `results.json`, so nothing else in it changes.
+- A 001-006 number that this experiment uses as a design input is still read from the committed `results.json`.
+- **Unchanged:** Background, Hypothesis, and every decision rule, level, key list, exclusion, seed and block in Method.
+
 ## Results
 
 Pending: written by the analysis card (PLAN.md, Order of work, step 7).

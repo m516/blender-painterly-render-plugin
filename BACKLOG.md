@@ -22,6 +22,8 @@ first.
 | `build/dev/_deps/embree-src`, `build/dev/_deps/doctest-src` | `MAIN/.cache/src/embree`, `MAIN/.cache/src/doctest` |
 | `.venv/bin/<tool>` | `MAIN/.venv/bin/<tool>` |
 | any Python command (pytest, an `analyze.py`, a `tools/` script) | the same, prefixed with `PYTHONPATH="$PWD/analysis"`; an explicit `PAINTERLY_BUILD_DIR` is absolute: `"$PWD/build/q"` (R12) |
+| a card's `<venv>/bin/python -I …` | `PYTHONPATH="$PWD/analysis" <venv>/bin/python -P -s …` (R18) |
+| a card's `.cache/oracle-build` (the experiments' oracle) | `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build`, read-only; never `build/q` (R7, R17) |
 | `make env`, `make oracle`, `make blender`, `make wheel`, the network, CI, GitHub, "the orchestrator verifies" | host-only: don't run; report "host-only, not run" |
 
 **General rules.**
@@ -337,3 +339,88 @@ Outcome:
 - REPRO.json parses and has entries for 001, 002, 003, 004 and 006.
 - `make lint` with the KNOBS passes.
 allowedPaths: `tools/compare_results.py`, `tests/core/test_compare_results.py`, `docs/handoff/repro/**`.
+
+## EXP-REPRO-HOST: this machine's outputs of the 001-006 analyses, the reference for exact checks (R17)
+Why:
+- EXP-REPRO found the 24 committed figures of 001-004 and 006 byte-identical on this machine, and the five committed
+  `results.json` files different in numeric leaves only, by at most 1.8e-13 relative (`docs/handoff/repro/REPRO.md`).
+- Later items check analysis outputs exactly (`==`, `cmp`). On this machine they compare `results.json` with the record
+  this item writes (R17).
+Do:
+- For each of 001, 002, 003, 004 and 006, run that experiment's `analyze.py --out-dir .cache/repro-host/<NNN>` from the
+  clone root, prefixed with `PYTHONPATH="$PWD/analysis"` (R12), with
+  `PAINTERLY_BUILD_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`.
+  It must render nothing: if it reports a missing render, call `report_blocked`.
+- `cmp` every output figure with the committed figure of the same name.
+- Copy each output `results.json` byte for byte to `docs/handoff/repro/host/<NNN>/results.json`. Copy no figure.
+- Write `docs/handoff/repro/host/README.md`: what these files are (R17), the commands you ran, the experiments' oracle
+  sha256 (R7), the date, and the results of the Outcome checks. Numbers only.
+Outcome:
+- All 24 output figures are byte-identical to the committed ones.
+- For each NNN, `compare_objects` from `tools/compare_results.py`, applied to the committed `results.json` and to
+  `docs/handoff/repro/host/<NNN>/results.json`, returns exactly (`==` on the parsed JSON) the report stored for NNN in
+  `docs/handoff/repro/REPRO.json` under `["<NNN>"]["results.json"]["leaves"]`.
+- `make lint` with the KNOBS passes.
+Depends on: EXP-REPRO.
+allowedPaths: `docs/handoff/repro/host/**`.
+
+## M3-FIX-T3.25: self-describing oracle renders (TQ.1 F22; panel #17)
+Card: `docs/handoff/drafts/M3-fixups/T3.25-self-describing-oracle.md`.
+- The card's cache checks read `PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`
+  read-only.
+- The card's `.cache/oracle-build` is the experiments' oracle,
+  `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build`
+  (R7, R17), never `build/q`. It never rebuilds it.
+- EXP-REPRO established that the committed figures and every verdict of 001-006 reproduce on this machine, and that their
+  `results.json` numbers differ in the last bits (R17). This card compares no `results.json`.
+- Its `python -I` commands run as R18 says, so that `cache_keys.py` imports this clone's `painterly_analysis`.
+Depends on: EXP-REPRO, M3-FIX-T3.24.
+Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+
+## M3-FIX-T3.26: analysis constants and runner reuse (TQ.1 F27, F28)
+Card: `docs/handoff/drafts/M3-fixups/T3.26-analysis-constants.md`.
+- Step 2 and A6 (the reproduction check) run in your clone, against MAIN's render cache read-only, not "in the main tree
+  only". Save Appendix A as printed, then change exactly these three things in it:
+  - `unset PAINTERLY_CACHE` becomes
+    `export PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`;
+  - `PAINTERLY_BUILD_DIR=.cache/oracle-build` becomes
+    `PAINTERLY_BUILD_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build`;
+  - `.venv/bin/python` becomes
+    `PYTHONPATH="$PWD/analysis" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python`.
+- On this machine `before` and `after` each print five `<n> analyze exit 0` lines, exactly five `DIFFERS:` lines (the
+  five committed `results.json` files, and no figure), and `compared 29 committed files, 5 differ`. That is EXP-REPRO's
+  finding (R17), not a failure. Any other output is a failure.
+- A6 also requires that, for n in 001 002 003 004 006, these print nothing:
+  `cmp .cache/t3.26/before/$n/results.json docs/handoff/repro/host/$n/results.json`, the same for `after`, and
+  `diff -r .cache/t3.26/before/$n .cache/t3.26/after/$n`.
+- The commit body's reproduction line is
+  `001-004, 006: 24 committed figures byte-identical; 5 results.json byte-identical to docs/handoff/repro/host, before and after; stdout identical.`
+- Scratch outputs go inside the clone, under `.cache/t3.26/` (git-ignored).
+Depends on: M3-FIX-T3.25, EXP-REPRO-HOST.
+Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+
+## EXP-007: run the pre-registered analysis of experiment 007 (noise locking)
+Card: `experiments/007-2026-10-15-noise-locking/PLAN.md`, with every amendment in its README.
+- The renders are complete in MAIN's `.cache/renders`. Never render there. PLAN's smoke runs render into a scratch
+  cache inside your clone, as PLAN says.
+- Use `PAINTERLY_BUILD_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build`
+  and `PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`.
+- The Conclusion is a DRAFT.
+Depends on: M3-FIX-T3.26.
+Outcome: PLAN.md's Acceptance, translated, including the second full run being byte-identical; and `make lint` with
+the KNOBS passes.
+allowedPaths: the files PLAN.md lists.
+
+## EXP-008: run the pre-registered analysis of experiment 008 (jitter dose-response)
+Card: `experiments/008-2026-10-15-jitter-dose-response/PLAN.md`, with every amendment in its README. The same
+environment rules as EXP-007 apply. PLAN's render step is already done on the host: skip it and report so.
+Depends on: EXP-007.
+Outcome: PLAN.md's Acceptance, translated; and `make lint` with the KNOBS passes.
+allowedPaths: the files PLAN.md lists.
+
+## EXP-009: run the pre-registered analysis of experiment 009 (scale limits)
+Card: `experiments/009-2026-10-15-scale-limits/PLAN.md`, with every amendment in its README. The same environment
+rules as EXP-007 apply. PLAN's render and disk-preflight steps are already done on the host: skip them and report so.
+Depends on: EXP-008.
+Outcome: PLAN.md's Acceptance, translated; and `make lint` with the KNOBS passes.
+allowedPaths: the files PLAN.md lists.
