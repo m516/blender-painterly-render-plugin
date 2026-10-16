@@ -1,5 +1,14 @@
 # PLAN: analysis card for experiment 007 (noise locking)
 
+> **Amendment 1 (Opus, 2026-10-15; see the README).**
+> - The experiments' oracle is `.cache/oracle-build/src/app/smallpaint_oracle`, sha256 `804a2dc2…`. Every sha256 below is
+>   updated to it.
+> - The host makes all renders before this card runs. Skip every render and disk-preflight step and report it "done on
+>   host".
+> - Read the render cache read-only through `PAINTERLY_CACHE` and `PAINTERLY_BUILD_DIR`, as BACKLOG.md gives them. Never
+>   render into it.
+> - This card starts only after EXP-REPRO has found every committed output of 001-004 and 006 byte-identical.
+
 The pre-registration is `README.md` (Background, Hypothesis and Method). This card implements its Method. It does not
 change the hypotheses or rules. If something in them cannot be implemented as written, stop and report it. Opus then
 adds an "Amendments before analysis" subsection.
@@ -38,7 +47,7 @@ adds an "Amendments before analysis" subsection.
   `report.load_jobs_module`, with `build_ensembles(pairs, scale)`.
 - No change to `third_party/`, `docs/`, `src/` or the oracle. **Never run `make oracle`**: the render cache is keyed
   by the binary `.cache/oracle-build/src/app/smallpaint_oracle`, sha256
-  `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`, which experiments 006, 008 and 009 also use. A
+  `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`, which experiments 006, 008 and 009 also use. A
   rebuild changes that sha256 and orphans every cached render. `experiments/README.md` ("How to run") says the same.
 
 ## Reuse (no copies)
@@ -122,7 +131,7 @@ float64 FFT round-off):
   - `DOWNSAMPLE_FACTOR = 2`; `ROUNDING_VARIANCE = 1 / 12` (variance of the display's rounding, a definition);
   - `CROP_PX = 100`, `COMMON_CROP_PX = 200`, `CROP_FRACTION = Fraction(1, 4)`, `NOISE_DISPLAY_OFFSET = 128` (mid-grey
     of the byte range, a definition), `MAX_FIGURE_BYTES = 1_000_000`;
-  - `ORACLE_SHA256 = "066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a"`; at start-up the script
+  - `ORACLE_SHA256 = "804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954"`; at start-up the script
     computes the binary's sha256 and raises if it differs;
   - the synthetic knobs (README Method, "Synthetic validation"): `SYNTH_SEED = 0`, `SYNTH_REPLICATES = 10`,
     `SYNTH_E1_PAIRS = 64`, `SYNTH_STRUCTURE_TERMS = 16`, `SYNTH_STRUCTURE_BAND = (2, 50)` (cycles per image, 006),
@@ -277,7 +286,7 @@ requirement.
    PAINTERLY_CACHE=.cache/006-smoke-cache PAINTERLY_BUILD_DIR=.cache/oracle-build .venv/bin/python -c "from pathlib import Path; from painterly_analysis import experiment as e; m = e.load_jobs_module(Path('experiments/006-2026-10-09-jitter-units/jobs.py')); jobs = [j for js in m.build_ensembles(2, 4).values() for j in js]; print(sum((e.cache_root() / e.job_key(j) / 'done').is_file() for j in jobs), len(jobs))"
    ```
 
-   They must print `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`, then `completed=256 remaining=0`
+   They must print `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`, then `completed=256 remaining=0`
    (exit 0), then `64 64` (all three verified on 2026-10-15). Any other output means the oracle binary or a cache
    changed: stop and report. Do not run `make oracle`.
 1. Write the library helpers and their tests. `make test` must pass.

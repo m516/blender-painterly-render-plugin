@@ -1,5 +1,14 @@
 # Experiment 008: plan for the render and analysis card
 
+> **Amendment 1 (Opus, 2026-10-15; see the README).**
+> - The experiments' oracle is `.cache/oracle-build/src/app/smallpaint_oracle`, sha256 `804a2dc2…`. Every sha256 below is
+>   updated to it.
+> - The host makes all renders before this card runs. Skip every render and disk-preflight step and report it "done on
+>   host".
+> - Read the render cache read-only through `PAINTERLY_CACHE` and `PAINTERLY_BUILD_DIR`, as BACKLOG.md gives them. Never
+>   render into it.
+> - This card starts only after EXP-REPRO has found every committed output of 001-004 and 006 byte-identical.
+
 The README (Background, Hypothesis, Method) is the specification. This plan says how to implement it.
 
 ## Files
@@ -20,14 +29,14 @@ The README (Background, Hypothesis, Method) is the specification. This plan says
     "pre-registered; analysis pending"). Replace only its Conclusion cell with a one-line summary of the verdicts.
 - `jobs.py` is not changed. No change to `analysis/`, `third_party/`, `docs/` or the oracle.
 - Never run `make oracle`. The binary `.cache/oracle-build/src/app/smallpaint_oracle` (sha256
-  `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`) keys the render cache; a rebuild from the
+  `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`) keys the render cache; a rebuild from the
   current source changes its sha256 and orphans the 32 reused renders.
 
 ## Order of work
 
 1. Write `analyze.py --preflight` first and run it. It must exit 0 before any render. It checks that:
    - the sha256 of `oracle.oracle_binary()` (hashlib over the file) equals the README's
-     `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`;
+     `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`;
    - each of the 32 jobs of `f0` and `f1400` has a `done` marker in
      `experiment.cache_root() / experiment.job_key(job)`;
    - the free space of the cache's filesystem (`shutil.disk_usage(experiment.cache_root()).free`) is at least the

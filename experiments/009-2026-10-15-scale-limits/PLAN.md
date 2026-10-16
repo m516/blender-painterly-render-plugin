@@ -1,5 +1,14 @@
 # Experiment 009: plan for the render and analysis card
 
+> **Amendment 1 (Opus, 2026-10-15; see the README).**
+> - The experiments' oracle is `.cache/oracle-build/src/app/smallpaint_oracle`, sha256 `804a2dc2…`. Every sha256 below is
+>   updated to it.
+> - The host makes all renders before this card runs. Skip every render and disk-preflight step and report it "done on
+>   host".
+> - Read the render cache read-only through `PAINTERLY_CACHE` and `PAINTERLY_BUILD_DIR`, as BACKLOG.md gives them. Never
+>   render into it.
+> - This card starts only after EXP-REPRO has found every committed output of 001-004 and 006 byte-identical.
+
 The README (Background, Hypothesis, Method) is the specification. This plan says how to implement it. If something in
 the README cannot be implemented as written, stop and report it. Opus then adds an "Amendments before analysis"
 subsection. Do not change a hypothesis, a rule, a block set or a configuration.
@@ -26,7 +35,7 @@ subsection. Do not change a hypothesis, a rule, a block set or a configuration.
 
 - `jobs.py` is not changed. No change to `third_party/`, `docs/`, `src/`, or the files of experiments 001-008.
 - **Never run `make oracle`.** The binary `.cache/oracle-build/src/app/smallpaint_oracle` (sha256
-  `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`) keys the render cache. Its source has changed
+  `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`) keys the render cache. Its source has changed
   since it was built, so a rebuild changes the sha256 and orphans the 96 reused renders.
 
 ## Order of work
@@ -39,7 +48,7 @@ subsection. Do not change a hypothesis, a rule, a block set or a configuration.
 1. Write `analyze.py --preflight` first and run it. It renders nothing and must exit 0 before any render. It checks
    that:
    - the sha256 of `oracle.oracle_binary()` (hashlib over the file) equals the README's
-     `066bb5d4247c556ad5232bfc4fff75dc5f37089840b23f1ecc8fdd9cb518828a`;
+     `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`;
    - each of the 96 jobs of the six `REUSED` blocks has a `done` marker in
      `experiment.cache_root() / experiment.job_key(job)`;
    - the free space of `experiment.cache_root()` (`shutil.disk_usage(...).free`) is at least the bytes of the jobs not

@@ -799,6 +799,26 @@ PAINTERLY_BUILD_DIR=.cache/oracle-build .venv/bin/python experiments/009-2026-10
   - Found while recomputing: H2's Holm test is not exact when the 200 and 800 px sds differ as the stand-ins do
     (family-wise error 0.020-0.028; H2 Power). It is stated, not changed.
 
+### Amendment 1 (Opus, 2026-10-15, before any render or analysis of this experiment): a new machine
+
+On 2026-10-15 the project moved from a cloud container to the owner's machine. The render cache and the experiments'
+oracle binary (`066bb5d4…`) did not move. Nothing of this experiment had been rendered or analysed.
+- **The oracle** is rebuilt on the new host from the source tree of commit `d2259e7^`, the last commit before T3.4
+  changed `src/app/`.
+  - `src/app/` there is unchanged since `b390efa`, so this is the source of `066bb5d4…`.
+  - Build: `-DCMAKE_BUILD_TYPE=Release -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=OFF`, GCC 15.2.0.
+  - Its sha256 is `804a2dc2722167aab472aacc2c0cce4bba53f28f155d63b7a0f2c827a0395954`. It replaces `066bb5d4…` wherever this README names the binary, and `PLAN.md` is updated to
+    match.
+  - "Never rebuild it" now applies to this binary.
+- **The renders.** Every render this experiment uses, whether Method calls it reused or new, is regenerated on the host
+  with unchanged job definitions: jobs, seeds, blocks and options. The analysis reads the cache read-only and renders
+  nothing. The host does Method's render and disk steps before the analysis starts.
+- **Reproduction first.** The analysis starts only after a separate check (backlog item EXP-REPRO) has re-run the
+  analyses of experiments 001-004 and 006 on the regenerated renders and found every committed output byte-identical.
+  If any output differs, this analysis does not start, and Opus decides by a further amendment before any of this
+  experiment's data is examined.
+- **Unchanged:** Background, Hypothesis, and every decision rule, level, key list, exclusion, seed and block in Method.
+
 ## Results
 
 Pending: the analysis card fills this in.
