@@ -12,3 +12,6 @@ __pycache__/
 experiments/**/out/
 *.blend1
 .DS_Store
+
+# ds-autopilot queue, steward files and other local state (never committed)
+.tmp/

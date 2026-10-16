@@ -5,6 +5,12 @@ Károly Zsolnai-Fehér's `smallpaint_painterly`. That look comes from a Halton-s
 The native core is new C++20, laid out and named like Cycles. Cycles source is vendored verbatim
 where reusable. The Blender side is a pure-Python extension, also mirroring Cycles.
 
+**Since 2026-10-15** implementation is done by DeepSeek through ds-autopilot. Its sources are `AGENTS.md` (the
+procedure DeepSeek follows), `BACKLOG.md` (the work items) and `.tmp/ds-queue/RULINGS.md`. Claude sessions specify,
+review, verify and land work; they do not write code.
+- The "Finish protocol" below applies to Claude agents only.
+- The "Network notes" table describes the old cloud container.
+
 Read before working:
 - `docs/spec.md` (normative behaviour; cite it as `SPEC §n`)
 - `docs/plan.md` (approved plan, milestones, experiments)

@@ -1,5 +1,9 @@
 # Work queue (ordered)
 
+> **2026-10-15:** for execution this file is superseded by `BACKLOG.md` (ds-autopilot, DeepSeek). Its model tiers
+> are historical: coding now goes to DeepSeek, and Claude specifies, reviews and verifies. The order and the gates
+> below still explain why the backlog is ordered the way it is.
+
 Model tiers:
 - **strong** (Opus-class): judgment calls, experiment design and conclusions, contract changes, review panels.
 - **mid** (Sonnet-class): card review and revision, cross-checks.

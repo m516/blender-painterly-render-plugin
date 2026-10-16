@@ -1,5 +1,13 @@
 # Handoff: Painterly, state on 2026-10-15
 
+**Update 2026-10-15: execution moved to DeepSeek.** The project now lives on the owner's machine, and its work runs
+through ds-autopilot, where DeepSeek planner, worker and auditor agents run in a sandbox and stack audited commits on
+an integration clone. Claude sessions only specify, review, verify and land work.
+- The live sources are `BACKLOG.md` (the work items and their gates), `AGENTS.md` (the standing procedure for DeepSeek)
+  and the queue's `RULINGS.md`, at `.tmp/ds-queue/RULINGS.md`, which is not committed.
+- This bundle remains the background and rationale.
+- `queue.md` gives the reasoning behind the order. The Haiku `workflows/*.js` scripts are historical.
+
 This directory lets an agent continue the project without the original conversation. Read in this order:
 1. this file;
 2. `queue.md`: the ordered work, each item with its gate and recommended model tier;
