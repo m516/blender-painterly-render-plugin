@@ -116,6 +116,29 @@ Outcome:
 Depends on: M3-FIX-T3.21.
 allowedPaths: `src/test/test_math_double3.cpp`, `tests/core/test_verbatim_copies.py`.
 
+## M3-FIX-T3.21c: the verbatim-copy test checks bytes, not line numbers (T3.21b audit)
+No card; this item is the specification.
+Why:
+- The module docstring of `tests/core/test_verbatim_copies.py` cites "the comment at
+  `src/test/test_math_double3.cpp:16-18`". Since M3-FIX-T3.21 that comment is at lines 19-21.
+- Its second assertion pins the copy to lines 24-36 (`COPY_LINE_RANGE`). The first assertion already checks every byte
+  of the copy, so the pin only adds the position: a line added above the copy would fail the test while the copy is
+  still byte-identical.
+Do:
+- In the module docstring, cite that comment without a line number, as the comment above `namespace smallpaint_ref` in
+  `src/test/test_math_double3.cpp`.
+- Remove `COPY_LINE_RANGE`, the comment above it and the second assertion. Keep the first assertion and its message,
+  and everything else.
+Outcome:
+- `grep -nE '16-18|COPY_LINE_RANGE' tests/core/test_verbatim_copies.py` prints nothing.
+- The test passes on the repository as it is.
+- In a scratch mirror of the two files (as M3-FIX-T3.21b's answer did), the test fails when the copy is the LF version
+  that M3-FIX-T3.21 committed (`git show e7166f6:src/test/test_math_double3.cpp`), and passes when one blank line is
+  inserted above `namespace smallpaint_ref` in the current file. Record both runs in your answer.
+- `CHECK` exits 0.
+Depends on: M3-FIX-T3.21b.
+allowedPaths: `tests/core/test_verbatim_copies.py`.
+
 ## M3-FIX-T3.22: build hygiene (TQ.1 F9-F11, F13, F15; panel #5, #6, #9, #18)
 Card: `docs/handoff/drafts/M3-fixups/T3.22-build-hygiene.md`.
 - BOOT-0a has added `VENV` and `CMAKE_ARGS` to the Makefile. Keep both when the card edits the Makefile.
