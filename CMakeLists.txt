@@ -1,26 +1,16 @@
 cmake_minimum_required(VERSION 3.28)
 project(painterly VERSION 0.1.0 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-
-# static CRT: never bind to Blender's MSVC runtime
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# Painterly's build settings live in one place, cmake/painterly_embree_config.cmake: the C++ standard,
+# position-independent code, the visibility presets, the MSVC runtime and the floating-point flags. The same file is
+# what Embree gets, both through FetchContent (this configure) and in a prebuilt install (tools/embree_prebuilt.py
+# passes it as CMAKE_PROJECT_INCLUDE). It must come after project(), because it sets CMAKE_MSVC_RUNTIME_LIBRARY and
+# adds compile options.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/painterly_embree_config.cmake)
 
 option(PAINTERLY_BUILD_MODULE "Build the _painterly Python module" ON)
 option(PAINTERLY_BUILD_TESTS "Build the doctest unit tests" ON)
 option(PAINTERLY_BUILD_ORACLE "Build the smallpaint_oracle reference CLI" ON)
-
-# Bit-identical oracle parity requires no FMA contraction (docs/architecture.md, "Determinism contract").
-if(MSVC)
-  add_compile_options(/fp:precise)
-else()
-  add_compile_options(-ffp-contract=off -fno-fast-math)
-endif()
 
 enable_testing()
 
