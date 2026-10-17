@@ -63,9 +63,11 @@ ccl_device_inline PainterlyRay painterly_camera_smallpaint_ray(const KernelPaint
   const KernelPainterlyCamera &cam = data.cam;
   const double w = cam.width;
   const double h = cam.height;
-  /* smallpaint_painterly.cpp:174-175. fovx and fovy are float, as in smallpaint. */
-  const float fovx = SMALLPAINT_PI / 4;
-  const float fovy = (h / w) * fovx;
+  /* smallpaint_painterly.cpp:174-175. fovx and fovy are float, as in smallpaint, and the explicit
+   * float(...) is smallpaint's implicit conversion. It rounds exactly as the implicit one does, so
+   * the two values are unchanged. */
+  const float fovx = float(SMALLPAINT_PI / 4);
+  const float fovy = float((h / w) * fovx);
   const double x = row;
   const double y = col;
   /* smallpaint_painterly.cpp:176-178. tan is taken in double on the float-rounded angle (SPEC §7).

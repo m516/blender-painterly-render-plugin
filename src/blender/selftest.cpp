@@ -91,7 +91,9 @@ SelftestResult selftest_embree()
   rayhit.ray.tnear = 0.0f;
   rayhit.ray.tfar = std::numeric_limits<float>::infinity();
   rayhit.ray.time = 0.0f;
-  rayhit.ray.mask = -1;
+  // Every mask bit is set, so the ray sees every geometry. Embree's RTCRay::mask is unsigned int,
+  // and Embree's own examples write -1.
+  rayhit.ray.mask = ~0u;
   rayhit.ray.id = 0;
   rayhit.ray.flags = 0;
   rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
