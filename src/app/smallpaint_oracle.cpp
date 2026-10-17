@@ -35,7 +35,14 @@ namespace smallpaint_painterly {
 
 int width, height;
 const double inf = 1e9;
-double eps = 1e-4;                             // --ray-epsilon 1e-4; smallpaint_painterly.cpp:39. Set by oracle_main() before build_scene().
+// Knob defaults (CHANGES.md 23): the smallpaint literal each knob replaces. eps, the g_* knobs, Options and usage_format use them.
+constexpr double DEFAULT_RAY_EPSILON = 1e-4;                       // --ray-epsilon; smallpaint_painterly.cpp:39 (eps = 1e-4)
+constexpr double SMALLPAINT_JITTER_DIVISOR = 700;                  // smallpaint_painterly.cpp:291-292 (RND / 700)
+constexpr double DEFAULT_JITTER = 1.0 / SMALLPAINT_JITTER_DIVISOR; // --jitter, in image-plane units (SPEC §7)
+constexpr double DEFAULT_DIFFUSE_GAIN = 0.1;                       // --diffuse-gain; smallpaint_painterly.cpp:209-211 (*0.1)
+constexpr double DEFAULT_EMISSION_GAIN = 2;                        // --emission-gain; smallpaint_painterly.cpp:200 (* 2)
+constexpr int DEFAULT_MAX_DEPTH = 20;                              // --max-depth; smallpaint_painterly.cpp:190 (depth >= 20)
+double eps = DEFAULT_RAY_EPSILON;              // --ray-epsilon. Set by oracle_main() before build_scene().
 using namespace std;
 typedef unordered_map<string, double> pl;
 
@@ -50,10 +57,10 @@ double g_alpha = 0.0;                           // --alpha 0 (SPEC §4: exact no
 U2Mode g_u2 = U2Mode::same;                     // --u2 same
 bool g_continue_after_emitter = true;           // --continue-after-emitter yes
 SceneKind g_scene = SceneKind::gui;             // --scene gui
-double g_jitter = 1.0 / 700.0;                  // --jitter; smallpaint_painterly.cpp:291-292 (RND / 700)
-double g_diffuse_gain = 0.1;                   // --diffuse-gain 0.1; smallpaint_painterly.cpp:209-211 (*0.1)
-double g_emission_gain = 2;                    // --emission-gain 2; smallpaint_painterly.cpp:200 (* 2)
-int g_max_depth = 20;                          // --max-depth 20; smallpaint_painterly.cpp:190 (depth >= 20)
+double g_jitter = DEFAULT_JITTER;               // --jitter
+double g_diffuse_gain = DEFAULT_DIFFUSE_GAIN;   // --diffuse-gain
+double g_emission_gain = DEFAULT_EMISSION_GAIN; // --emission-gain
+int g_max_depth = DEFAULT_MAX_DEPTH;            // --max-depth
 
 // Path context for the stateless RNG (SPEC §2). The chain driver sets it before every trace() call.
 struct PathContext {
@@ -430,11 +437,11 @@ struct Options {
 	double alpha = 0.0;
 	string u2 = "same";
 	string continue_after_emitter = "yes";
-	double jitter = 1.0 / 700.0;
-	double diffuse_gain = 0.1;
-	double emission_gain = 2;
-	double ray_epsilon = 1e-4;
-	int max_depth = 20;
+	double jitter = DEFAULT_JITTER;
+	double diffuse_gain = DEFAULT_DIFFUSE_GAIN;
+	double emission_gain = DEFAULT_EMISSION_GAIN;
+	double ray_epsilon = DEFAULT_RAY_EPSILON;
+	int max_depth = DEFAULT_MAX_DEPTH;
 	int threads = 1;
 	string out;
 	int base2 = 2; // base of hal2: 3 with --u2 base3, otherwise 2 (SPEC §3, §4)
@@ -559,11 +566,15 @@ bool write_ppm(const filesystem::path& path, const Film& film, const int passes)
 	return (fclose(f) == 0) && ok;
 }
 
+// meta.json contract version (CHANGES.md 17, 23). "2" adds diffuse_gain, emission_gain, ray_epsilon and max_depth to "1".
+// ORACLE_VERSION in analysis/painterly_analysis/experiment.py is the same value.
+const char* const ORACLE_VERSION = "2";
+
 bool write_meta(const filesystem::path& path, const Options& o, const double wall_seconds, const uint64_t total_k) {
 	FILE* f = fopen(path.string().c_str(), "w");
 	if (!f) return false;
 	fprintf(f, "{\n");
-	fprintf(f, "  \"oracle_version\": \"1\",\n");
+	fprintf(f, "  \"oracle_version\": \"%s\",\n", ORACLE_VERSION);
 	fprintf(f, "  \"scene\": \"%s\",\n", o.scene.c_str());
 	fprintf(f, "  \"width\": %d,\n", o.size);
 	fprintf(f, "  \"height\": %d,\n", o.size);
@@ -577,6 +588,10 @@ bool write_meta(const filesystem::path& path, const Options& o, const double wal
 	fprintf(f, "  \"u2\": \"%s\",\n", o.u2.c_str());
 	fprintf(f, "  \"continue_after_emitter\": \"%s\",\n", o.continue_after_emitter.c_str());
 	fprintf(f, "  \"jitter\": %.17g,\n", o.jitter);
+	fprintf(f, "  \"diffuse_gain\": %.17g,\n", o.diffuse_gain);
+	fprintf(f, "  \"emission_gain\": %.17g,\n", o.emission_gain);
+	fprintf(f, "  \"ray_epsilon\": %.17g,\n", o.ray_epsilon);
+	fprintf(f, "  \"max_depth\": %d,\n", o.max_depth);
 	fprintf(f, "  \"threads\": %d,\n", o.threads);
 	fprintf(f, "  \"wall_seconds\": %.6f,\n", wall_seconds);
 	fprintf(f, "  \"total_k_consumed\": %llu\n", (unsigned long long)total_k);
@@ -584,7 +599,9 @@ bool write_meta(const filesystem::path& path, const Options& o, const double wal
 	return fclose(f) == 0;
 }
 
-const char* const usage_text =
+// The usage text, a printf format: usage_error() fills in the five knob defaults from the DEFAULT_* constants. %g
+// prints them as 700 (the jitter divisor), 0.1, 2, 0.0001 and 20.
+const char* const usage_format =
 	"usage: smallpaint_oracle --out DIR [options]\n"
 	"  --scene gui|standalone              reference scene (default gui)\n"
 	"  --size N                            image side in pixels (gui 400, standalone 900)\n"
@@ -598,16 +615,18 @@ const char* const usage_text =
 	"  --alpha X                           (default 0)\n"
 	"  --u2 same|independent|base3         (default same)\n"
 	"  --continue-after-emitter yes|no     (default yes)\n"
-	"  --jitter X                          image-plane jitter (default 1/700)\n"
-	"  --diffuse-gain X                    diffuse bounce gain (default 0.1)\n"
-	"  --emission-gain X                   emission gain (default 2)\n"
-	"  --ray-epsilon X                     self-intersection eps, X > 0 (default 1e-4; also the standalone light radius)\n"
-	"  --max-depth N                       path depth limit, N >= 1 (default 20)\n"
+	"  --jitter X                          image-plane jitter (default 1/%g)\n"
+	"  --diffuse-gain X                    diffuse bounce gain (default %g)\n"
+	"  --emission-gain X                   emission gain (default %g)\n"
+	"  --ray-epsilon X                     self-intersection eps, X > 0 (default %g; also the standalone light radius)\n"
+	"  --max-depth N                       path depth limit, N >= 1 (default %d)\n"
 	"  --threads N                         worker threads (default hardware concurrency)\n"
 	"  --out DIR                           output directory, created if missing (required)\n";
 
 int usage_error(const string& message) {
-	fprintf(stderr, "smallpaint_oracle: %s\n%s", message.c_str(), usage_text);
+	fprintf(stderr, "smallpaint_oracle: %s\n", message.c_str());
+	fprintf(stderr, usage_format, SMALLPAINT_JITTER_DIVISOR, DEFAULT_DIFFUSE_GAIN, DEFAULT_EMISSION_GAIN, DEFAULT_RAY_EPSILON,
+		DEFAULT_MAX_DEPTH);
 	return 2;
 }
 

@@ -75,7 +75,7 @@ const double eps = 1e-4;
 // end verbatim
 
 // verbatim third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp:43-92
-// verbatim src/app/smallpaint_oracle.cpp:65-114
+// verbatim src/app/smallpaint_oracle.cpp:72-121
 struct Vec {
 	double x, y, z;
 	Vec(double x0 = 0, double y0 = 0, double z0 = 0) { x = x0; y = y0; z = z0; }
@@ -207,11 +207,11 @@ int width, height;
 // The two members of the oracle's Sphere that intersect_exact() reads, in the oracle's order, and
 // intersect_exact() itself: the SPEC §5 exact quadratic (src/app/CHANGES.md item 8).
 struct Sphere {
-// verbatim src/app/smallpaint_oracle.cpp:118-119
+// verbatim src/app/smallpaint_oracle.cpp:125-126
 	Vec c;
 	double r;
 // end verbatim
-// verbatim src/app/smallpaint_oracle.cpp:137-148
+// verbatim src/app/smallpaint_oracle.cpp:144-155
 	// SPEC §5 exact quadratic. The eps tests act on the undivided roots; the roots are then divided by 2a.
 	double intersect_exact(const Ray& ray) const {
 		double a = ray.d.dot(ray.d);
@@ -228,7 +228,7 @@ struct Sphere {
 };
 
 // camcr(), with tan taken in double (src/app/CHANGES.md item 12).
-// verbatim src/app/smallpaint_oracle.cpp:247-255
+// verbatim src/app/smallpaint_oracle.cpp:254-262
 Vec camcr(const double x, const double y) {
 	double w = width;
 	double h = height;

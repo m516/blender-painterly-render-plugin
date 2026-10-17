@@ -2,8 +2,9 @@
 
 An experiment declares its renders as data: a jobs file with ``JOBS: list[Job]``. Each job renders
 once with ``smallpaint_oracle`` into ``cache_root()/<job_key>/``. The key covers the exact options,
-the seed, the meta.json contract version and the oracle binary's sha256, so a rebuilt oracle never
-reuses stale renders. A ``done`` marker is written after each successful render.
+the seed and the oracle binary's sha256, so a rebuilt oracle never reuses stale renders. The binary
+also fixes the meta.json version of its renders, so the key does not hash ``ORACLE_VERSION``
+(T3.25). A ``done`` marker is written after each successful render.
 
 ``python -m painterly_analysis.experiment run jobs.py --budget 540`` renders what fits in the time
 budget. It exits 0 once no job remains and 3 otherwise, so callers loop until 0.
@@ -30,8 +31,17 @@ from typing import Any
 from .io import OracleRender, read_oracle
 from .oracle import REPO_ROOT, _option_flags, oracle_binary
 
-# meta.json "oracle_version" is written by write_meta() in src/app/smallpaint_oracle.cpp.
-ORACLE_VERSION = "1"
+# meta.json "oracle_version" that write_meta() in src/app/smallpaint_oracle.cpp writes: the C++
+# constant ORACLE_VERSION (src/app/CHANGES.md items 17 and 23). Version "2" records the T3.4 knobs
+# diffuse_gain, emission_gain, ray_epsilon and max_depth, which "1" lacks. A render keeps the
+# version of the binary that wrote it: the experiments' oracle in .cache/oracle-build, built
+# before T3.4, writes "1". load() reads either.
+ORACLE_VERSION = "2"
+# Value of the cache key's "oracle_version" field, frozen at "1" by T3.25; until then the field held
+# ORACLE_VERSION. It adds nothing to the key, whose "oracle_sha256" changes with any change to
+# write_meta(). Frozen, it keeps the key of every render cached before T3.25 valid for the binary
+# that rendered it, such as the experiments' oracle in .cache/oracle-build.
+_KEY_ORACLE_VERSION = "1"
 # Hex digits of the sha256 that name a job's cache directory (T1.4 card).
 _KEY_HEX_DIGITS = 16
 # Per-command time budget of the CLI, so no single command exceeds about 9 minutes (T1.4 Goal).
@@ -92,11 +102,12 @@ def _oracle_sha256() -> str:
 
 def job_key(job: Job) -> str:
     """Cache key: the first 16 hex digits of the sha256 of the canonical JSON of the job's options,
-    seed, ``ORACLE_VERSION`` and the oracle binary's sha256. The job name is not part of the key."""
+    seed, the field ``"oracle_version": _KEY_ORACLE_VERSION`` and the oracle binary's sha256. The
+    job name is not part of the key, and neither is ``ORACLE_VERSION``."""
     canonical = {
         "options": dict(job.options),
         "seed": job.seed,
-        "oracle_version": ORACLE_VERSION,
+        "oracle_version": _KEY_ORACLE_VERSION,
         "oracle_sha256": _oracle_sha256(),
     }
     text = json.dumps(canonical, sort_keys=True, separators=(",", ":"))

@@ -29,7 +29,8 @@ def test_job_key_is_stable_and_order_independent() -> None:
     assert job_key(a) == job_key(b) == job_key(a)
     assert len(job_key(a)) == 16
     # The key is the sha256 of the canonical JSON that job_key documents. The test recomputes it
-    # from the binary's bytes; "1" is the meta.json contract version.
+    # from the binary's bytes. "1" is the key's frozen "oracle_version" field (T3.25), not the
+    # meta.json version ORACLE_VERSION.
     binary_sha256 = hashlib.sha256(oracle_binary().read_bytes()).hexdigest()
     canonical = json.dumps(
         {
@@ -44,6 +45,16 @@ def test_job_key_is_stable_and_order_independent() -> None:
     assert job_key(a) == hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
     # A different seed is a different render.
     assert job_key(Job.make("a", 4, size=64, passes=2, chain="image")) != job_key(a)
+
+
+def test_job_key_does_not_hash_oracle_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    # T3.25: a new meta.json version must not invalidate the renders cached for an unchanged
+    # binary, such as the experiments' oracle in .cache/oracle-build. Only the binary's sha256
+    # tells oracle builds apart.
+    job = Job.make("a", 3, size=64, passes=2, chain="image")
+    key = job_key(job)
+    monkeypatch.setattr(experiment, "ORACLE_VERSION", "not a version")
+    assert job_key(job) == key
 
 
 def test_run_jobs_renders_a_64_square_job_once(

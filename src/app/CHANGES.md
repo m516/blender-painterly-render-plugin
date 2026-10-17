@@ -16,9 +16,9 @@ glass and mirror branches are unchanged except where listed.
    `render()` (line 242) is removed too (item 13).
 5. **Kept.** `PI`, `MIN`, `MAX`, `width`/`height`, `inf`, `eps`, `using namespace std`, `pl` (original lines 33-41).
 6. **Knob globals.** New after line 41: `GhostPolicy`, `U2Mode`, `SceneKind`, `ChainKind` enums; `g_halton_exact`,
-   `g_ghost`, `g_alpha`, `g_u2`, `g_continue_after_emitter`, `g_scene`, `g_jitter` (default `1.0 / 700.0`, the original
-   `RND / 700` of lines 291-292); `PathContext` and `thread_local g_path` (item 4 of the card). All are set once in `main`
-   before any thread starts.
+   `g_ghost`, `g_alpha`, `g_u2`, `g_continue_after_emitter`, `g_scene`, `g_jitter` (default `DEFAULT_JITTER`, which is
+   `1.0 / 700.0`, the original `RND / 700` of lines 291-292; item 23); `PathContext` and `thread_local g_path` (item 4
+   of the card). All are set once in `main` before any thread starts.
 7. **Vec, Ray, Obj, Plane** (original lines 43-92). Unchanged.
 8. **Sphere::intersect** (lines 100-109). The original body (lines 101-108) is now the branch taken for `--ghost all`
    and for `--ghost lights` on emitters (`emission > 0`). Otherwise the new `intersect_exact()` runs: the SPEC §5 exact
@@ -69,7 +69,7 @@ glass and mirror branches are unchanged except where listed.
 16. **Film** (new). `sum` (float64, three per pixel), `k_consumed` (uint64, the `hal.index` deltas over all passes) and
     `object_id` (int32, from the unjittered primary ray, `compute_object_ids()`).
 17. **Outputs** (new). `write_npy()` (NumPy v1.0, header padded to 64 bytes), `write_ppm()` (`min((int)sum / passes, 255)`,
-    SPEC §7), `write_meta()` (`meta.json`, `oracle_version` "1").
+    SPEC §7), `write_meta()` (`meta.json`, `oracle_version` "1"; "2" since T3.25, item 23).
 18. **Chains** (new, `take_sample()`, `run_chain()`; SPEC §3). `image`, `row`, `lane:L`, `omp-restart:T`, `pixel-major`
     and `pixel-major-omp:T`. Each unit is one chain. Units run on `--threads` workers with `run_units()`, and each worker
     has its own copy of `params`.
@@ -78,9 +78,9 @@ glass and mirror branches are unchanged except where listed.
     Each applies unless given. `--out DIR` is required. `int main()` (global scope) calls `oracle_main()`.
 20. **Thread-safety.** `trace()` uses `params["refr_index"]`, and `unordered_map::operator[]` is not safe to share. Each
     worker copies `params` (item 18). The knobs in item 6 are read-only once the workers start.
-21. **Knobs added by T3.4.** Each default is the literal it replaces, so default output is unchanged. `sum.npy` for
-    `--size 64 --passes 2 --seed 7` is byte-identical to the build before T3.4, and
-    `test_new_knobs_default_identity` checks that explicit defaults reproduce omitted defaults.
+21. **Knobs added by T3.4.** Each default is the literal it replaces, so default output is unchanged. Since T3.25 each
+    default is a named constant (item 23). `sum.npy` for `--size 64 --passes 2 --seed 7` is byte-identical to the build
+    before T3.4, and `test_new_knobs_default_identity` checks that explicit defaults reproduce omitted defaults.
     - `--diffuse-gain X` (double, default `0.1`, `smallpaint_painterly.cpp:209-211`). Global `g_diffuse_gain` replaces the
       `*0.1` in the three diffuse lines of `trace()` (item 13). The expression keeps its shape,
       `cost*(tmp.x*cl.x)*g_diffuse_gain`.
@@ -101,7 +101,8 @@ glass and mirror branches are unchanged except where listed.
     - Values parse with `parse_double_arg()` (`strtod`, correctly rounded, finite values only) or `parse_int_arg()`. Any double
       printed with `%.17g` parses back to itself, so a float32 socket value such as `0.1` (0.100000001490116119...) passed as
       text reproduces the same double.
-    - `meta.json` does not record the new knobs, so its fields are the same as before T3.4.
+    - Until T3.25, `meta.json` did not record the new knobs, so its fields were the same as before T3.4. Since T3.25 it
+      records them (item 23).
 22. **Zero-length diffuse direction (T3.19, SPEC §4).** The `--alpha` line of item 13 runs only when `ray.d` is not the
     zero vector:
     `if (ray.d.x != 0 || ray.d.y != 0 || ray.d.z != 0) ray.d = ray.d * pow(ray.d.length(), -g_alpha);`
@@ -118,3 +119,20 @@ glass and mirror branches are unchanged except where listed.
     - Default output is unchanged. For alpha = 0, `pow(0, -0) = 1` already left d unchanged, and `--halton incremental`
       never draws exactly 0 (SPEC §4). `sum.npy` and `k_consumed.npy` for `--size 64 --passes 2 --seed 7` are
       byte-identical to the build before T3.19.
+23. **Knob defaults and a self-describing `meta.json` (T3.25, TQ.1 F22).**
+    - One source per default. New constants between the original lines 38 (`inf`) and 39 (`eps`), each citing its
+      original line: `DEFAULT_RAY_EPSILON = 1e-4` (line 39), `SMALLPAINT_JITTER_DIVISOR = 700` and
+      `DEFAULT_JITTER = 1.0 / SMALLPAINT_JITTER_DIVISOR` (lines 291-292, `RND / 700`), `DEFAULT_DIFFUSE_GAIN = 0.1`
+      (lines 209-211), `DEFAULT_EMISSION_GAIN = 2` (line 200) and `DEFAULT_MAX_DEPTH = 20` (line 190). The globals
+      `eps`, `g_jitter`, `g_diffuse_gain`, `g_emission_gain` and `g_max_depth` (items 5, 6 and 21), the `Options`
+      members and the usage text take their defaults from them. Each value is the literal it replaces.
+    - Usage text. `usage_text` is now the printf format `usage_format`, and `usage_error()` prints it with the five
+      defaults (`%g`, and `%d` for the depth). The printed text is unchanged except the `--ray-epsilon` default, which
+      reads `0.0001` instead of `1e-4`.
+    - `meta.json` version 2. `oracle_version` is the new constant `ORACLE_VERSION`, `"2"`. Four keys follow `jitter`:
+      `diffuse_gain`, `emission_gain` and `ray_epsilon` (`%.17g`, like `jitter`) and `max_depth` (`%d`). Version "1"
+      files, written before T3.25, lack them. `ORACLE_VERSION` in `analysis/painterly_analysis/experiment.py` is the
+      same value. The experiments' render-cache key does not hash it, so renders cached with an older oracle binary
+      stay valid for that binary.
+    - Default output is unchanged. `sum.npy`, `k_consumed.npy`, `object_id.npy` and `image.ppm` for
+      `--size 64 --passes 2 --seed 7` are byte-identical to the build before T3.25.

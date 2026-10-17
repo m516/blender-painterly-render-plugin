@@ -18,8 +18,8 @@ namespace smallpaint_camcr_ref {
 using namespace smallpaint_oracle;
 
 // The primary ray of pixel (row, col) in pass `pass`, as the oracle forms it. With `jittered`, it
-// is take_sample()'s camera (smallpaint_oracle.cpp:364-368), with `jitter` in place of g_jitter.
-// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:384-386). The origin is
+// is take_sample()'s camera (smallpaint_oracle.cpp:371-375), with `jitter` in place of g_jitter.
+// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:391-393). The origin is
 // Vec(0, 0, 0), and the direction is (cam - origin).norm().
 void primary_ray(int image_width,
                  int image_height,

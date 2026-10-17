@@ -2,14 +2,15 @@
 
 They pin determinism, thread invariance, exact Halton equivalence below the 2^23 period, the SPEC
 §4 zero-length d at the 2^23 wrap, K accounting, the SPEC §9 scene geometry, the alpha and ghost
-knobs, and the default values of the gain, epsilon and depth knobs. Renders are 64 pixels square
-unless a test says otherwise. Arrays are compared for exact equality, so no tolerance is used
-anywhere in this file.
+knobs, the default values of the gain, epsilon and depth knobs, and the meta.json keys that record
+them. Renders are 64 pixels square unless a test says otherwise. Arrays and meta.json values are
+compared for exact equality, so no tolerance is used anywhere in this file.
 """
 
 import numpy as np
 import pytest
 from painterly_analysis import ensemble, smallpaint_display
+from painterly_analysis.experiment import ORACLE_VERSION
 
 SIZE = 64
 # SPEC §2: the incremental Halton generator is exact for K below 2^23 and drifts from K = 2^23 on.
@@ -50,6 +51,43 @@ GHOST_SEEDS = 8
 ZERO_DRAW_SEED = 7
 ZERO_DRAW_PASSES = 129
 ZERO_DRAW_ALPHA = 0.5
+# The T3.4 knobs at their defaults, the smallpaint literals: diffuse_gain 0.1
+# (smallpaint_painterly.cpp:209-211), emission_gain 2 (:200), ray_epsilon 1e-4 (:39) and max_depth
+# 20 (:190). They are the oracle's DEFAULT_* constants (src/app/CHANGES.md item 23).
+KNOB_DEFAULTS = {"diffuse_gain": 0.1, "emission_gain": 2, "ray_epsilon": 1e-4, "max_depth": 20}
+# Other values of the same knobs, for the meta.json round trip. float32(0.1) and float32(1e-4) as
+# doubles are the reference knobs that the core passes to the oracle (T3.16). Printed with %g (6
+# significant digits), each would read back as its default, so they also pin write_meta()'s %.17g.
+KNOB_VALUES = {
+    "diffuse_gain": float(np.float32(0.1)),
+    "emission_gain": 2.5,
+    "ray_epsilon": float(np.float32(1e-4)),
+    "max_depth": 7,
+}
+# The keys of meta.json version ORACLE_VERSION, in the order write_meta() writes them.
+META_KEYS = (
+    "oracle_version",
+    "scene",
+    "width",
+    "height",
+    "passes",
+    "refr",
+    "seed",
+    "chain",
+    "halton",
+    "ghost",
+    "alpha",
+    "u2",
+    "continue_after_emitter",
+    "jitter",
+    "diffuse_gain",
+    "emission_gain",
+    "ray_epsilon",
+    "max_depth",
+    "threads",
+    "wall_seconds",
+    "total_k_consumed",
+)
 
 
 def test_deterministic(oracle, tmp_path) -> None:
@@ -165,24 +203,26 @@ def test_alpha_default_is_zero_and_hook_is_live(oracle, tmp_path) -> None:
 
 
 def test_new_knobs_default_identity(oracle, tmp_path) -> None:
-    # The defaults are the smallpaint literals: diffuse_gain 0.1 (smallpaint_painterly.cpp:209-211),
-    # emission_gain 2 (:200), ray_epsilon 1e-4 (:39) and max_depth 20 (:190). Passing them
-    # explicitly must give the same sum.npy bytes as omitting them. The values travel as the
-    # decimal text Python prints, which strtod reads back to the same double.
+    # Passing KNOB_DEFAULTS explicitly must give the same sum.npy bytes as omitting them. The
+    # values travel as the decimal text Python prints, which strtod reads back to the same double.
     oracle.run_oracle(tmp_path / "omitted", size=SIZE, passes=2, seed=7)
-    oracle.run_oracle(
-        tmp_path / "explicit",
-        size=SIZE,
-        passes=2,
-        seed=7,
-        diffuse_gain=0.1,
-        emission_gain=2,
-        ray_epsilon=1e-4,
-        max_depth=20,
-    )
+    oracle.run_oracle(tmp_path / "explicit", size=SIZE, passes=2, seed=7, **KNOB_DEFAULTS)
     omitted = (tmp_path / "omitted" / "sum.npy").read_bytes()
     explicit = (tmp_path / "explicit" / "sum.npy").read_bytes()
     assert omitted == explicit
+
+
+def test_meta_json_records_the_knobs(oracle, tmp_path) -> None:
+    # meta.json version ORACLE_VERSION (src/app/CHANGES.md item 23) records the four T3.4 knobs:
+    # the defaults when the flags are omitted, and the given values otherwise. write_meta() prints
+    # each double with %.17g, which reads back to the same double, so == is exact.
+    omitted = oracle.run_oracle(tmp_path / "omitted", size=SIZE, passes=1, seed=7)
+    given = oracle.run_oracle(tmp_path / "given", size=SIZE, passes=1, seed=7, **KNOB_VALUES)
+    for render in (omitted, given):
+        assert tuple(render.meta) == META_KEYS
+        assert render.meta["oracle_version"] == ORACLE_VERSION
+    assert {key: omitted.meta[key] for key in KNOB_DEFAULTS} == KNOB_DEFAULTS
+    assert {key: given.meta[key] for key in KNOB_VALUES} == KNOB_VALUES
 
 
 def test_ghost_none_darkens(oracle, tmp_path) -> None:
