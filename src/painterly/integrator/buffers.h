@@ -24,9 +24,9 @@ struct PainterlyRenderBuffers {
       object_id;       /* H*W: object of the unjittered primary hit, or the miss value. */
   int passes_done = 0; /* Passes [0, passes_done) are in combined (SPEC §7). */
 
-  /* Sizes the buffers to width x height, clears the sums and sets passes_done = 0. Throws
-   * std::invalid_argument for a negative size. */
-  void reset(int width, int height);
+  /* Sizes the buffers to new_width x new_height, clears the sums and sets passes_done = 0.
+   * Throws std::invalid_argument for a negative size. */
+  void reset(int new_width, int new_height);
 };
 
 CCL_NAMESPACE_END

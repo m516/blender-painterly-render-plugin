@@ -1,5 +1,7 @@
-# Engine layers, one add_subdirectory each. Later cards add their layer in dependency order: util, bvh, integrator,
-# scene, session (docs/architecture.md "Dependency direction").
+# Engine layers, one add_subdirectory each, in dependency order: util, bvh, kernel, integrator. kernel is the header-only
+# painterly_kernel, which links painterly_bvh. Later cards add scene and session after integrator (docs/architecture.md
+# "Dependency direction").
 add_subdirectory(util)
 add_subdirectory(bvh)
+add_subdirectory(kernel)
 add_subdirectory(integrator)

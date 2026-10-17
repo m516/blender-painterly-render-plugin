@@ -25,6 +25,7 @@ endif()
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(painterly_warnings)
 if(PAINTERLY_BUILD_MODULE OR PAINTERLY_BUILD_TESTS)
   include(painterly_embree)
 endif()

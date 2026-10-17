@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Static, namespaced Embree 4.4.1 for painterly_bvh, i.e. the _painterly module and painterly_tests (docs/plan.md "Isolation from Blender's own libraries").
+# Static, namespaced Embree 4.4.1 for painterly_bvh (src/painterly/bvh/embree.cpp) and for the _painterly module, whose
+# selftest (src/blender/selftest.cpp) calls Embree directly (docs/plan.md "Isolation from Blender's own libraries").
 #
 # Blender 5.2 already has Cycles, Embree 4.4.1 and oneTBB in its process, so we link a private copy that exports
 # nothing: a static library, API symbols in the namespace painterly_embree, INTERNAL tasking (no TBB), and only
 # triangle and instance geometry.
 #
-# Provides the interface target painterly::embree (include dirs, the Embree library and its internal static libraries).
+# Provides the INTERFACE target painterly_embree: Embree's include directory (SYSTEM), the Embree library and its internal
+# static libraries. painterly_bvh (PRIVATE) and _painterly link it.
 
 include(FetchContent)
 
@@ -60,7 +62,8 @@ set(EMBREE_STAT_COUNTERS OFF CACHE BOOL "Enables statistic counters" FORCE)
 set(EMBREE_INSTALL_DEPENDENCIES OFF CACHE BOOL "Install Embree dependencies" FORCE)
 set(EMBREE_ZIP_MODE OFF CACHE BOOL "Create Embree ZIP package" FORCE)
 
-# EXCLUDE_FROM_ALL: Embree's targets are built only as dependencies of painterly_bvh, i.e. _painterly and painterly_tests.
+# EXCLUDE_FROM_ALL: Embree's targets are built only as dependencies of painterly_embree's consumers, painterly_bvh and
+# _painterly.
 FetchContent_Declare(
   embree
   GIT_REPOSITORY https://github.com/RenderKit/embree.git
@@ -69,8 +72,12 @@ FetchContent_Declare(
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(embree)
 
-# Interface target. Embree's static target carries its internal libraries as dependencies.
+# The interface target. Embree's static target `embree` carries its internal libraries as dependencies. Every target of
+# this project has a plain name and no namespaced alias (TQ.1 F11): consumers link painterly_embree, the name of our
+# private Embree everywhere (this file, EMBREE_API_NAMESPACE and EMBREE_LIBRARY_NAME). Embree's include directory is
+# SYSTEM, both here and in the interface of `embree` (its SYSTEM target property), so the warning flags of our targets
+# (cmake/painterly_warnings.cmake) report nothing from Embree's headers. Neither changes how Embree itself is compiled.
+set_target_properties(embree PROPERTIES SYSTEM TRUE)
 add_library(painterly_embree INTERFACE)
-target_include_directories(painterly_embree INTERFACE "${embree_SOURCE_DIR}/include")
+target_include_directories(painterly_embree SYSTEM INTERFACE "${embree_SOURCE_DIR}/include")
 target_link_libraries(painterly_embree INTERFACE embree)
-add_library(painterly::embree ALIAS painterly_embree)

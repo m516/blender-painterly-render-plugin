@@ -17,11 +17,14 @@ add_library(cycles_util STATIC
 
 # Shims come first, so that they shadow upstream headers of the same relative path. src lets our code
 # include painterly/...; the sse2neon directory provides <sse2neon.h> on arm64.
-target_include_directories(cycles_util PUBLIC
-  "${CMAKE_CURRENT_SOURCE_DIR}/shim"
-  "${PAINTERLY_CYCLES_VENDOR}"
-  "${PAINTERLY_CYCLES_VENDOR}/sse2neon"
-  "${PROJECT_SOURCE_DIR}/src")
+# The two vendored directories are SYSTEM (T3.22). Compilers report no warning from a SYSTEM header, so the warning
+# flags of our own targets (cmake/painterly_warnings.cmake) report only our code: vendored Cycles is not -Wshadow clean.
+# GCC and Clang search -isystem directories after -I directories, so the search order is src/cycles/shim, src,
+# third_party/cycles, third_party/cycles/sse2neon. src/ and third_party/cycles/ share no top-level directory
+# (tests/core/test_shims.py), so every include still resolves to the same file.
+target_include_directories(cycles_util PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/shim")
+target_include_directories(cycles_util SYSTEM PUBLIC "${PAINTERLY_CYCLES_VENDOR}" "${PAINTERLY_CYCLES_VENDOR}/sse2neon")
+target_include_directories(cycles_util PUBLIC "${PROJECT_SOURCE_DIR}/src")
 
 # Upstream's Cycles namespace is replaced for every painterly library that links cycles_util.
 target_compile_definitions(cycles_util PUBLIC

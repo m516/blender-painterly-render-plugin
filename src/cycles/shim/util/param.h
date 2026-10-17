@@ -26,9 +26,11 @@ class ustring {
  public:
   /* The empty string. */
   ustring() : str_(empty_string()) {}
-  /* A null pointer is the empty string, as in OpenImageIO. */
-  ustring(const char *str) : str_(str ? intern(str) : empty_string()) {}
-  ustring(std::string_view str) : str_(intern(str)) {}
+  /* A null pointer is the empty string, as in OpenImageIO. Both constructors are explicit, as in
+   * OpenImageIO v3.1.13.1 (ustring.h:143, :151), the version Blender v5.2.2 pins, so code that
+   * compiles against this shim also compiles against upstream. */
+  explicit ustring(const char *str) : str_(str ? intern(str) : empty_string()) {}
+  explicit ustring(std::string_view str) : str_(intern(str)) {}
 
   const char *c_str() const
   {
@@ -66,6 +68,21 @@ class ustring {
   bool operator!=(const ustring &other) const
   {
     return str_ != other.str_;
+  }
+
+  /* Lexicographic comparison with a string_view or a C string, as OpenImageIO's (ustring.h:578,
+   * :581). Nothing is interned, and a null C string compares as the empty string, as there. C++20
+   * derives != and the reversed operand order from these two. Upstream code compares ustrings
+   * with C strings (scene/shader_graph.cpp:96, :107), which the explicit constructors would
+   * otherwise reject. */
+  bool operator==(std::string_view str) const
+  {
+    return std::string_view(*str_) == str;
+  }
+
+  bool operator==(const char *str) const
+  {
+    return *this == std::string_view(str ? str : "");
   }
 
   /* Lexicographic order of the contents, so that ordered containers do not depend on addresses. */

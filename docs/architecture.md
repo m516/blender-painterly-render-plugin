@@ -36,6 +36,10 @@ namespace and one include path. Three rules keep them apart:
    - A shimmed path is never also vendored (`tests/core/test_shims.py`).
    - `src/cycles/CMakeLists.txt` builds the vendored code into `cycles_*` libraries. Their public include order is
      `src/cycles/shim`, `third_party/cycles`, `third_party/cycles/sse2neon`, `src`.
+   - The two vendored directories are SYSTEM include directories, so the warning flags of our own targets
+     (`cmake/painterly_warnings.cmake`) report nothing from vendored headers. GCC and Clang search them after
+     `src/cycles/shim` and `src`. `src/` and `third_party/cycles/` share no top-level directory (`tests/core/test_shims.py`),
+     so every include resolves to the same file in either order.
 2. **Types.** Every type defined under `src/painterly/` carries the prefix `Painterly` (host, integrator, session), or
    `KernelPainterly` (kernel device data, as Cycles' `Kernel*`). Kernel globals are `PainterlyGlobalsCPU`, passed as
    `PainterlyGlobals`, as Cycles passes `KernelGlobals`. The one exception is `double3` (`painterly/util/types_double3.h`), named
@@ -55,6 +59,8 @@ the SVM include closure is 149 files, and 49 of 108 evaluator cases read `Shader
 `painterly/integrator` and `painterly/scene` never include each other: `PainterlyScene::device_update()` hands the integrator
 plain kernel data.
 Every painterly library links `cycles_util`, and `painterly/scene` also links `cycles_graph`.
+- The header-only kernel is the INTERFACE target `painterly_kernel`, which links `painterly_bvh` and `cycles_util`. A target
+  whose code includes `painterly/kernel/` links `painterly_kernel`.
 - `painterly/kernel/` never includes `painterly/scene/` or any other host layer.
 - The one exception is the kernel's Embree call: `painterly/kernel/bvh/bvh.h` calls `painterly/bvh/embree.h`, as Cycles'
   `kernel/device/cpu/bvh.h` calls Embree.

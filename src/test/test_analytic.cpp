@@ -373,7 +373,7 @@ TEST_CASE("a zero direction gives smallpaint's result bit for bit")
 {
   std::mt19937_64 rng(ANALYTIC_TEST_SEED + 1);
   BitwiseCounts counts;
-  const Triple zero{0.0, 0.0, 0.0};
+  const Triple zero_direction{0.0, 0.0, 0.0};
   for (int ray_index = 0; ray_index < ZERO_DIRECTION_RAYS; ray_index++) {
     const Triple origin = uniform_triple(rng, -SCENE_EXTENT, SCENE_EXTENT);
     const Triple centre = uniform_triple(rng, -SCENE_EXTENT, SCENE_EXTENT);
@@ -381,7 +381,7 @@ TEST_CASE("a zero direction gives smallpaint's result bit for bit")
     const Triple surface = uniform_triple(rng, -SCENE_EXTENT, SCENE_EXTENT);
     const Triple unit_normal = random_unit_normal(rng);
     const double offset = uniform(rng, -SCENE_EXTENT, SCENE_EXTENT);
-    compare_ray(origin, zero, centre, radius, unit_normal, offset, surface, counts);
+    compare_ray(origin, zero_direction, centre, radius, unit_normal, offset, surface, counts);
   }
   CHECK_EQ(counts.ghost_mismatches, 0);
   CHECK_EQ(counts.exact_mismatches, 0);

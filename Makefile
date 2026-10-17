@@ -81,7 +81,10 @@ audit: build
 	@test -n "$(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))" || { echo "audit: no _painterly*.so under $(BUILD_DIR)/src/blender" >&2; exit 1; }
 	$(VENV)/bin/python tools/symbol_audit.py $(firstword $(wildcard $(BUILD_DIR)/src/blender/_painterly*.so))
 
-check: lint build test audit vendor-check
+# The symbol audit and the vendor check run once each, inside test-py (tests/core/test_symbol_audit.py and
+# tests/core/test_vendored.py, which CI's `make test` also runs). `make audit` and `make vendor-check` run them
+# alone (TQ.1 F15).
+check: lint build test
 
 # Offline check that third_party/cycles matches VENDORED.toml (T3.1); no network access.
 vendor-check:

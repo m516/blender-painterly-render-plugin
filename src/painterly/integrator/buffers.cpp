@@ -7,13 +7,13 @@
 
 CCL_NAMESPACE_BEGIN
 
-void PainterlyRenderBuffers::reset(const int width, const int height)
+void PainterlyRenderBuffers::reset(const int new_width, const int new_height)
 {
-  if (width < 0 || height < 0) {
+  if (new_width < 0 || new_height < 0) {
     throw std::invalid_argument("PainterlyRenderBuffers::reset: negative size");
   }
-  this->width = width;
-  this->height = height;
+  width = new_width;
+  height = new_height;
   const size_t pixels = size_t(width) * size_t(height);
   combined.assign(pixels * size_t(PAINTERLY_CHANNELS), 0.0);
   k_consumed.assign(pixels, 0);

@@ -7,9 +7,12 @@ execute_process(
 find_package(nanobind CONFIG REQUIRED)
 
 # NOMINSIZE: without it nanobind adds -Os to the module target, which would slow the kernel code compiled into it.
-nanobind_add_module(_painterly STABLE_ABI NB_STATIC NB_DOMAIN painterly NOMINSIZE python.cpp selftest.cpp)
+# NB_SUPPRESS_WARNINGS: nanobind's and Python's include directories are SYSTEM, so the warning flags of _painterly report
+# only python.cpp and selftest.cpp (nanobind's headers are not -Wshadow clean).
+nanobind_add_module(_painterly STABLE_ABI NB_STATIC NB_DOMAIN painterly NOMINSIZE NB_SUPPRESS_WARNINGS python.cpp selftest.cpp)
 target_compile_definitions(_painterly PRIVATE PAINTERLY_VERSION="${PROJECT_VERSION}")
-target_link_libraries(_painterly PRIVATE painterly::embree cycles_util)
+target_link_libraries(_painterly PRIVATE painterly_embree cycles_util)
+painterly_target_warnings(_painterly)
 
 # Only PyInit__painterly is exported. Hidden visibility (root CMakeLists) covers everything else.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

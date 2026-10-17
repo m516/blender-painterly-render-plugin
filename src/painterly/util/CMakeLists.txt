@@ -2,3 +2,4 @@
 # macOS and non-glibc Linux, the platform's default stack elsewhere.
 add_library(painterly_util STATIC thread_pool.cpp)
 target_link_libraries(painterly_util PUBLIC cycles_util)
+painterly_target_warnings(painterly_util)

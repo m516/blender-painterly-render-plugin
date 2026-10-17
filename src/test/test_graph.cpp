@@ -5,6 +5,9 @@
 
 #include <doctest/doctest.h>
 
+#include <string_view>
+#include <type_traits>
+
 #include "graph/node.h"
 #include "graph/node_type.h"
 #include "util/param.h"
@@ -158,6 +161,30 @@ TEST_CASE("modified flags follow value changes and explicit tags")
   CHECK(node.is_modified());
   node.clear_modified();
   CHECK_FALSE(node.is_modified());
+}
+
+// The shim ustring (util/param.h) as OpenImageIO's (T3.22): the constructors are explicit, and a
+// ustring compares with a string_view or a C string in either operand order.
+static_assert(std::is_constructible_v<ustring, const char *>);
+static_assert(std::is_constructible_v<ustring, std::string_view>);
+static_assert(!std::is_convertible_v<const char *, ustring>);
+static_assert(!std::is_convertible_v<std::string_view, ustring>);
+
+TEST_CASE("ustring constructs only explicitly and compares with C strings and string_views")
+{
+  const ustring mode("mode");
+  CHECK(mode == "mode");
+  CHECK("mode" == mode);
+  CHECK(mode != "mod");
+  CHECK("modes" != mode);
+  CHECK(mode == std::string_view("mode"));
+  CHECK(std::string_view("mode") == mode);
+  CHECK(mode != std::string_view("mo"));
+  CHECK(std::string_view() != mode);
+  // A null C string compares as the empty string, as in OpenImageIO (ustring.h:538-541).
+  const char *const no_name = nullptr;
+  CHECK(ustring() == no_name);
+  CHECK(no_name != mode);
 }
 
 CCL_NAMESPACE_END

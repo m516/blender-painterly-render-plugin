@@ -5,6 +5,10 @@ the file's own path relative to src/cycles/shim/, which is the upstream path it 
 no vendored counterpart: that path is neither a ``dest`` in third_party/cycles/VENDORED.toml nor a
 file under third_party/cycles/. A file vendored and shimmed at once would put two copies on the
 include path (docs/architecture.md, "Source layout and naming").
+
+src/ and third_party/cycles/ also share no top-level directory (T3.22). Both are include
+directories of cycles_util, and compilers search the SYSTEM directory third_party/cycles/ after
+src/, so a shared name could let a file under src/ shadow a vendored header.
 """
 
 import tomllib
@@ -13,6 +17,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_DIR = REPO_ROOT / "src"
 SHIM_DIR = REPO_ROOT / "src" / "cycles" / "shim"
 VENDOR_DIR = REPO_ROOT / "third_party" / "cycles"
 MANIFEST = VENDOR_DIR / "VENDORED.toml"
@@ -63,3 +68,11 @@ def test_shim_has_no_vendored_counterpart(shim: Path) -> None:
     assert not (VENDOR_DIR / relative).exists(), (
         f"{relative} is shimmed but also exists under third_party/cycles/"
     )
+
+
+def test_src_and_vendored_tree_share_no_top_level_directory() -> None:
+    """No directory directly under src/ has the name of one directly under third_party/cycles/."""
+    src_names = {path.name for path in SRC_DIR.iterdir() if path.is_dir()}
+    vendored_names = {path.name for path in VENDOR_DIR.iterdir() if path.is_dir()}
+    shared = sorted(src_names & vendored_names)
+    assert not shared, f"src/ and third_party/cycles/ share the top-level directories {shared}"

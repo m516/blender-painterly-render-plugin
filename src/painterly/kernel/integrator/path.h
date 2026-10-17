@@ -66,7 +66,9 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
 {
   const KernelPainterlyIntegrator &p = kg->data->integrator;
   const uint64_t K_start = *K;
-  const double3 zero = make_double3(0.0);
+  /* No radiance: the color of a VERTEX_END vertex and the start of the backward evaluation. The
+   * name differs from util/simd.h:90's namespace-scope global, which -Wshadow would report. */
+  const double3 black = make_double3(0.0);
   PainterlyRay ray = painterly_camera_generate_ray(kg, row, col, pass, true);
   int n = 0;
 
@@ -78,7 +80,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
       /* A miss: the background, scaled by emission_gain (SPEC §6). */
       const double3 background = painterly_background_radiance(kg, ray.d);
       scratch[n++] = PainterlyPathVertex{
-          VERTEX_END, painterly_emission_term(background, p.emission_gain), 0.0, zero};
+          VERTEX_END, painterly_emission_term(background, p.emission_gain), 0.0, black};
       break;
     }
 
@@ -104,7 +106,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
 
     if (!p.continue_after_emitter && painterly_is_emitter(mat.emission)) {
       /* The emitter absorbs the path (SPEC §6, knob continue_after_emitter). */
-      scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, zero};
+      scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, black};
       break;
     }
 
@@ -131,7 +133,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
         }
         else {
           /* Total internal reflection: the path ends with its emission (SPEC §6). */
-          scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, zero};
+          scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, black};
           path_ends = true;
         }
         break;
@@ -144,7 +146,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
         /* An unknown lobe kind (TQ.1 F6). The scene rejects these (T3.13), so this is a
          * fail-safe: the path ends here with the emission of the hit, as at total internal
          * reflection. */
-        scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, zero};
+        scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, black};
         path_ends = true;
         break;
     }
@@ -156,7 +158,7 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
   /* Backward evaluation (SPEC §6), last vertex first. Each operation matches smallpaint's order:
    * the diffuse term is cost * (L * color) * diffuse_gain (smallpaint_painterly.cpp:209-211), and
    * the tint adds L * color (:219, :236). */
-  double3 L = zero;
+  double3 L = black;
   for (int i = n - 1; i >= 0; i--) {
     const PainterlyPathVertex &v = scratch[i];
     double3 Li = v.emission_term;
