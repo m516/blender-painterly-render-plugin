@@ -18,6 +18,15 @@ FetchContent_MakeAvailable(doctest)
 # so the warning flags of painterly_tests do not apply to doctest's header.
 add_library(painterly_doctest INTERFACE)
 target_include_directories(painterly_doctest SYSTEM INTERFACE "${doctest_SOURCE_DIR}")
+# doctest prints the operands of a CHECK with operator<<. Without this definition doctest forward-declares
+# std::ostream in namespace std (doctest.h v2.4.11 lines 517-552) and MSVC then fails on a std::string_view
+# operand: CI run 39016333578 (commit 6806293), job windows, error C2027 in MSVC's <__msvc_string_view.hpp>
+# from src/test/test_graph.cpp:180 CHECK(mode == std::string_view("mode")). GCC with libstdc++ compiles it.
+# DOCTEST_CONFIG_USE_STD_HEADERS makes doctest include <cstddef>, <ostream> and <istream> instead
+# (doctest.h lines 508-516; doc/markdown/configuration.md, section "DOCTEST_CONFIG_USE_STD_HEADERS", which
+# says it "should be defined globally"). INTERFACE reaches every source of every target that links
+# painterly_doctest, which is what "globally" asks for.
+target_compile_definitions(painterly_doctest INTERFACE DOCTEST_CONFIG_USE_STD_HEADERS)
 
 add_executable(painterly_tests
   test_main.cpp
