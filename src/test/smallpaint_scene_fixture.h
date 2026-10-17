@@ -72,7 +72,6 @@ struct SmallpaintSceneFixture {
     globals.num_meshes = int(meshes.size());
     /* The reference scene has no triangles, so there is no BVH and no triangle arrays. */
     globals.tri_material = nullptr;
-    globals.tri_vertices = nullptr;
     globals.tri_corner_normals = nullptr;
     globals.bvh = nullptr;
   }

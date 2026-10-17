@@ -117,7 +117,6 @@ struct GlassSlabScene {
   std::vector<KernelPainterlyObject> objects;
   std::vector<KernelPainterlyMesh> meshes;
   std::vector<int> tri_material;
-  std::vector<float> tri_vertices;
   std::vector<float> tri_corner_normals;
   std::unique_ptr<PainterlyEmbreeScene, void (*)(PainterlyEmbreeScene *)> bvh{
       nullptr, painterly_embree_scene_free};
@@ -164,17 +163,11 @@ struct GlassSlabScene {
     const float emitter_vertices[12] = {-h, -h, -6, h, -h, -6, h, h, -6, -h, h, -6};
     const uint32_t emitter_triangles[6] = {0, 1, 2, 0, 2, 3};
 
-    // Per triangle: the object-space corners, and the corner normals of the slab (zero for the
-    // emitter, which does not use them).
+    // Per triangle: the corner normals of the slab (zero for the emitter, which does not use
+    // them). The vertices go to Embree only (painterly/kernel/globals.h).
     const int slab_count = int(slab_triangles.size() / 3);
     const int emitter_count = int(sizeof(emitter_triangles) / sizeof(emitter_triangles[0]) / 3);
     for (int t = 0; t < slab_count; t++) {
-      for (int k = 0; k < 3; k++) {
-        const uint32_t v = slab_triangles[3 * t + k];
-        for (int i = 0; i < 3; i++) {
-          tri_vertices.push_back(slab_vertices[3 * v + i]);
-        }
-      }
       for (int k = 0; k < 3; k++) {
         const uint32_t v = slab_triangles[3 * t + k];
         for (int i = 0; i < 3; i++) {
@@ -184,13 +177,7 @@ struct GlassSlabScene {
       tri_material.push_back(0);
     }
     for (int t = 0; t < emitter_count; t++) {
-      for (int k = 0; k < 3; k++) {
-        const uint32_t v = emitter_triangles[3 * t + k];
-        for (int i = 0; i < 3; i++) {
-          tri_vertices.push_back(emitter_vertices[3 * v + i]);
-        }
-      }
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS; i++) {
         tri_corner_normals.push_back(0.0f);
       }
       tri_material.push_back(1);
@@ -223,10 +210,7 @@ struct GlassSlabScene {
     const float identity[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
     for (int o = 0; o < 2; o++) {
       KernelPainterlyObject object{};
-      for (int i = 0; i < 12; i++) {
-        object.tfm[i] = identity[i];
-        object.itfm[i] = identity[i];
-      }
+      painterly_normal_matrix(identity, object.normal_to_world);
       object.mesh = o;
       object.object_id = o;
       objects.push_back(object);
@@ -265,7 +249,6 @@ struct GlassSlabScene {
     globals.meshes = meshes.data();
     globals.num_meshes = int(meshes.size());
     globals.tri_material = tri_material.data();
-    globals.tri_vertices = tri_vertices.data();
     globals.tri_corner_normals = tri_corner_normals.data();
     globals.bvh = bvh.get();
   }

@@ -4,8 +4,8 @@
 #pragma once
 
 /* Triangle hits (SPEC §6): the material and the shading normal. Corner normals and the object's
- * transform are read from the device scene (painterly/kernel/globals.h). Every function is a pure
- * function of its arguments. */
+ * normal matrix are read from the device scene (painterly/kernel/globals.h). Every function is a
+ * pure function of its arguments. */
 
 #include "painterly/kernel/globals.h"
 #include "painterly/util/math_double3.h"
@@ -23,9 +23,9 @@ ccl_device_inline int painterly_triangle_material(PainterlyGlobals kg,
 /* Shading normal at a triangle hit, unit length, in world space (SPEC §6).
  *   With corner normals: n = (1 - u - v) n0 + u n1 + v n2 in object space, with the weights of the
  *   Embree convention (painterly/bvh/embree.h: p = (1 - u - v) v0 + u v1 + v v2). It is mapped to
- *   world space by the inverse transpose of the object's transform, which is the transpose of the
- *   3x3 part of itfm, computed in double.
- *   Otherwise: the geometric normal isect.Ng, which Embree returns in world space.
+ *   world space by the object's normal_to_world, the matrix that also maps isect.Ng (both come
+ *   from painterly_normal_matrix), so the two routes agree on a flat triangle.
+ *   Otherwise: the geometric normal isect.Ng, which the BVH returns in world space.
  * If two_sided, the normal is flipped to face the incoming ray: dot(N, ray.d) > 0 -> N = -N
  * (SPEC §6). The glass lobe calls this with two_sided = false, so it always gets the unflipped
  * normal. */
@@ -38,19 +38,18 @@ ccl_device_inline double3 painterly_triangle_shading_normal(PainterlyGlobals kg,
   const KernelPainterlyMesh &mesh = kg->meshes[object.mesh];
   double3 N;
   if (mesh.has_corner_normals) {
-    const float *c = kg->tri_corner_normals + 9 * (mesh.tri_offset + isect.prim);
+    const float *n0 = kg->tri_corner_normals + PAINTERLY_TRIANGLE_CORNERS *
+                                                   PAINTERLY_POINT_FLOATS *
+                                                   (mesh.tri_offset + isect.prim);
+    const float *n1 = n0 + PAINTERLY_POINT_FLOATS;
+    const float *n2 = n1 + PAINTERLY_POINT_FLOATS;
     const double w1 = double(isect.u);
     const double w2 = double(isect.v);
     const double w0 = 1.0 - w1 - w2;
-    const double3 n_object = make_double3(w0 * c[0] + w1 * c[3] + w2 * c[6],
-                                          w0 * c[1] + w1 * c[4] + w2 * c[7],
-                                          w0 * c[2] + w1 * c[5] + w2 * c[8]);
-    /* Column i of the inverse transpose: itfm[4 j + i] for row j (row-major 3x4 affine). */
-    const float *m = object.itfm;
-    N = make_double3(
-        double(m[0]) * n_object.x + double(m[4]) * n_object.y + double(m[8]) * n_object.z,
-        double(m[1]) * n_object.x + double(m[5]) * n_object.y + double(m[9]) * n_object.z,
-        double(m[2]) * n_object.x + double(m[6]) * n_object.y + double(m[10]) * n_object.z);
+    const double3 n_object = make_double3(w0 * n0[0] + w1 * n1[0] + w2 * n2[0],
+                                          w0 * n0[1] + w1 * n1[1] + w2 * n2[1],
+                                          w0 * n0[2] + w1 * n1[2] + w2 * n2[2]);
+    N = transform_direction_3x3(object.normal_to_world, n_object);
   }
   else {
     N = isect.Ng;

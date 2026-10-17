@@ -80,7 +80,7 @@ struct KernelPainterlyAnalytic {
   int type;         /* PainterlyAnalyticType */
   int intersection; /* PainterlySphereIntersection (spheres only) */
   int material;     /* Index into materials. */
-  int object_id;    /* Value written to the object-id pass. */
+  int object_id;    /* Value written to the object_id buffer. */
   double3 a;        /* sphere: centre;  plane: unit normal n */
   double b;         /* sphere: radius;  plane: d with n.p + d = 0 */
   KernelPainterlySpotProfile spot;

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Bitwise tests of painterly/util/math_double3.h against smallpaint's Vec (T3.5). Every comparison
-// is std::memcmp of the two results, so no tolerance is used and -0.0 is distinguished from +0.0.
+// Bitwise tests of painterly/util/math_double3.h against smallpaint's Vec (T3.5), and exact tests
+// of its 3x4 transform helpers and normal matrix (T3.21). No tolerance is used. The comparisons
+// with smallpaint are std::memcmp of the two results, so -0.0 is distinguished from +0.0. Closed
+// forms whose zeros may carry either sign are compared with ==.
 
 #include <doctest/doctest.h>
 
@@ -9,6 +11,7 @@
 #include <cstring>
 #include <limits>
 #include <random>
+#include <stdexcept>
 
 #include "painterly/util/math_double3.h"
 #include "painterly/util/types_double3.h"
@@ -177,6 +180,77 @@ TEST_CASE("double3 cross product is bitwise smallpaint Vec operator%")
     mismatches += !same_bits(a % b, cross(to_double3(ta), to_double3(tb)));
   }
   CHECK_EQ(mismatches, 0);
+}
+
+TEST_CASE("3x4 transform helpers are bitwise the row-by-row expressions of a row-major [A | t]")
+{
+  // camera.h's former hand-indexed reads: R v row by row from m[0..2], m[4..6] and m[8..10], and
+  // t = (m[3], m[7], m[11]). The helpers must keep that operation order, so that camera rays keep
+  // their bits.
+  std::mt19937_64 rng(BITWISE_TEST_SEED);
+  int direction_mismatches = 0;
+  int translation_mismatches = 0;
+  for (int pair = 0; pair < BITWISE_TEST_PAIRS; pair++) {
+    double m[12];
+    for (double &entry : m) {
+      entry = random_value(rng);
+    }
+    const double3 v = to_double3(draw_triple(rng));
+    const double3 got = painterly_transform_direction_3x4(m, v);
+    direction_mismatches += !(same_bits(got.x, m[0] * v.x + m[1] * v.y + m[2] * v.z) &&
+                              same_bits(got.y, m[4] * v.x + m[5] * v.y + m[6] * v.z) &&
+                              same_bits(got.z, m[8] * v.x + m[9] * v.y + m[10] * v.z));
+    const double3 t = painterly_transform_translation_3x4(m);
+    translation_mismatches += !(same_bits(t.x, m[3]) && same_bits(t.y, m[7]) &&
+                                same_bits(t.z, m[11]));
+  }
+  CHECK_EQ(direction_mismatches, 0);
+  CHECK_EQ(translation_mismatches, 0);
+}
+
+TEST_CASE("painterly_normal_matrix is (A^-1)^T, keeps a mirrored normal's side, rejects det 0")
+{
+  // A = [[2, 0, 0], [0, -2, 0], [0.5, 0.5, 1]] with translation (1, 2, -3): an axis mirror
+  // (det(A) = -4), a power-of-two scale and a dyadic shear. A^-1 = [[0.5, 0, 0], [0, -0.5, 0],
+  // [-0.25, 0.25, 1]], so (A^-1)^T = [[0.5, 0, -0.25], [0, -0.5, 0.25], [0, 0, 1]]. Every
+  // cofactor, det(A) and quotient is a dyadic rational with few bits, so binary64 forms each one
+  // exactly.
+  const float mirrored[12] = {
+      2.0f, 0.0f, 0.0f, 1.0f, 0.0f, -2.0f, 0.0f, 2.0f, 0.5f, 0.5f, 1.0f, -3.0f};
+  const double expected[9] = {0.5, 0.0, -0.25, 0.0, -0.5, 0.25, 0.0, 0.0, 1.0};
+  double normal_matrix[9];
+  painterly_normal_matrix(mirrored, normal_matrix);
+  for (int i = 0; i < 9; i++) {
+    CHECK(normal_matrix[i] == expected[i]);
+  }
+
+  // dot(N n, A d) = dot(n, d) for the object normal n = (0, 0, 1) and the three axes d: the mapped
+  // normal stays on its side of the surface although A mirrors. Every value is exact.
+  double a[12];
+  for (int i = 0; i < 12; i++) {
+    a[i] = mirrored[i];
+  }
+  const double3 n = make_double3(0.0, 0.0, 1.0);
+  const double3 n_world = transform_direction_3x3(normal_matrix, n);
+  for (const double3 d :
+       {make_double3(1.0, 0.0, 0.0), make_double3(0.0, 1.0, 0.0), make_double3(0.0, 0.0, 1.0)})
+  {
+    CHECK(dot(n_world, painterly_transform_direction_3x4(a, d)) == dot(n, d));
+  }
+
+  // The identity maps to the identity, with +0.0 off the diagonal: the same bits as the float
+  // identity matrix that transformed the corner normals before T3.21, so GlassSlabScene in
+  // test_path.cpp keeps its results.
+  const float identity[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+  const double identity_3x3[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+  painterly_normal_matrix(identity, normal_matrix);
+  for (int i = 0; i < 9; i++) {
+    CHECK(same_bits(normal_matrix[i], identity_3x3[i]));
+  }
+
+  // The y column is zero: A is singular and no normal matrix exists.
+  const float singular[12] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+  CHECK_THROWS_AS(painterly_normal_matrix(singular, normal_matrix), std::invalid_argument);
 }
 
 CCL_NAMESPACE_END

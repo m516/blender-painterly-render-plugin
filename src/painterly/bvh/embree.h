@@ -12,10 +12,15 @@
  * of the object in the objects array), the triangle within its mesh, and the barycentrics of
  * Embree's convention: p = (1 - u - v) v0 + u v1 + v v2.
  *
- * Normals. Embree returns the geometric normal of an instance hit in object space. Ng is returned
- * in world space, transformed by the inverse transpose of the object's transform, computed in
- * double, and not normalized. Normals keep their side of the surface: n_world . (A d) = n_object .
- * d for every direction d, so an outward normal stays outward under a mirroring transform.
+ * Normals. Embree returns the geometric normal of an instance hit in object space: (v1 - v0) x
+ * (v2 - v0) for the corners in index order (Embree 4.4.1
+ * kernels/geometry/triangle_intersector_pluecker.h:87-89 and 105, common/math/vec3.h:210-222), so
+ * it points to the side from which v0, v1, v2 appear counter-clockwise. Ng is returned in world
+ * space, mapped by the object's normal matrix from painterly_normal_matrix
+ * (painterly/util/math_double3.h), which the scene also stores as
+ * KernelPainterlyObject::normal_to_world, and it is not normalized. Normals keep their side of the
+ * surface: n_world . (A d) = n_object . d for every direction d, so an outward normal stays
+ * outward under a mirroring transform.
  *
  * Watertightness. Every RTCScene has RTC_SCENE_FLAG_ROBUST: a ray through an edge shared by two
  * triangles hits one of them. T3.17 and T5.4 compare object ids on interior pixels, so this
@@ -45,9 +50,9 @@ struct PainterlyEmbreeScene; /* Opaque. Destroy with painterly_embree_scene_free
 
 /* One triangle mesh in object space. */
 struct PainterlyEmbreeMeshInput {
-  const float *vertices; /* 3 floats per vertex (x, y, z): num_vertices * 3 floats. */
+  const float *vertices; /* PAINTERLY_POINT_FLOATS floats (x, y, z) per vertex. */
   size_t num_vertices;
-  const uint32_t *triangles; /* 3 vertex indices per triangle: num_triangles * 3 indices. */
+  const uint32_t *triangles; /* PAINTERLY_TRIANGLE_CORNERS vertex indices per triangle. */
   size_t num_triangles;
 };
 
@@ -60,9 +65,9 @@ struct PainterlyEmbreeObjectInput {
 
 /* Builds the scene. An object whose mesh has no triangles is skipped: it cannot be hit. Throws
  * std::invalid_argument for malformed input (a null array with a nonzero count, an index outside
- * its mesh, a mesh index outside the meshes array, a singular object_to_world), and
- * std::runtime_error when Embree fails. Free the result with painterly_embree_scene_free.
- */
+ * its mesh, a mesh index outside the meshes array, a singular object_to_world of an object whose
+ * mesh has triangles), and std::runtime_error when Embree fails. Free the result with
+ * painterly_embree_scene_free. */
 PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInput *meshes,
                                                     size_t num_meshes,
                                                     const PainterlyEmbreeObjectInput *objects,

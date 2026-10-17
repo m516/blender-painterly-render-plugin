@@ -24,23 +24,6 @@ CCL_NAMESPACE_BEGIN
  * not a tuning value: the ray goes through the middle of the pixel. */
 constexpr double PAINTERLY_RASTER_PIXEL_CENTRE = 0.5;
 
-/* camera_to_world is a row-major 3x4 affine matrix [R | t] (types.h). This returns R * v. */
-ccl_device_inline double3 painterly_camera_rotate(const KernelPainterlyCamera &cam,
-                                                  const double3 v)
-{
-  const double *m = cam.camera_to_world;
-  return make_double3(m[0] * v.x + m[1] * v.y + m[2] * v.z,
-                      m[4] * v.x + m[5] * v.y + m[6] * v.z,
-                      m[8] * v.x + m[9] * v.y + m[10] * v.z);
-}
-
-/* The translation t of camera_to_world: the world position of the camera origin. */
-ccl_device_inline double3 painterly_camera_translation(const KernelPainterlyCamera &cam)
-{
-  const double *m = cam.camera_to_world;
-  return make_double3(m[3], m[7], m[11]);
-}
-
 /* Camera-space point Pc on the image plane for the raster point (raster_x, raster_y), SPEC §7:
  * p = raster_to_camera * (raster_x, raster_y, 0, 1), Pc = p.xyz / p.w. The z input is 0 and the w
  * input is 1, so their products are m[2] * 0 and m[3] * 1, which are written as the bare m[3]. */
@@ -126,19 +109,24 @@ painterly_camera_generate_ray(PainterlyGlobals kg, int row, int col, int pass, b
   const double raster_y = row + PAINTERLY_RASTER_PIXEL_CENTRE + jy;
   const double3 point_cam = painterly_camera_raster_to_camera(cam, raster_x, raster_y);
 
+  /* camera_to_world is a row-major 3x4 affine [R | t] (types.h): R rotates camera-space
+   * directions to world space, and t is the world position of the camera origin. */
+  const double *camera_to_world = cam.camera_to_world;
   if (cam.type == PAINTERLY_CAMERA_PERSPECTIVE) {
     /* Pinhole at the camera origin: the ray leaves the origin along normalize(R * normalize(Pc)).
      * The outer normalize keeps the direction unit length when camera_to_world carries a scale. */
-    return PainterlyRay{painterly_camera_translation(cam),
-                        normalize(painterly_camera_rotate(cam, normalize(point_cam)))};
+    return PainterlyRay{
+        painterly_transform_translation_3x4(camera_to_world),
+        normalize(painterly_transform_direction_3x4(camera_to_world, normalize(point_cam)))};
   }
 
   /* Orthographic (PAINTERLY_CAMERA_ORTHOGRAPHIC): the ray starts at (Pc.x, Pc.y, 0) and points
    * along the camera's forward axis -Z (SPEC §1). */
   const double3 origin_cam = make_double3(point_cam.x, point_cam.y, 0.0);
   const double3 forward_cam = make_double3(0.0, 0.0, -1.0);
-  return PainterlyRay{painterly_camera_rotate(cam, origin_cam) + painterly_camera_translation(cam),
-                      normalize(painterly_camera_rotate(cam, forward_cam))};
+  return PainterlyRay{painterly_transform_direction_3x4(camera_to_world, origin_cam) +
+                          painterly_transform_translation_3x4(camera_to_world),
+                      normalize(painterly_transform_direction_3x4(camera_to_world, forward_cam))};
 }
 
 CCL_NAMESPACE_END

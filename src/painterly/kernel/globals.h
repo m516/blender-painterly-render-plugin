@@ -13,13 +13,22 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Instance of a triangle mesh. Transforms are row-major 3x4 affine (float, as exported by
- * Blender). */
+/* Layout definitions of the triangle arrays. A point or a normal is PAINTERLY_POINT_FLOATS floats
+ * (x, y, z), and a triangle has PAINTERLY_TRIANGLE_CORNERS corners (v0, v1, v2, in the order of
+ * Embree's barycentrics, painterly/bvh/embree.h). The corner normals of one triangle are
+ * PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS floats. */
+constexpr int PAINTERLY_POINT_FLOATS = 3;
+constexpr int PAINTERLY_TRIANGLE_CORNERS = 3;
+
+/* Instance of a triangle mesh. Its object_to_world (row-major 3x4 affine, float, as exported by
+ * Blender) goes to the BVH only (painterly/bvh/embree.h), which keeps its own copy. */
 struct KernelPainterlyObject {
-  float tfm[12];  /* object -> world */
-  float itfm[12]; /* world -> object (its 3x3 transpose transforms normals object -> world) */
-  int mesh;       /* Index into meshes. */
-  int object_id;  /* Value written to the object-id pass. */
+  /* (A^-1)^T of the 3x3 part A of object_to_world, row-major, in double: maps object-space corner
+   * normals to world space. painterly_normal_matrix (painterly/util/math_double3.h) computes it,
+   * and the BVH maps Embree's Ng with the same function (TQ.1 F25). */
+  double normal_to_world[9];
+  int mesh;      /* Index into meshes. */
+  int object_id; /* Value written to the object_id buffer. */
 };
 
 struct KernelPainterlyMesh {
@@ -46,10 +55,12 @@ struct PainterlyGlobalsCPU {
   const KernelPainterlyMesh *meshes = nullptr;
   int num_meshes = 0;
 
-  /* Per triangle, indexed by mesh.tri_offset + prim_id. */
-  const int *tri_material = nullptr;         /* Material index. */
-  const float *tri_vertices = nullptr;       /* 9 floats: v0, v1, v2 in object space. */
-  const float *tri_corner_normals = nullptr; /* 9 floats: n0, n1, n2 in object space, or null. */
+  /* Per triangle of every mesh, indexed by mesh.tri_offset + prim (the triangle in its mesh). The
+   * vertices are not here: only the BVH reads them, from its own copy (painterly/bvh/embree.h). */
+  const int *tri_material = nullptr; /* Material index. */
+  /* PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS floats per triangle: n0, n1, n2 in object
+   * space. Read only for meshes with has_corner_normals. Null when no mesh has corner normals. */
+  const float *tri_corner_normals = nullptr;
 
   /* Opaque triangle BVH (painterly/bvh/embree.h PainterlyEmbreeScene). Null when the scene has no
    * triangles. */

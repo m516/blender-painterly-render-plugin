@@ -30,13 +30,6 @@ static_assert(sizeof(unsigned int) == sizeof(uint32_t), "Embree indices must be 
  * host's core count this way. */
 constexpr const char *device_config = "threads=1";
 
-/* Vertices per triangle, and floats per 3D point. */
-constexpr size_t verts_per_triangle = 3;
-constexpr size_t floats_per_point = 3;
-/* A row-major 3x4 affine transform stores four floats per row. The last of them is the
- * translation. */
-constexpr int floats_per_row_3x4 = 4;
-
 /* The process's one Embree device. The static is initialized on first use, and C++11 makes that
  * initialization thread-safe. A failed initialization throws, and the next call tries again. The
  * device is never released, so no scene can outlive it. */
@@ -86,45 +79,6 @@ class PainterlyEmbreeGeometryHandle {
   RTCGeometry geometry_;
 };
 
-/* (A^-1)^T for the 3x3 part A of a row-major 3x4 affine transform, in double. A normal transforms
- * with it. The cofactor form (A^-1)^T = cofactor(A) / det(A) avoids forming an inverse. The result
- * is not normalized. Throws for a singular A, because a normal cannot be mapped through it. */
-std::array<double, 9> inverse_transpose_3x3(const float *object_to_world)
-{
-  double a[3][3];
-  for (int r = 0; r < 3; ++r) {
-    for (int c = 0; c < 3; ++c) {
-      a[r][c] = static_cast<double>(object_to_world[floats_per_row_3x4 * r + c]);
-    }
-  }
-
-  /* cofactor(r, c) = (-1)^(r+c) times the minor of element (r, c). */
-  const double c00 = a[1][1] * a[2][2] - a[1][2] * a[2][1];
-  const double c01 = a[1][2] * a[2][0] - a[1][0] * a[2][2];
-  const double c02 = a[1][0] * a[2][1] - a[1][1] * a[2][0];
-  const double c10 = a[0][2] * a[2][1] - a[0][1] * a[2][2];
-  const double c11 = a[0][0] * a[2][2] - a[0][2] * a[2][0];
-  const double c12 = a[0][1] * a[2][0] - a[0][0] * a[2][1];
-  const double c20 = a[0][1] * a[1][2] - a[0][2] * a[1][1];
-  const double c21 = a[0][2] * a[1][0] - a[0][0] * a[1][2];
-  const double c22 = a[0][0] * a[1][1] - a[0][1] * a[1][0];
-
-  /* Expansion of det(A) along row 0. */
-  const double det = a[0][0] * c00 + a[0][1] * c01 + a[0][2] * c02;
-  if (det == 0.0) {
-    throw std::invalid_argument("painterly_embree_scene_create: singular object_to_world");
-  }
-  return {c00 / det,
-          c01 / det,
-          c02 / det,
-          c10 / det,
-          c11 / det,
-          c12 / det,
-          c20 / det,
-          c21 / det,
-          c22 / det};
-}
-
 }  // namespace
 
 /* The Embree objects behind a PainterlyEmbreeScene. Destroying it releases every handle it holds.
@@ -136,7 +90,7 @@ struct PainterlyEmbreeScene {
   /* Top-level scene: one instance per object whose mesh has triangles. */
   RTCScene top = nullptr;
   /* Indexed by the instance geometry ID that a hit reports in hit.instID[0]: the object index, and
-   * (A^-1)^T of the object's transform. */
+   * the object's normal matrix (A^-1)^T from painterly_normal_matrix. */
   std::vector<int> object;
   std::vector<std::array<double, 9>> normal_to_world;
 
@@ -184,7 +138,7 @@ PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInp
     if (!mesh.vertices || !mesh.triangles) {
       throw std::invalid_argument("painterly_embree_scene_create: mesh arrays are null");
     }
-    for (size_t i = 0; i < verts_per_triangle * mesh.num_triangles; ++i) {
+    for (size_t i = 0; i < PAINTERLY_TRIANGLE_CORNERS * mesh.num_triangles; ++i) {
       if (mesh.triangles[i] >= mesh.num_vertices) {
         throw std::invalid_argument("painterly_embree_scene_create: triangle index out of range");
       }
@@ -209,27 +163,29 @@ PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInp
                                 RTC_BUFFER_TYPE_VERTEX,
                                 0,
                                 RTC_FORMAT_FLOAT3,
-                                floats_per_point * sizeof(float),
+                                PAINTERLY_POINT_FLOATS * sizeof(float),
                                 mesh.num_vertices));
     if (!vertex_buffer) {
       check_embree("painterly_embree_scene_create: vertex buffer");
       throw std::runtime_error("painterly_embree_scene_create: vertex buffer allocation failed");
     }
-    std::copy(mesh.vertices, mesh.vertices + floats_per_point * mesh.num_vertices, vertex_buffer);
+    std::copy(
+        mesh.vertices, mesh.vertices + PAINTERLY_POINT_FLOATS * mesh.num_vertices, vertex_buffer);
 
     unsigned int *index_buffer = static_cast<unsigned int *>(
         rtcSetNewGeometryBuffer(geometry.get(),
                                 RTC_BUFFER_TYPE_INDEX,
                                 0,
                                 RTC_FORMAT_UINT3,
-                                verts_per_triangle * sizeof(unsigned int),
+                                PAINTERLY_TRIANGLE_CORNERS * sizeof(unsigned int),
                                 mesh.num_triangles));
     if (!index_buffer) {
       check_embree("painterly_embree_scene_create: index buffer");
       throw std::runtime_error("painterly_embree_scene_create: index buffer allocation failed");
     }
-    std::copy(
-        mesh.triangles, mesh.triangles + verts_per_triangle * mesh.num_triangles, index_buffer);
+    std::copy(mesh.triangles,
+              mesh.triangles + PAINTERLY_TRIANGLE_CORNERS * mesh.num_triangles,
+              index_buffer);
 
     rtcCommitGeometry(geometry.get());
     rtcAttachGeometry(mesh_scene, geometry.get());
@@ -257,7 +213,8 @@ PainterlyEmbreeScene *painterly_embree_scene_create(const PainterlyEmbreeMeshInp
     if (!mesh_scene) {
       continue; /* A mesh without triangles cannot be hit. */
     }
-    const std::array<double, 9> normal_matrix = inverse_transpose_3x3(object.object_to_world);
+    std::array<double, 9> normal_matrix;
+    painterly_normal_matrix(object.object_to_world, normal_matrix.data());
 
     PainterlyEmbreeGeometryHandle instance(rtcNewGeometry(device, RTC_GEOMETRY_TYPE_INSTANCE));
     if (!instance.get()) {
@@ -325,7 +282,8 @@ bool painterly_embree_intersect_closest(const void *bvh,
   }
 
   /* An instance hit: the top-level scene holds only instances, so instID[0] names the object. The
-   * normal is in object space and goes to world space through the object's inverse transpose. */
+   * normal is in object space and goes to world space through the object's normal matrix, the
+   * matrix that the scene stores as KernelPainterlyObject::normal_to_world. */
   const unsigned int instance = rayhit.hit.instID[0];
   const std::array<double, 9> &normal_matrix = scene->normal_to_world[instance];
   const double3 ng_object = make_double3(static_cast<double>(rayhit.hit.Ng_x),
