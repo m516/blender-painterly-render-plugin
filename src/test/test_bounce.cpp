@@ -108,6 +108,11 @@ constexpr std::uint64_t ZERO_DRAW_K0 = (std::uint64_t(1) << PAINTERLY_VDC_BITS) 
 // alpha values of the zero-length test: 0 (the default, where the rule changes nothing) and the
 // three alphas of ORACLE_ALPHAS, whose first-light renders held NaN pixels before the rule.
 constexpr double ZERO_LENGTH_ALPHAS[] = {0.0, 0.25, 0.5, 1.0};
+// The spiral frame of the permuted-frame test (TQ.1 F20), row-major: the signed axis permutation
+// with rows (0, 0, -1), (1, 0, 0) and (0, -1, 0). It is a rotation (det 1), as every spiral frame
+// of SPEC §1 is. It moves every axis and is not symmetric, so an ignored, transposed or
+// misindexed F changes the result. Its entries are exact, so F s is exact (see the test).
+constexpr double PERMUTED_SPIRAL_FRAME[9] = {0.0, 0.0, -1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0};
 
 // One random input of a bounce: a unit normal N, an origin, an unnormalized incoming direction,
 // the sequence counter K0 before the draw, and the indices of the stateless RNG.
@@ -372,6 +377,42 @@ TEST_CASE(
   CHECK_EQ(mismatches, 0);
   CHECK_GT(refracted, 0);
   CHECK_GT(total_internal_reflection, 0);
+}
+
+TEST_CASE("diffuse bounce with a permuted spiral frame is bitwise smallpaint's N + F s (SPEC §1)")
+{
+  // F = PERMUTED_SPIRAL_FRAME. Each row of F has one nonzero entry, +1 or -1, so each component
+  // of F s is one component of s, maybe negated: F s = (-s.z, s.x, -s.y). The other two products
+  // of a row are zeros, and adding a zero to a nonzero value leaves it unchanged. s has no zero
+  // component: s.z = u1 = vdc(K0 + 1) lies in (0, 1) for K0 + 1 in [1, 2^22], so r > 0, and the
+  // angle 2 PI u1 is a nonzero double below 2 pi, whose sine and cosine are never 0. The reference
+  // is smallpaint's diffuse block with s replaced by that permutation of hemisphere(u, u):
+  // d = N + s' and cost = d.N (smallpaint_painterly.cpp:205-206), bit for bit.
+  std::mt19937_64 rng(BOUNCE_TEST_SEED);
+  KernelPainterlyIntegrator p{};
+  p.u2_mode = U2_SAME;
+  p.alpha = 0.0;
+  std::copy(PERMUTED_SPIRAL_FRAME, PERMUTED_SPIRAL_FRAME + 9, p.spiral_frame);
+
+  int mismatches = 0;
+  for (int draw = 0; draw < BITWISE_TEST_DRAWS; draw++) {
+    const BounceCase c = draw_case(rng);
+    PainterlyRay ray = make_ray(c.origin, c.incoming);
+    std::uint64_t K = c.K0;
+    const double cost = painterly_diffuse_bounce(
+        p, to_double3(c.normal), &K, c.row, c.col, c.pass, c.depth, &ray);
+
+    const double u = painterly_vdc(c.K0 + 1);
+    const smallpaint_bounce_ref::Vec s = smallpaint_bounce_ref::hemisphere(u, u);
+    const smallpaint_bounce_ref::Vec N_ref = to_ref(c.normal);
+    const smallpaint_bounce_ref::Vec d_ref = N_ref + smallpaint_bounce_ref::Vec(-s.z, s.x, -s.y);
+    const double cost_ref = d_ref.dot(N_ref);
+
+    const bool same = K == c.K0 + 1 && same_bits(cost, cost_ref) &&
+                      same_vec(ray.d, to_double3(d_ref)) && same_vec(ray.o, to_double3(c.origin));
+    mismatches += !same;
+  }
+  CHECK_EQ(mismatches, 0);
 }
 
 CCL_NAMESPACE_END

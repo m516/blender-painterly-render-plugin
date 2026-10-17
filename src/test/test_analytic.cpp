@@ -55,6 +55,12 @@ constexpr double GEOMETRY_RADIUS_MIN = 0.5;
 constexpr double GEOMETRY_RADIUS_MAX = 1.0;
 // Bound on |dist - R| / R for the ghost hit point. Its justification is at the geometric check.
 constexpr double GHOST_GEOMETRY_RTOL = 1e-12;
+// The directed test of the eps rule (SPEC §5, M3 review panel #11). DIRECTED_EPS = 2^-13 and the
+// offset DIRECTED_DELTA = 1.5 * 2^-14 of the ray origin from the sphere are dyadic, so every value
+// of that test is exact in binary64. Its ghost ray needs delta <= eps < 2 delta and its exact ray
+// delta / 2 <= eps < 4 delta. DIRECTED_EPS satisfies both, and so does smallpaint's eps = 1e-4.
+constexpr double DIRECTED_EPS = 0x1p-13;
+constexpr double DIRECTED_DELTA = 0x1.8p-14;
 
 // A direction of the given length: a random point of [-1, 1]^3, rescaled. A zero point has no
 // direction, so the zero vector is returned for it. The probability of that draw is 2^-159.
@@ -276,6 +282,54 @@ TEST_CASE("ghost hit points lie on the sphere of SPEC §5 for |d| > 1")
   }
   CHECK_GT(hits, 0);
   CHECK_EQ(violations, 0);
+}
+
+TEST_CASE("sphere eps acts on the undivided roots, and a rejected near root is final (SPEC §5)")
+{
+  // The unit sphere at the origin, and the origin o = (1 + delta, 0, 0) just outside it, with
+  // delta = DIRECTED_DELTA. Every value below is a dyadic rational with at most 31 significant
+  // bits, so binary64 computes each step exactly. In both cases the near root passes the eps test
+  // undivided, and its divided value is returned although it is not beyond eps. The caller then
+  // rejects the hit (Scene::intersect, smallpaint_painterly.cpp:138), and the far root, which
+  // would be a hit, is never tried.
+  // - Ghost, d = (-1, 0, 0), a unit vector as the ghost quadratic assumes:
+  //   b = 2 (o - c).d = -2 (1 + delta), c' = |o - c|^2 - r^2 = 2 delta + delta^2, and
+  //   disc = b^2 - 4 c' = 4. The undivided roots are sol2 = -b - 2 = 2 delta > eps and
+  //   sol1 = -b + 2 = 4 + 2 delta, so t = sol2 / 2 = delta, which is <= eps. A kernel that tested
+  //   eps on sol2 / 2 would return sol1 / 2 = 2 + delta.
+  // - Exact, d = (-2, 0, 0): a = d.d = 4, b = -4 (1 + delta), c' as above, and
+  //   disc = b^2 - 4 a c' = 16. sol2 = 4 delta > eps and sol1 = 8 + 4 delta, so
+  //   t = sol2 / (2 a) = delta / 2, which is <= eps. A kernel that tested eps on sol2 / (2 a), or
+  //   retried sol1 after it, would return sol1 / (2 a) = 1 + delta / 2.
+  const double delta = DIRECTED_DELTA;
+  const Triple origin{1.0 + delta, 0.0, 0.0};
+  const Triple centre{0.0, 0.0, 0.0};
+  const double radius = 1.0;
+  const Triple ghost_direction{-1.0, 0.0, 0.0};
+  const Triple exact_direction{-2.0, 0.0, 0.0};
+  const KernelPainterlyAnalytic ghost = make_sphere(centre, radius, SPHERE_GHOST);
+  const KernelPainterlyAnalytic exact = make_sphere(centre, radius, SPHERE_EXACT);
+
+  const double t_ghost = painterly_sphere_intersect(
+      ghost, make_ray(origin, ghost_direction), DIRECTED_EPS);
+  const double t_exact = painterly_sphere_intersect(
+      exact, make_ray(origin, exact_direction), DIRECTED_EPS);
+  CHECK(same_bits(t_ghost, delta));
+  CHECK(same_bits(t_exact, delta / 2));
+  CHECK_FALSE(t_ghost > DIRECTED_EPS);
+  CHECK_FALSE(t_exact > DIRECTED_EPS);
+
+  // The same two rays through smallpaint's Sphere::intersect and the oracle's intersect_exact, bit
+  // for bit, with smallpaint's eps = 1e-4: it lies in the same intervals as DIRECTED_EPS, so every
+  // branch is the same. compare_ray also needs a plane and a surface point; the plane x = 0 and
+  // the point o serve, and their counts are not part of this test.
+  BitwiseCounts counts;
+  const Triple plane_normal{1.0, 0.0, 0.0};
+  compare_ray(origin, ghost_direction, centre, radius, plane_normal, 0.0, origin, counts);
+  compare_ray(origin, exact_direction, centre, radius, plane_normal, 0.0, origin, counts);
+  CHECK_EQ(counts.ghost_mismatches, 0);
+  CHECK_EQ(counts.exact_mismatches, 0);
+  CHECK_EQ(counts.dispatch_mismatches, 0);
 }
 
 CCL_NAMESPACE_END

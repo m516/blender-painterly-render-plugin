@@ -549,4 +549,54 @@ TEST_CASE("painterly lobe selection: one lobe is unchanged, a zero-luminance lob
   CHECK(diffuse_seen);
 }
 
+TEST_CASE(
+    "painterly triangle normal: corner normals map through a mirrored, scaled, sheared object")
+{
+  // object_to_world = [A | t] with A = [[0, 2, 0], [1, 0, 0.5], [0, 0, 4]] and t = (1, -2, 3)
+  // (TQ.1 F21). A swaps x and y, which mirrors (det A = -8), scales by 2 and 4, and shears z into
+  // y. Its normal matrix (A^-1)^T = cofactor(A) / det A is [[0, 0.5, 0], [1, 0, 0],
+  // [-0.125, 0, 0.25]]. It is not symmetric, so a transposed matrix gives another normal, and
+  // painterly_normal_matrix forms it exactly: every cofactor is a small integer, and its quotient
+  // by -8 is dyadic.
+  // Triangle 1 has the corner normals n0 = (1, 0, 0), n1 = (0, 1, 0) and n2 = (0, 0, 1). The hit
+  // has u = 0.25 and v = 0.125, so n = 0.625 n0 + 0.25 n1 + 0.125 n2 = (0.625, 0.25, 0.125) in
+  // object space. Its components differ, so swapped weights give another normal. In world space
+  // (A^-1)^T n = (0.125, 0.625, -0.046875). Every product and sum of this derivation is exact in
+  // binary64, so the shading normal is normalize() of that vector, bit for bit. Triangle 0 has
+  // the corner normal (0, 0, 1) at every corner, so a lookup that ignored the hit's triangle would
+  // give normalize((0, 0, 0.25)).
+  const float object_to_world[12] = {
+      0.0f, 2.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.5f, -2.0f, 0.0f, 0.0f, 4.0f, 3.0f};
+  KernelPainterlyObject object{};
+  painterly_normal_matrix(object_to_world, object.normal_to_world);
+  object.mesh = 0;
+  object.object_id = 0;
+  KernelPainterlyMesh mesh{};
+  mesh.tri_offset = 0;
+  mesh.num_tris = 2;
+  mesh.has_corner_normals = 1;
+  // n0, n1 and n2 of triangle 0, then of triangle 1.
+  const std::vector<float> corner_normals = {0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1};
+  PainterlyGlobalsCPU globals{};
+  globals.objects = &object;
+  globals.num_objects = 1;
+  globals.meshes = &mesh;
+  globals.num_meshes = 1;
+  globals.tri_corner_normals = corner_normals.data();
+
+  PainterlyIntersection isect;
+  isect.kind = HIT_TRIANGLE;
+  isect.index = 0;
+  isect.prim = 1;
+  isect.u = 0.25f;
+  isect.v = 0.125f;
+  // two_sided = false: the normal is not flipped, so the ray does not enter the result.
+  const PainterlyRay ray{make_double3(0.0, 0.0, 0.0), make_double3(0.0, 0.0, -1.0)};
+  const double3 shading_normal = painterly_triangle_shading_normal(&globals, isect, ray, false);
+  const double3 expected = normalize(make_double3(0.125, 0.625, -0.046875));
+  CHECK(shading_normal.x == expected.x);
+  CHECK(shading_normal.y == expected.y);
+  CHECK(shading_normal.z == expected.z);
+}
+
 CCL_NAMESPACE_END
