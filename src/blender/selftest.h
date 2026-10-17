@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Embree self-test for the _painterly module: proves that the static, namespaced Embree works.
 #pragma once
 

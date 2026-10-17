@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Compile check of the kernel data layout (T3.5). The two kernel headers are the first includes of
 // this translation unit, so a header that is not self-contained fails here. Every kernel struct is
 // plain-old-data ("Plain-old-data only", painterly/kernel/types.h): standard layout and trivially

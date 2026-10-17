@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of the deterministic lane scheduler (T3.12): painterly/integrator/path_trace.h and
 // painterly/util/thread_pool.h. The scene is the 32 x 32 smallpaint reference of SPEC §9
 // (smallpaint_scene_fixture.h), which is analytic, so the results do not depend on the ISA. The

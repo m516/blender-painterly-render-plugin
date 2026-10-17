@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Native core of the Painterly render engine: the nanobind module _painterly.
 
 #include <nanobind/nanobind.h>

@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of painterly/kernel/integrator/path.h (T3.11) and of the helpers it calls: lobe selection
 // (closure/lobe.h), the background (light/background.h), the spot falloff (light/spot.h) and the
 // triangle normal (geom/triangle.h). The scene is the smallpaint reference of SPEC §9
@@ -104,20 +106,12 @@ int col_of(int i)
 // normal. The shading normal of a hit is therefore outward whatever the winding of the triangles
 // (SPEC §6). The emitter is a square at z = -6 facing the camera, and it absorbs the path
 // (continue_after_emitter = 0). Its material has a zero diffuse lobe, so it is not reflective.
-struct GlassSlabScene {
+struct GlassSlabScene : KernelSceneStorage {
   // Half side of the emitter square (object space). A scene parameter.
   static constexpr float EMITTER_HALF_SIZE = 1.5f;
   // The emitter's material emission, as the light of SPEC §9.
   static constexpr double EMITTER_EMISSION = Fixture::LIGHT_EMISSION;
 
-  KernelPainterlyData data{};
-  PainterlyGlobalsCPU globals{};
-  std::vector<KernelPainterlyMaterial> materials;
-  std::vector<KernelPainterlyLobe> lobes;
-  std::vector<KernelPainterlyObject> objects;
-  std::vector<KernelPainterlyMesh> meshes;
-  std::vector<int> tri_material;
-  std::vector<float> tri_corner_normals;
   std::unique_ptr<PainterlyEmbreeScene, void (*)(PainterlyEmbreeScene *)> bvh{
       nullptr, painterly_embree_scene_free};
 
@@ -236,29 +230,8 @@ struct GlassSlabScene {
     const PainterlyEmbreeObjectInput object_inputs[2] = {{0, identity}, {1, identity}};
     bvh.reset(painterly_embree_scene_create(mesh_inputs, 2, object_inputs, 2));
 
-    globals.data = &data;
-    globals.analytic = nullptr;
-    globals.num_analytic = 0;
-    globals.materials = materials.data();
-    globals.num_materials = int(materials.size());
-    globals.lobes = lobes.data();
-    globals.num_lobes = int(lobes.size());
-    globals.suns = nullptr;
-    globals.objects = objects.data();
-    globals.num_objects = int(objects.size());
-    globals.meshes = meshes.data();
-    globals.num_meshes = int(meshes.size());
-    globals.tri_material = tri_material.data();
-    globals.tri_corner_normals = tri_corner_normals.data();
-    globals.bvh = bvh.get();
-  }
-
-  GlassSlabScene(const GlassSlabScene &) = delete;
-  GlassSlabScene &operator=(const GlassSlabScene &) = delete;
-
-  PainterlyGlobals kg() const
-  {
-    return &globals;
+    // No analytic primitives and no suns: their arrays stay empty, so globals gets null for them.
+    bind_globals(bvh.get());
   }
 };
 
@@ -522,7 +495,8 @@ TEST_CASE("painterly primary object id: the object of the unjittered primary hit
 
   // An empty scene is missed by every ray.
   fixture.globals.num_analytic = 0;
-  CHECK(painterly_primary_object_id(kg, 16, 16) == -1);
+  CHECK(painterly_primary_object_id(kg, Fixture::HEIGHT / 2, Fixture::WIDTH / 2) ==
+        PAINTERLY_OBJECT_ID_MISS);
 }
 
 TEST_CASE("painterly lobe selection: one lobe is unchanged, a zero-luminance lobe is never chosen")

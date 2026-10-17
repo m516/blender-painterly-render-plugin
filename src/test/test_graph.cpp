@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Unit tests for the vendored Cycles graph/ reflection (T3.3): NODE_DECLARE / NODE_DEFINE /
 // SOCKET_* defaults, set and get round trips, NodeType::find, enum lookup by name and the modified
 // flags. Every comparison is exact.

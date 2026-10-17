@@ -36,12 +36,4 @@ add_executable(painterly_tests
 target_link_libraries(painterly_tests PRIVATE
   painterly_doctest cycles_util cycles_graph painterly_kernel painterly_bvh painterly_integrator)
 painterly_target_warnings(painterly_tests)
-# test_analytic.cpp holds a byte-identical copy of smallpaint's Plane, whose normal(const Vec& p0) does not use p0
-# (smallpaint_painterly.cpp:91). The copy stays verbatim, so the unused-parameter warning is off for this file only
-# (TQ.1 F9). MSVC's /W4 reports it as C4100.
-if(MSVC)
-  set_source_files_properties(test_analytic.cpp PROPERTIES COMPILE_OPTIONS /wd4100)
-else()
-  set_source_files_properties(test_analytic.cpp PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)
-endif()
 add_test(NAME painterly_tests COMMAND painterly_tests)

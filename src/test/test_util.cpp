@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Unit tests for the vendored Cycles util/ (T3.2): hash_uint4 against the oracle's copy, exact
 // inverse transforms, and the float3 helpers. Every comparison is exact; there is no tolerance.
 
@@ -13,13 +15,7 @@
 #include "util/transform.h"
 #include "util/types.h"
 
-// The oracle's copy of the hash functions (src/app/smallpaint_oracle_hash.h), in its own namespace
-// so that both copies compile in this translation unit, as test_sampler.cpp does. <cstdint> is
-// already included above, so the header adds no standard-library declarations inside the
-// namespace.
-namespace smallpaint_oracle {
-#include "app/smallpaint_oracle_hash.h"
-}  // namespace smallpaint_oracle
+#include "smallpaint_ref.h"
 
 CCL_NAMESPACE_BEGIN
 

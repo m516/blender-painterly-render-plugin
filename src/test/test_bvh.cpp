@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of painterly/bvh/embree.h (T3.10). The scene is the unit quad of the card (two triangles
 // sharing the diagonal from (0,0,0) to (1,1,0)), instanced twice. Object 0 is an axis permutation
 // with a power-of-two scale and an integer translation, so its transform is exact. Object 1 is a

@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Bitwise tests of painterly/util/math_double3.h against smallpaint's Vec (T3.5), and exact tests
 // of its 3x4 transform helpers and normal matrix (T3.21). No tolerance is used. The comparisons
 // with smallpaint are std::memcmp of the two results, so -0.0 is distinguished from +0.0. Closed
@@ -16,26 +18,8 @@
 #include "painterly/util/math_double3.h"
 #include "painterly/util/types_double3.h"
 
-// smallpaint's Vec, copied verbatim from
-// third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp:43-55. clang-format is off
-// so that the copy stays byte-identical to the source, tabs included.
-// clang-format off
-namespace smallpaint_ref {
-struct Vec {
-	double x, y, z;
-	Vec(double x0 = 0, double y0 = 0, double z0 = 0) { x = x0; y = y0; z = z0; }
-	Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
-	Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
-	Vec operator*(double b) const { return Vec(x*b, y*b, z*b); }
-	Vec operator/(double b) const { return Vec(x / b, y / b, z / b); }
-	Vec mult(const Vec &b) const { return Vec(x*b.x, y*b.y, z*b.z); }
-	Vec& norm() { return *this = *this * (1 / sqrt(x*x + y*y + z*z)); }
-	double length() { return sqrt(x*x + y*y + z*z); }
-	double dot(const Vec &b) const { return x*b.x + y*b.y + z*b.z; }
-	Vec operator%(Vec &b) { return Vec(y*b.z - z*b.y, z*b.x - x*b.z, x*b.y - y*b.x); }
-};
-}  // namespace smallpaint_ref
-// clang-format on
+#include "bitwise.h"
+#include "smallpaint_ref.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -54,10 +38,6 @@ constexpr int EXPONENT_RANGE = 150;
 // Explicit fraction bits of an IEEE 754 binary64 significand (definition of the format).
 constexpr int FRACTION_BITS = 52;
 
-struct Triple {
-  double x, y, z;
-};
-
 // Draws one nonzero double with a random sign and a magnitude spanning [2^-150, 2^151). Every step
 // is exact (an integer conversion and a power-of-two scaling), so the values are the same on every
 // platform.
@@ -75,28 +55,6 @@ double random_value(std::mt19937_64 &rng)
 Triple draw_triple(std::mt19937_64 &rng)
 {
   return {random_value(rng), random_value(rng), random_value(rng)};
-}
-
-smallpaint_ref::Vec to_ref(const Triple &t)
-{
-  return smallpaint_ref::Vec(t.x, t.y, t.z);
-}
-
-double3 to_double3(const Triple &t)
-{
-  return make_double3(t.x, t.y, t.z);
-}
-
-// True when a and b have the same IEEE 754 bit pattern. This is memcmp, not ==, because == treats
-// -0.0 and +0.0 as equal.
-bool same_bits(const double a, const double b)
-{
-  return std::memcmp(&a, &b, sizeof(double)) == 0;
-}
-
-bool same_bits(const smallpaint_ref::Vec &ref, const double3 &got)
-{
-  return same_bits(ref.x, got.x) && same_bits(ref.y, got.y) && same_bits(ref.z, got.z);
 }
 
 }  // namespace

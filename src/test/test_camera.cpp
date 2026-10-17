@@ -1,6 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of painterly/kernel/camera/camera.h (T3.8). The smallpaint camera is compared bit for bit
-// with the oracle's camcr() and jitter, which smallpaint_camcr_ref.cpp holds. The perspective
+// with the oracle's camcr() and jitter, through smallpaint_camcr_ref.cpp. The perspective
 // camera is compared with the analytic direction of a 90 degree pinhole. Bit patterns are compared
 // with std::memcmp, so the -0.0 and +0.0 cases are told apart. The only comparison with a
 // tolerance is the perspective one, and its bound is justified where it is defined.
@@ -12,6 +14,8 @@
 #include <cstring>
 
 #include "painterly/kernel/camera/camera.h"
+
+#include "bitwise.h"
 
 // The oracle's primary ray (smallpaint_camcr_ref.cpp). It is declared here, outside the painterly
 // namespace, because the oracle is a separate translation unit.
@@ -57,12 +61,6 @@ constexpr double PINHOLE_HALF_SIDE = PINHOLE_SIDE / 2;
 // about 4500 times that. Components of magnitude 0.0025 keep the same absolute error, so their
 // relative error stays below the bound too.
 constexpr double FLOAT64_ROUND_OFF_RTOL = 1e-12;
-
-// True when a and b have the same IEEE 754 bit pattern.
-bool same_bits(const double a, const double b)
-{
-  return std::memcmp(&a, &b, sizeof(double)) == 0;
-}
 
 // True when `actual` is within FLOAT64_ROUND_OFF_RTOL of `expected`, relative to |expected|.
 bool near_float64(const double actual, const double expected)

@@ -16,9 +16,64 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Owns every array that its PainterlyGlobalsCPU points to, so kg() stays valid for the object's
- * lifetime. The object is neither copyable nor movable, because globals points into it. */
-struct SmallpaintSceneFixture {
+/* Owns the kernel arrays of a scene that a test builds by hand, and the PainterlyGlobalsCPU that
+ * points at them, so kg() stays valid for the object's lifetime (TQ.1 F17). A test fills data and
+ * the arrays, then calls bind_globals(). The object is neither copyable nor movable, because
+ * globals points into it. */
+struct KernelSceneStorage {
+  KernelPainterlyData data{};
+  PainterlyGlobalsCPU globals{};
+  std::vector<KernelPainterlyAnalytic> analytic;
+  std::vector<KernelPainterlyMaterial> materials;
+  std::vector<KernelPainterlyLobe> lobes;
+  std::vector<KernelPainterlySun> suns;
+  std::vector<KernelPainterlyObject> objects;
+  std::vector<KernelPainterlyMesh> meshes;
+  std::vector<int> tri_material;
+  std::vector<float> tri_corner_normals;
+
+  KernelSceneStorage() = default;
+  KernelSceneStorage(const KernelSceneStorage &) = delete;
+  KernelSceneStorage &operator=(const KernelSceneStorage &) = delete;
+  KernelSceneStorage(KernelSceneStorage &&) = delete;
+  KernelSceneStorage &operator=(KernelSceneStorage &&) = delete;
+
+  PainterlyGlobals kg() const
+  {
+    return &globals;
+  }
+
+  /* Points globals at data and at every array, with its size, and sets the triangle BVH, which is
+   * null for a scene without triangles. An empty array gives a null pointer. Call it after the
+   * last change to the size of an array, because a resize may move the elements. */
+  void bind_globals(const void *bvh)
+  {
+    globals.data = &data;
+    globals.analytic = array_or_null(analytic);
+    globals.num_analytic = int(analytic.size());
+    globals.materials = array_or_null(materials);
+    globals.num_materials = int(materials.size());
+    globals.lobes = array_or_null(lobes);
+    globals.num_lobes = int(lobes.size());
+    globals.suns = array_or_null(suns);
+    globals.objects = array_or_null(objects);
+    globals.num_objects = int(objects.size());
+    globals.meshes = array_or_null(meshes);
+    globals.num_meshes = int(meshes.size());
+    globals.tri_material = array_or_null(tri_material);
+    globals.tri_corner_normals = array_or_null(tri_corner_normals);
+    globals.bvh = bvh;
+  }
+
+ private:
+  template<typename T> static const T *array_or_null(const std::vector<T> &values)
+  {
+    return values.empty() ? nullptr : values.data();
+  }
+};
+
+/* The smallpaint reference scene of SPEC §9, with the knobs of the smallpaint reference. */
+struct SmallpaintSceneFixture : KernelSceneStorage {
   /* A 32 px image. The reference image is 400 px (SPEC §9). The tests only need a small one. */
   static constexpr int WIDTH = 32;
   static constexpr int HEIGHT = 32;
@@ -43,47 +98,13 @@ struct SmallpaintSceneFixture {
    * smallpaint_painterly.cpp:291-292). */
   static constexpr double JITTER = 2.0 * double(float(1.0 / 1400));
 
-  KernelPainterlyData data{};
-  PainterlyGlobalsCPU globals{};
-  std::vector<KernelPainterlyAnalytic> analytic;
-  std::vector<KernelPainterlyMaterial> materials;
-  std::vector<KernelPainterlyLobe> lobes;
-  std::vector<KernelPainterlySun> suns;
-  std::vector<KernelPainterlyObject> objects;
-  std::vector<KernelPainterlyMesh> meshes;
-
   /* chain: a PainterlyChain value (SPEC §3). lane_length: >= 1, read for CHAIN_LANE only. */
   SmallpaintSceneFixture(const int chain, const int lane_length)
   {
     set_knobs(chain, lane_length);
     build_scene();
-
-    globals.data = &data;
-    globals.analytic = analytic.data();
-    globals.num_analytic = int(analytic.size());
-    globals.materials = materials.data();
-    globals.num_materials = int(materials.size());
-    globals.lobes = lobes.data();
-    globals.num_lobes = int(lobes.size());
-    globals.suns = suns.data();
-    globals.objects = objects.data();
-    globals.num_objects = int(objects.size());
-    globals.meshes = meshes.data();
-    globals.num_meshes = int(meshes.size());
     /* The reference scene has no triangles, so there is no BVH and no triangle arrays. */
-    globals.tri_material = nullptr;
-    globals.tri_corner_normals = nullptr;
-    globals.bvh = nullptr;
-  }
-
-  SmallpaintSceneFixture(const SmallpaintSceneFixture &) = delete;
-  SmallpaintSceneFixture &operator=(const SmallpaintSceneFixture &) = delete;
-  SmallpaintSceneFixture(SmallpaintSceneFixture &&) = delete;
-  SmallpaintSceneFixture &operator=(SmallpaintSceneFixture &&) = delete;
-
-  PainterlyGlobals kg() const
-  {
-    return &globals;
+    bind_globals(nullptr);
   }
 
   /* The integrator and camera of the smallpaint reference (SPEC §7, §8). */

@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of painterly/kernel/geom/analytic.h (T3.7). The bitwise tests compare the kernel with
 // smallpaint's Sphere::intersect, Plane::intersect and Sphere::normal, and with the oracle's exact
-// quadratic hook. They compare bit patterns with std::memcmp, so they allow no tolerance and tell
-// -0.0 from +0.0. The geometric check of SPEC §5 is the only comparison with a tolerance. Its
-// bound is justified where it is defined.
+// quadratic hook, all of them in smallpaint_ref.h. They compare bit patterns with std::memcmp, so
+// they allow no tolerance and tell -0.0 from +0.0. The geometric check of SPEC §5 is the only
+// comparison with a tolerance. Its bound is justified where it is defined.
 
 #include <doctest/doctest.h>
 
@@ -15,115 +17,8 @@
 
 #include "painterly/kernel/geom/analytic.h"
 
-// smallpaint's eps, Vec, Ray, Obj, Plane and Sphere, copied from
-// third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp: eps at :39, and Vec
-// through Sphere at :43-114. The copy is byte-identical to the source except for the line endings,
-// which are LF here. Obj is copied too, because Plane and Sphere derive from it. clang-format is
-// off, so that the copy keeps the source's tabs.
-// clang-format off
-namespace smallpaint_ref {
-const double eps = 1e-4;
-struct Vec {
-	double x, y, z;
-	Vec(double x0 = 0, double y0 = 0, double z0 = 0) { x = x0; y = y0; z = z0; }
-	Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
-	Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
-	Vec operator*(double b) const { return Vec(x*b, y*b, z*b); }
-	Vec operator/(double b) const { return Vec(x / b, y / b, z / b); }
-	Vec mult(const Vec &b) const { return Vec(x*b.x, y*b.y, z*b.z); }
-	Vec& norm() { return *this = *this * (1 / sqrt(x*x + y*y + z*z)); }
-	double length() { return sqrt(x*x + y*y + z*z); }
-	double dot(const Vec &b) const { return x*b.x + y*b.y + z*b.z; }
-	Vec operator%(Vec &b) { return Vec(y*b.z - z*b.y, z*b.x - x*b.z, x*b.y - y*b.x); }
-};
-
-// Rays have origin and direction.
-// The direction vector should always be normalized.
-struct Ray {
-	Vec o, d;
-	Ray(Vec o0 = 0, Vec d0 = 0) { o = o0, d = d0.norm(); }
-};
-
-// Objects have color, emission, type (diffuse, specular, refractive)
-// All object should be intersectable and should be able to compute their surface normals.
-class Obj {
-public:
-	Vec cl;
-	double emission;
-	int type;
-	void setMat(Vec cl_ = 0, double emission_ = 0, int type_ = 0) { cl = cl_; emission = emission_; type = type_; }
-	virtual double intersect(const Ray&) const = 0;
-	virtual Vec normal(const Vec&) const = 0;
-};
-
-class Plane : public Obj {
-public:
-	Vec n;
-	double d;
-	Plane(double d_ = 0, Vec n_ = 0) {
-		d = d_;
-		n = n_;
-	}
-	double intersect(const Ray& ray) const {
-		double d0 = n.dot(ray.d);
-		if (d0 != 0) {
-			double t = -1 * (((n.dot(ray.o)) + d) / d0);
-			return (t > eps) ? t : 0;
-		} else return 0;
-	}
-	Vec normal(const Vec& p0) const { return n; }
-};
-
-class Sphere : public Obj {
-public:
-	Vec c;
-	double r;
-
-	Sphere(double r_ = 0, Vec c_ = 0) { c = c_; r = r_; }
-	double intersect(const Ray& ray) const {
-		double b = ((ray.o - c) * 2).dot(ray.d);
-		double c_ = (ray.o - c).dot((ray.o - c)) - (r*r);
-		double disc = b*b - 4 * c_;
-		if (disc < 0) return 0;
-		else disc = sqrt(disc);
-		double sol1 = -b + disc;
-		double sol2 = -b - disc;
-		return (sol2 > eps) ? sol2 / 2 : ((sol1 > eps) ? sol1 / 2 : 0);
-	}
-
-	Vec normal(const Vec& p0) const {
-		return (p0 - c).norm();
-	}
-};
-}  // namespace smallpaint_ref
-// clang-format on
-
-// The oracle's exact quadratic hook, copied from src/app/smallpaint_oracle.cpp:138-148
-// (Sphere::intersect_exact, SPEC §5). The oracle reads its global eps, which is smallpaint's 1e-4
-// (smallpaint_painterly.cpp:39): the same value as smallpaint_ref::eps.
-// clang-format off
-namespace oracle_ref {
-using smallpaint_ref::Ray;
-using smallpaint_ref::Vec;
-using smallpaint_ref::eps;
-
-struct Sphere {
-	Vec c;
-	double r;
-	double intersect_exact(const Ray& ray) const {
-		double a = ray.d.dot(ray.d);
-		double b = ((ray.o - c) * 2).dot(ray.d);
-		double c_ = (ray.o - c).dot((ray.o - c)) - (r*r);
-		double disc = b*b - 4 * a * c_;
-		if (disc < 0) return 0;
-		else disc = sqrt(disc);
-		double sol1 = -b + disc;
-		double sol2 = -b - disc;
-		return (sol2 > eps) ? sol2 / (2 * a) : ((sol1 > eps) ? sol1 / (2 * a) : 0);
-	}
-};
-}  // namespace oracle_ref
-// clang-format on
+#include "bitwise.h"
+#include "smallpaint_ref.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -138,9 +33,6 @@ constexpr int BITWISE_TEST_RAYS = 100000;
 constexpr int ZERO_DIRECTION_RAYS = 1000;
 // Random rays of the geometric check (T3.7 card: 10^5).
 constexpr int GEOMETRY_TEST_RAYS = 100000;
-// Significand precision of binary64 (53 bits, the definition of the format). unit_double() draws
-// the top 53 bits of one 64-bit output and scales them by a power of two, so every draw is exact.
-constexpr int DOUBLE_SIGNIFICAND_BITS = 53;
 // |d| is drawn from [0, 2]. 2 is the largest unnormalized direction a diffuse bounce produces:
 // |N + s| <= |N| + |s| = 2 for unit N and s (SPEC §4).
 constexpr double DIRECTION_LENGTH_MAX = 2.0;
@@ -164,31 +56,6 @@ constexpr double GEOMETRY_RADIUS_MAX = 1.0;
 // Bound on |dist - R| / R for the ghost hit point. Its justification is at the geometric check.
 constexpr double GHOST_GEOMETRY_RTOL = 1e-12;
 
-struct Triple {
-  double x, y, z;
-};
-
-// Uniform in [0, 1). The top DOUBLE_SIGNIFICAND_BITS bits of one 64-bit draw, scaled by a power of
-// two, so the value is exact on every platform.
-double unit_double(std::mt19937_64 &rng)
-{
-  constexpr int dropped_bits = std::numeric_limits<std::uint64_t>::digits -
-                               DOUBLE_SIGNIFICAND_BITS;
-  return std::ldexp(double(rng() >> dropped_bits), -DOUBLE_SIGNIFICAND_BITS);
-}
-
-// lo + (hi - lo) * u with u in [0, 1). Plain IEEE arithmetic, so the same on every platform.
-double uniform(std::mt19937_64 &rng, const double lo, const double hi)
-{
-  return lo + (hi - lo) * unit_double(rng);
-}
-
-// Braced initialization evaluates the three draws left to right, so the sequence is fixed.
-Triple uniform_triple(std::mt19937_64 &rng, const double lo, const double hi)
-{
-  return {uniform(rng, lo, hi), uniform(rng, lo, hi), uniform(rng, lo, hi)};
-}
-
 // A direction of the given length: a random point of [-1, 1]^3, rescaled. A zero point has no
 // direction, so the zero vector is returned for it. The probability of that draw is 2^-159.
 Triple random_direction(std::mt19937_64 &rng, const double length)
@@ -200,25 +67,6 @@ Triple random_direction(std::mt19937_64 &rng, const double length)
   }
   const double scale = length / norm;
   return {v.x * scale, v.y * scale, v.z * scale};
-}
-
-smallpaint_ref::Vec to_ref(const Triple &t)
-{
-  return smallpaint_ref::Vec(t.x, t.y, t.z);
-}
-
-double3 to_double3(const Triple &t)
-{
-  return make_double3(t.x, t.y, t.z);
-}
-
-// A unit normal, normalized with smallpaint's Vec::norm() so that it is exactly the vector
-// smallpaint would use.
-Triple random_unit_normal(std::mt19937_64 &rng)
-{
-  smallpaint_ref::Vec n = to_ref(uniform_triple(rng, -1.0, 1.0));
-  n.norm();
-  return {n.x, n.y, n.z};
 }
 
 // smallpaint's Ray normalizes its direction in its constructor. That is not wanted here, so the
@@ -255,18 +103,6 @@ KernelPainterlyAnalytic make_plane(const Triple &normal, const double offset)
   plane.a = to_double3(normal);
   plane.b = offset;
   return plane;
-}
-
-// True when a and b have the same IEEE 754 bit pattern. This is memcmp, not ==, because == treats
-// -0.0 and +0.0 as equal.
-bool same_bits(const double a, const double b)
-{
-  return std::memcmp(&a, &b, sizeof(double)) == 0;
-}
-
-bool same_bits(const smallpaint_ref::Vec &ref, const double3 &got)
-{
-  return same_bits(ref.x, got.x) && same_bits(ref.y, got.y) && same_bits(ref.z, got.z);
 }
 
 // A hit is a t accepted by Scene::intersect: t > eps (smallpaint_painterly.cpp:138).
@@ -314,7 +150,8 @@ void compare_ray(const Triple &origin,
   const double3 P = to_double3(surface);
 
   const double ref_t_ghost = ref_sphere.intersect(ref_ray);
-  const double ref_t_exact = oracle_ref::Sphere{ref_centre, radius}.intersect_exact(ref_ray);
+  const double ref_t_exact = smallpaint_oracle::Sphere{ref_centre, radius}.intersect_exact(
+      ref_ray);
   const double ref_t_plane = ref_plane.intersect(ref_ray);
 
   const double kernel_t_ghost = painterly_sphere_intersect(ghost, ray, eps);

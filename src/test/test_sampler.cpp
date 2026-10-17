@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+
 // Tests of painterly/kernel/sample/sampler.h (T3.6). The sequence counter is compared bit for bit
-// with smallpaint's incremental Halton class, the stateless RNG with the oracle's helpers, and the
-// chain starts with SPEC §3. Every comparison is bitwise (std::memcmp for doubles) or exact
-// integer equality, so no tolerance is used.
+// with smallpaint's incremental Halton class, the stateless RNG with the oracle's helpers (both in
+// smallpaint_ref.h), and the chain starts with SPEC §3. Every comparison is bitwise (std::memcmp
+// for doubles) or exact integer equality, so no tolerance is used.
 
 #include <doctest/doctest.h>
 
@@ -13,42 +15,8 @@
 
 #include "painterly/kernel/sample/sampler.h"
 
-// smallpaint's Halton class, copied verbatim from
-// third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp:147-169. clang-format is
-// off so that the copy stays byte-identical to the source, tabs included.
-// clang-format off
-namespace smallpaint_ref {
-class Halton {
-	double value, inv_base;
-public:
-	void number(int i, int base) {
-		double f = inv_base = 1.0 / base;
-		value = 0.0;
-		while (i > 0) {
-			value += f*(double)(i%base);
-			i /= base;
-			f *= inv_base;
-		}
-	}
-	void next() {
-		double r = 1.0 - value - 0.0000001;
-		if (inv_base < r) value += inv_base;
-		else {
-			double h = inv_base, hh;
-			do { hh = h; h *= inv_base; } while (h >= r);
-			value += hh + h - 1.0;
-		}
-	}
-	double get() { return value; }
-};
-}  // namespace smallpaint_ref
-// clang-format on
-
-// The oracle's hash helpers (rng_u32, rng_unit, rng_signed). The header defines them as global
-// functions, so it is included in its own namespace and cannot collide with painterly's names.
-namespace smallpaint_oracle {
-#include "app/smallpaint_oracle_hash.h"
-}  // namespace smallpaint_oracle
+#include "bitwise.h"
+#include "smallpaint_ref.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -65,20 +33,11 @@ constexpr std::uint64_t VDC_PERIOD = std::uint64_t(1) << PAINTERLY_VDC_BITS;
 // constant, not a tolerance chosen for the test: SPEC §2 documents that the original's error at
 // the wrap is below this value.
 constexpr double SMALLPAINT_HALTON_GUARD = 0.0000001;
-// Rows, lanes and passes are drawn from [0, INDEX_LIMIT). They are non-negative ints.
-constexpr std::uint64_t INDEX_LIMIT = std::uint64_t(1) << 31;
 // Phase locks (SPEC §8, k0_phase_lock_bits): off, a short lock, and the full width, which clears
 // all of K0.
 constexpr int PHASE_LOCK_OFF = 0;
 constexpr int PHASE_LOCK_SHORT = 3;
 constexpr int PHASE_LOCK_FULL = PAINTERLY_K0_BITS;
-
-// True when a and b have the same IEEE 754 bit pattern. This is memcmp, not ==, so that -0.0 and
-// +0.0 differ.
-bool same_bits(const double a, const double b)
-{
-  return std::memcmp(&a, &b, sizeof(double)) == 0;
-}
 
 // The six arguments of the stateless RNG (SPEC §2).
 struct RngArgs {
@@ -94,11 +53,6 @@ RngArgs draw_rng_args(std::mt19937_64 &rng)
           std::uint32_t(rng()),
           std::uint32_t(rng()),
           std::uint32_t(rng())};
-}
-
-int draw_index(std::mt19937_64 &rng)
-{
-  return int(rng() & (INDEX_LIMIT - 1));
 }
 
 }  // namespace

@@ -1,72 +1,25 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Oracle reference for test_camera.cpp (T3.8). It holds smallpaint_oracle.cpp's camcr() (oracle
-// change 12 in src/app/CHANGES.md, lines 247-255) and the jitter lines of its take_sample()
-// (oracle change 14, lines 365-366), with the oracle's headers and `using namespace std;`. The
-// oracle's globals `width`, `height` and `g_jitter` are a namespace variable pair and a parameter
-// here. clang-format is off for the copied code, so it stays byte-identical to the source, tabs
-// included.
+/* SPDX-FileCopyrightText: 2026 The Painterly Authors
+ * SPDX-License-Identifier: GPL-3.0-or-later */
 
-// clang-format off
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <limits.h>
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include <algorithm>
-#include <atomic>
-#include <cerrno>
-#include <chrono>
-#include <cmath>
+// Oracle reference for test_camera.cpp (T3.8): the primary ray of the oracle's take_sample() and
+// compute_object_ids(). It calls the oracle's camcr() and sets the oracle's image size, both
+// copied verbatim in smallpaint_ref.h (namespace smallpaint_oracle), and its jitter is the
+// oracle's rng_signed (src/app/smallpaint_oracle_hash.h). The file is a translation unit of its
+// own, so the reference is compiled apart from the kernel camera code that test_camera.cpp checks.
+
 #include <cstdint>
-#include <filesystem>
-#include <thread>
-// clang-format on
+
+#include "smallpaint_ref.h"
 
 namespace smallpaint_camcr_ref {
 
-// The oracle's rng_signed and purpose values, included in this namespace as test_sampler.cpp does.
-#include "app/smallpaint_oracle_hash.h"
-
-// clang-format off
-using namespace std;
-
-#define PI 3.1415926536
-
-// smallpaint's Vec, copied from smallpaint_oracle.cpp:65-77.
-struct Vec {
-	double x, y, z;
-	Vec(double x0 = 0, double y0 = 0, double z0 = 0) { x = x0; y = y0; z = z0; }
-	Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
-	Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
-	Vec operator*(double b) const { return Vec(x*b, y*b, z*b); }
-	Vec operator/(double b) const { return Vec(x / b, y / b, z / b); }
-	Vec mult(const Vec &b) const { return Vec(x*b.x, y*b.y, z*b.z); }
-	Vec& norm() { return *this = *this * (1 / sqrt(x*x + y*y + z*z)); }
-	double length() { return sqrt(x*x + y*y + z*z); }
-	double dot(const Vec &b) const { return x*b.x + y*b.y + z*b.z; }
-	Vec operator%(Vec &b) { return Vec(y*b.z - z*b.y, z*b.x - x*b.z, x*b.y - y*b.x); }
-};
-
-// The oracle's image size, set by primary_ray() before camcr() is called.
-int width, height;
-
-// smallpaint_oracle.cpp:247-255 (oracle change 12): tan is taken in double.
-Vec camcr(const double x, const double y) {
-	double w = width;
-	double h = height;
-	float fovx = PI / 4;
-	float fovy = (h / w)*fovx;
-	return Vec(((2 * x - w) / w)*tan((double)fovx),
-		((2 * y - h) / h)*tan((double)fovy),
-			   -1.0);
-}
-// clang-format on
+// The oracle's names (Vec, width, height, camcr, rng_signed, PURPOSE_JITTER_X/Y), so that the body
+// of primary_ray() reads as the oracle's lines do.
+using namespace smallpaint_oracle;
 
 // The primary ray of pixel (row, col) in pass `pass`, as the oracle forms it. With `jittered`, it
-// is take_sample()'s camera (smallpaint_oracle.cpp:363-367), with `jitter` in place of g_jitter.
-// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:383-385). The origin is
+// is take_sample()'s camera (smallpaint_oracle.cpp:364-368), with `jitter` in place of g_jitter.
+// Without it, it is compute_object_ids()'s camera (smallpaint_oracle.cpp:384-386). The origin is
 // Vec(0, 0, 0), and the direction is (cam - origin).norm().
 void primary_ray(int image_width,
                  int image_height,
