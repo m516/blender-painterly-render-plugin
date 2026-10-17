@@ -91,6 +91,31 @@ Review findings: `docs/handoff/findings/M3-fixups-reviews.json`, keys `review T3
 Depends on: M3-FIX-T3.20.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 
+## M3-FIX-T3.21b: the smallpaint Vec copy keeps its CRLF bytes (T3.21 audit)
+No card; this item is the specification.
+Why:
+- `src/test/test_math_double3.cpp` holds a copy of the struct `Vec` from
+  `third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp` lines 43-55, and its comment says the copy stays
+  "byte-identical to the source, tabs included". Those 13 source lines end in CRLF (`\r\n`).
+- M3-FIX-T3.21 rewrote the 13 lines of the copy with LF endings, so the comment is now false. Its audit found this.
+  clang-format is not the cause: it keeps the CR bytes, and `make lint` passes with them.
+Do:
+- Make the 13 lines of the copy byte-identical to lines 43-55 of the source, CR bytes included. Change nothing else in
+  the file. Write the bytes with a script that reads the source in binary mode (for example Python `open(path, "rb")`).
+  Do not rely on `write_file` or `edit_file` to produce CR bytes; check the result with `cmp`.
+- Add `tests/core/test_verbatim_copies.py` with one test. It reads both files in binary mode and asserts that the 13
+  source lines, each with its own line ending, occur in `src/test/test_math_double3.cpp` as one contiguous block. Name
+  the paths and the line range as constants, and cite the comment in `test_math_double3.cpp` that states them.
+Outcome:
+- `cmp <(sed -n 43,55p third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp) <(sed -n 24,36p src/test/test_math_double3.cpp)`
+  prints nothing and exits 0.
+- `git diff --ignore-cr-at-eol -- src/test/test_math_double3.cpp` prints nothing.
+- The new test passes. With the file as M3-FIX-T3.21 committed it (`git stash` your change to it, or test a copy of
+  `git show HEAD:src/test/test_math_double3.cpp`), the same test fails: record that failing run in your answer.
+- `CHECK` exits 0.
+Depends on: M3-FIX-T3.21.
+allowedPaths: `src/test/test_math_double3.cpp`, `tests/core/test_verbatim_copies.py`.
+
 ## M3-FIX-T3.22: build hygiene (TQ.1 F9-F11, F13, F15; panel #5, #6, #9, #18)
 Card: `docs/handoff/drafts/M3-fixups/T3.22-build-hygiene.md`.
 - BOOT-0a has added `VENV` and `CMAKE_ARGS` to the Makefile. Keep both when the card edits the Makefile.
