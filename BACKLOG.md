@@ -40,12 +40,9 @@ first.
 - M3 run 3a: T3.1-T3.12 and TQ.1. Close-out: T2.9, T2.10, T2.11.
 - Experiments 001-006: final. Experiments 007-009: pre-registered; their analysis items come later (below).
 
-**Coming later; do not plan these yet.**
-Claude adds these items once the host has regenerated the render cache. Until then they can't run, because they read
-`MAIN/.cache/renders` and need every render to be present:
-- M3-FIX-T3.25 (self-describing oracle renders) and M3-FIX-T3.26 (analysis constants);
-- EXP-REPRO (experiments 001-006 reproduce on this machine);
-- EXP-007, EXP-008 and EXP-009 (the pre-registered analyses).
+**Added on 2026-10-16, once the host had regenerated the render cache** (they were listed here as "coming later"):
+EXP-REPRO (done), EXP-REPRO-HOST, M3-FIX-T3.25, M3-FIX-T3.26 and EXP-007, EXP-008, EXP-009, at the end of this file
+(R17).
 
 ## BOOT-0a: offline worker builds (VENV and CMAKE_ARGS knobs; make check green on this host)
 Why:
@@ -409,18 +406,18 @@ Card: `experiments/007-2026-10-15-noise-locking/PLAN.md`, with every amendment i
 Depends on: M3-FIX-T3.26.
 Outcome: PLAN.md's Acceptance, translated, including the second full run being byte-identical; and `make lint` with
 the KNOBS passes.
-allowedPaths: the files PLAN.md lists.
+allowedPaths: `experiments/007-2026-10-15-noise-locking/README.md`, `experiments/007-2026-10-15-noise-locking/analyze.py`, `experiments/007-2026-10-15-noise-locking/results.json`, `experiments/007-2026-10-15-noise-locking/synthetic.json`, `experiments/007-2026-10-15-noise-locking/fig_*.png`, `experiments/README.md`, `analysis/painterly_analysis/metrics.py`, `analysis/painterly_analysis/__init__.py`, `analysis/painterly_analysis/report.py`, `analysis/tests/test_scale_metrics.py`, `analysis/tests/test_report.py`.
 
 ## EXP-008: run the pre-registered analysis of experiment 008 (jitter dose-response)
 Card: `experiments/008-2026-10-15-jitter-dose-response/PLAN.md`, with every amendment in its README. The same
 environment rules as EXP-007 apply. PLAN's render step is already done on the host: skip it and report so.
 Depends on: EXP-007.
 Outcome: PLAN.md's Acceptance, translated; and `make lint` with the KNOBS passes.
-allowedPaths: the files PLAN.md lists.
+allowedPaths: `experiments/008-2026-10-15-jitter-dose-response/README.md`, `experiments/008-2026-10-15-jitter-dose-response/analyze.py`, `experiments/008-2026-10-15-jitter-dose-response/power.py`, `experiments/008-2026-10-15-jitter-dose-response/test_analyze.py`, `experiments/008-2026-10-15-jitter-dose-response/results.json`, `experiments/008-2026-10-15-jitter-dose-response/fig_dose_response.png`, `experiments/008-2026-10-15-jitter-dose-response/fig_crops.png`, `experiments/README.md`.
 
 ## EXP-009: run the pre-registered analysis of experiment 009 (scale limits)
 Card: `experiments/009-2026-10-15-scale-limits/PLAN.md`, with every amendment in its README. The same environment
 rules as EXP-007 apply. PLAN's render and disk-preflight steps are already done on the host: skip them and report so.
 Depends on: EXP-008.
 Outcome: PLAN.md's Acceptance, translated; and `make lint` with the KNOBS passes.
-allowedPaths: the files PLAN.md lists.
+allowedPaths: `experiments/009-2026-10-15-scale-limits/README.md`, `experiments/009-2026-10-15-scale-limits/analyze.py`, `experiments/009-2026-10-15-scale-limits/test_analyze.py`, `experiments/009-2026-10-15-scale-limits/results.json`, `experiments/009-2026-10-15-scale-limits/fig_*.png`, `experiments/README.md`, `analysis/painterly_analysis/metrics.py`, `analysis/painterly_analysis/__init__.py`, `analysis/tests/test_scale_metrics.py`.
