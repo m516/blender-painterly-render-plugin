@@ -125,6 +125,38 @@ Review findings: `docs/handoff/findings/M3-fixups-reviews.json`, key `review T3.
 Depends on: M3-FIX-T3.21.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0. The card's MSVC checks are host-only.
 
+## M3-FIX-T3.22b: doctest includes its standard headers, so MSVC compiles test_graph.cpp (T3.22 CI)
+No card; this item is the specification.
+Why:
+- CI run 39016333578 (commit 6806293), job `windows`: MSVC stops on `src/test/test_graph.cpp` with error C2027, "use of
+  undefined type 'std::basic_ostream<char,std::char_traits<char>>'", raised in MSVC's `<__msvc_string_view.hpp>` from
+  line 180, `CHECK(mode == std::string_view("mode"))`, which M3-FIX-T3.22 added. Every other source compiled.
+- doctest prints the operands of a CHECK with `operator<<`. For a `std::string_view`, MSVC's `operator<<` needs the
+  complete `std::ostream`. By default doctest does not include `<ostream>`; it forward-declares `std::ostream` in
+  `namespace std` (`MAIN/.cache/src/doctest/doctest/doctest.h` lines 517-552, v2.4.11), and on MSVC nothing else in this
+  translation unit includes `<ostream>`. GCC with libstdc++ compiles the same line, so `CHECK` cannot show the failure.
+- doctest's remedy is `DOCTEST_CONFIG_USE_STD_HEADERS` (`MAIN/.cache/src/doctest/doc/markdown/configuration.md`, the
+  section of that name; `doctest.h` lines 508-516): doctest then includes `<cstddef>`, `<ostream>` and `<istream>`
+  instead of declaring names in `namespace std`, which the standard forbids. The documentation says "This should be
+  defined globally."
+Do:
+- In `src/test/CMakeLists.txt`, directly after `target_include_directories(painterly_doctest ...)`, add
+  `target_compile_definitions(painterly_doctest INTERFACE DOCTEST_CONFIG_USE_STD_HEADERS)` with a comment that gives the
+  reasons above in a few lines and cites the CI run, `test_graph.cpp:180` and doctest's `configuration.md`. As an
+  INTERFACE definition it reaches every source of every target that links `painterly_doctest`, which is what "globally"
+  asks for.
+- Change nothing else. In particular, `src/test/test_graph.cpp` stays as it is.
+Outcome:
+- In `ninja -C build/q -t commands painterly_tests`, every line matching ` -c [^ ]*/src/test/[^ ]*\.cpp` (the compile
+  command of a `src/test` source) contains `-DDOCTEST_CONFIG_USE_STD_HEADERS`. Record in your answer the number of such
+  lines with it, the number without it (0), and the number of sources in `add_executable(painterly_tests ...)`; the
+  first and the last are equal.
+- `git show --stat --format= HEAD` lists only `src/test/CMakeLists.txt`.
+- `CHECK` exits 0.
+- Host-only, not run by you: the CI `windows` job compiles `test_graph.cpp`. The orchestrator reads it after landing.
+Depends on: M3-FIX-T3.22.
+allowedPaths: `src/test/CMakeLists.txt`.
+
 ## BOOT-0b: optional prebuilt Embree, so clones don't rebuild it
 Why: every clone recompiles Embree's ISA kernels (several CPU-minutes per verify). The host can build Embree once.
 Do:
