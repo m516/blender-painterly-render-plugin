@@ -276,6 +276,38 @@ Outcome:
 allowedPaths: `docs/tasks/M3/T3.13-scene.md`, `docs/tasks/M3/T3.14-session.md`, `docs/tasks/M3/T3.15-bindings.md`, `docs/tasks/M3/T3.16-oracle-parity.md`, `docs/tasks/M3/T3.17-triangle-path.md`, `docs/tasks/M3/T3.18-exp-throughput.md`, `docs/tasks/M4/**`, `docs/tasks/M5/**`, `docs/tasks/M3/AMENDMENTS-fixups.md`.
 Depends on: M3-FIX-T3.24.
 
+## M3-PROPAGATE-b: the rest of M3-PROPAGATE (T3.17's normal orientation, and the amendments record)
+Why:
+- M3-PROPAGATE's task edited only T3.13, T3.14 and T3.15. It was planned while that item's allowedPaths still wrapped
+  over three lines, and the queue read only the first. Its commit is `fdc6357`, subject
+  `t-propagate: M3-PROPAGATE: carry the fix-up renames into the cards not yet run`. The queue counts that item as done,
+  so this item carries what is left.
+- Its worker grepped T3.16-T3.18, M4 and M5 for every propagated name and found one edit still due: T3.17's
+  normal-orientation line.
+Do:
+- `docs/tasks/M3/T3.17-triangle-path.md`: apply block 1 under "**`docs/tasks/M3/T3.17-triangle-path.md`**" in the section
+  "Edits for later cards" of `docs/handoff/drafts/M3-fixups/T3.21-contract-touchups.md`, verbatim. Its "old" text is one
+  line, leading spaces included. Find it by its text, not its line number, and replace that line with the block's "new"
+  line. Change nothing else in the card.
+- Create `docs/tasks/M3/AMENDMENTS-fixups.md`, the record M3-PROPAGATE's Outcome asks for. Write one entry per edit:
+  - every hunk of `git show fdc6357 -- docs/tasks`, and the T3.17 edit of this item;
+  - each entry gives the file, the old text and the new text as fenced `text` blocks copied byte for byte from the diff
+    (without the diff's `-`/`+` column), and the reason: the fix-up or decision the edit carries (T3.20, T3.21 and D35,
+    T3.22, T3.23, D34);
+  - for an edit that a fix-up card specifies verbatim (T3.21's "Edits for later cards"), name that card and block.
+Outcome:
+- `git status --porcelain` lists exactly `docs/tasks/M3/T3.17-triangle-path.md` (modified) and
+  `docs/tasks/M3/AMENDMENTS-fixups.md` (new).
+- `git diff HEAD -- docs/tasks/M3/T3.17-triangle-path.md` removes exactly one line and adds exactly one line, which are
+  byte-identical to the block's old and new text.
+- Every old and new text in `AMENDMENTS-fixups.md` is byte-identical to the corresponding removed and added lines of
+  `git show fdc6357 -- docs/tasks` or of the T3.17 edit. Every hunk of both appears in it exactly once.
+- M3-PROPAGATE's grep still prints nothing:
+  `grep -n -E 'VERTEX_PASS|tri_vertices|\bitfm\b' docs/tasks/M3/T3.1[3-8]*.md docs/tasks/M4/*.md docs/tasks/M5/*.md`.
+- `make lint` with the `KNOBS` passes.
+allowedPaths: `docs/tasks/M3/T3.17-triangle-path.md`, `docs/tasks/M3/AMENDMENTS-fixups.md`
+Depends on: M3-PROPAGATE.
+
 ## M3-T3.13: painterly/scene (host scene, reflected PainterlyIntegrator, device_update)
 Card: `docs/tasks/M3/T3.13-scene.md`. Depends on: M3-PROPAGATE.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
