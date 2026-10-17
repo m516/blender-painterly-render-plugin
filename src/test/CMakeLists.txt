@@ -41,8 +41,10 @@ add_executable(painterly_tests
   test_bvh.cpp
   test_path.cpp
   test_path_trace.cpp
+  test_scene.cpp
   smallpaint_camcr_ref.cpp)
 target_link_libraries(painterly_tests PRIVATE
-  painterly_doctest cycles_util cycles_graph painterly_kernel painterly_bvh painterly_integrator)
+  painterly_doctest cycles_util cycles_graph painterly_kernel painterly_bvh painterly_integrator
+  painterly_scene)
 painterly_target_warnings(painterly_tests)
 add_test(NAME painterly_tests COMMAND painterly_tests)
