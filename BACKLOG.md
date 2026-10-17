@@ -198,6 +198,48 @@ Card: `docs/handoff/drafts/M3-fixups/T3.24-kernel-test-coverage.md`.
 Depends on: M3-FIX-T3.23.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 
+## M3-FIX-T3.22c: MSVC /W4 reports in our code (T3.22 A8)
+No card; this item is the specification.
+Why:
+- M3-FIX-T3.22 compiles our targets with `/W4` on MSVC, and its card (A8) records each report in our code for a
+  follow-up. CI runs 39016333578 and 39022509265 (job `windows`) and wheels run 39020555326 (job `wheels (windows-2022)`)
+  report exactly these three. Line numbers are as at 7c6369b.
+  1. `src/painterly/kernel/camera/camera.h:67` C4305 "truncation from 'double' to 'float'" and `:68` C4244 "conversion
+     from 'double' to 'float', possible loss of data", from `const float fovx = SMALLPAINT_PI / 4;` and
+     `const float fovy = (h / w) * fovx;`. The roundings are deliberate: smallpaint declares fovx and fovy float
+     (smallpaint_painterly.cpp:174-175, as the comment above the two lines says).
+  2. `src/blender/selftest.cpp:94` C4245 "conversion from 'int' to 'unsigned int', signed/unsigned mismatch", from
+     `rayhit.ray.mask = -1;`. Embree's `RTCRay::mask` is `unsigned int`, and -1 stands for every mask bit set. Only the
+     wheel build compiles this file on MSVC.
+  3. `third_party/cycles/util/transform.h(526)` C4702 "unreachable code", in the translation unit of
+     `src/test/test_util.cpp`. With `__KERNEL_SSE42__`, `transform_inverse_dot` (lines 518-527) returns inside its `#if`
+     block, so the portable `return dot(a_, b_);` after it is unreachable. The vendored file is never edited, and C4702
+     comes from the code generator. Microsoft's documentation of `/external` (section "Limitations") says: "Some warnings
+     emitted by the compiler's back-end code generation aren't affected by the /external options. These warnings usually
+     start with C47XX, though not all C47XX warnings are back-end warnings. You can still disable these warnings
+     individually by using /wd47XX."
+Do:
+- 1: write both conversions explicitly, `const float fovx = float(SMALLPAINT_PI / 4);` and
+  `const float fovy = float((h / w) * fovx);` (the file already writes `double(fovx)`), and extend the comment above them
+  to say that the explicit `float(...)` is smallpaint's implicit conversion. The values cannot change: an explicit
+  conversion to float rounds exactly as the implicit one does.
+- 2: `rayhit.ray.mask = ~0u;`, with a comment that every mask bit is set, so the ray sees every geometry (Embree's own
+  examples write -1).
+- 3: in `cmake/painterly_warnings.cmake`, the MSVC branch becomes `/W4 /wd4702`. Add a paragraph to the file comment
+  with the reason: the transform.h case, the quotation above, and that GCC's and Clang's `-Wall -Wextra` contain no
+  unreachable-code warning either, so the two warning sets stay comparable.
+- Change nothing else.
+Outcome:
+- `git diff --stat` lists exactly the three files. In `camera.h` the diff changes only the two initializers and the
+  comment above them; in `selftest.cpp`, only the mask line and its comment.
+- `build/q/src/test/painterly_tests`, run before your change and after it, prints identical `[doctest] test cases:` and
+  `[doctest] assertions:` summary lines, with nothing failed. Record both in your answer.
+- `CHECK` exits 0.
+- Host-only, not run by you: the CI `windows` job and the wheels `windows-2022` job report none of the three. The
+  orchestrator reads them.
+Depends on: M3-FIX-T3.22b, M3-FIX-T3.24, BOOT-0b.
+allowedPaths: `src/painterly/kernel/camera/camera.h`, `src/blender/selftest.cpp`, `cmake/painterly_warnings.cmake`.
+
 ## M3-FIX-T3.27: vendor_sync reads the pinned commit's git objects (panel #0)
 Card: `docs/handoff/drafts/M3-fixups/T3.27-vendor-sync-pinned.md`.
 - The tests use a fixture upstream repository under `tmp_path`.
