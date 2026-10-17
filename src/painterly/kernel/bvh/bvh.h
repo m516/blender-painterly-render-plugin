@@ -21,7 +21,8 @@ CCL_NAMESPACE_BEGIN
  * tie resolves to the earlier primitive, and a triangle beats an analytic primitive at equal t.
  * The initial best.t is +infinity. smallpaint uses inf = 1e9 (smallpaint_painterly.cpp:38). No
  * reference ray reaches 1e9, so the two agree on every reference scene. Returns false on a miss,
- * with isect reset to HIT_NONE. */
+ * with isect reset to HIT_NONE. An analytic hit sets t, kind and index, and leaves the triangle
+ * fields (prim, u, v, Ng) at their defaults. */
 ccl_device_inline bool painterly_scene_intersect(PainterlyGlobals kg,
                                                  const PainterlyRay &ray,
                                                  PainterlyIntersection *isect)
@@ -43,6 +44,8 @@ ccl_device_inline bool painterly_scene_intersect(PainterlyGlobals kg,
     const double t = painterly_analytic_intersect(kg->analytic[i], ray, eps);
     if (t > eps && t < best_t) {
       best_t = t;
+      /* Drop the fields of a triangle hit that this primitive beats (TQ.1 F5). */
+      *isect = PainterlyIntersection{};
       isect->t = t;
       isect->kind = HIT_ANALYTIC;
       isect->index = i;

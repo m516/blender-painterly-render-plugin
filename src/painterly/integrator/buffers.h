@@ -9,14 +9,12 @@
 #include <cstdint>
 #include <vector>
 
+#include "painterly/kernel/integrator/path.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* RGB: three channels per pixel (SPEC §7). A count, not a tuning value. */
 constexpr int PAINTERLY_CHANNELS = 3;
-
-/* The object id of a miss, as painterly_primary_object_id returns it (kernel/integrator/path.h).
- */
-constexpr int32_t PAINTERLY_OBJECT_ID_MISS = -1;
 
 struct PainterlyRenderBuffers {
   int width = 0, height = 0;

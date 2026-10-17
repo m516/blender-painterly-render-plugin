@@ -140,6 +140,13 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
         /* Straight continuation: ray.d is unchanged (SPEC §6). */
         scratch[n++] = PainterlyPathVertex{VERTEX_TINT, e_term, 0.0, lobe.weight};
         break;
+      default:
+        /* An unknown lobe kind (TQ.1 F6). The scene rejects these (T3.13), so this is a
+         * fail-safe: the path ends here with the emission of the hit, as at total internal
+         * reflection. */
+        scratch[n++] = PainterlyPathVertex{VERTEX_END, e_term, 0.0, zero};
+        path_ends = true;
+        break;
     }
     if (path_ends) {
       break;
@@ -169,14 +176,20 @@ ccl_device PainterlyPathResult painterly_trace_pixel(
   return PainterlyPathResult{L, *K - K_start};
 }
 
-/* Object id of the unjittered primary hit, or -1 on a miss (SPEC §9 object ids; the object_id
- * buffer). The unjittered ray does not depend on the pass, so pass 0 is used. */
+/* The object id of a miss. Object ids are positions in the scene's object list (SPEC §9), so they
+ * are >= 0, and -1 names no object. PainterlyRenderBuffers::reset fills the object_id buffer with
+ * it (painterly/integrator/buffers.h). */
+constexpr int32_t PAINTERLY_OBJECT_ID_MISS = -1;
+
+/* Object id of the unjittered primary hit, or PAINTERLY_OBJECT_ID_MISS on a miss (SPEC §9 object
+ * ids; the object_id buffer). The unjittered ray does not depend on the pass, so pass 0 is
+ * used. */
 ccl_device int painterly_primary_object_id(PainterlyGlobals kg, int row, int col)
 {
   const PainterlyRay ray = painterly_camera_generate_ray(kg, row, col, 0, false);
   PainterlyIntersection isect;
   if (!painterly_scene_intersect(kg, ray, &isect)) {
-    return -1;
+    return PAINTERLY_OBJECT_ID_MISS;
   }
   if (isect.kind == HIT_TRIANGLE) {
     return kg->objects[isect.index].object_id;

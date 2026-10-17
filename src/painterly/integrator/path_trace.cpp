@@ -14,21 +14,29 @@ CCL_NAMESPACE_BEGIN
 
 namespace {
 
+/* The pixels of one lane (SPEC §3). ROW is the whole row. LANE is L = min(lane_length, width)
+ * pixels in global image coordinates. The clamp is exact: a lane_length of at least the width
+ * gives one lane per row, lane_in_row 0, covering [0, width), which is what the unclamped length
+ * gives. It also bounds width + L - 1, and col_begin + L in render_lanes, by 2 * width - 1, so
+ * neither overflows for any lane_length while width <= 2^30 (TQ.1 F1). */
+int pixels_per_lane(const KernelPainterlyIntegrator &p, const int width)
+{
+  return p.chain == CHAIN_ROW ? width : std::min(p.lane_length, width);
+}
+
 /* The number of lanes in one row (SPEC §3). ROW is one lane of the whole row. LANE is
- * ceil(width / lane_length) lanes, the last one possibly shorter. */
+ * ceil(width / L) lanes, the last one possibly shorter. For LANE, a row of width 0 has no lanes;
+ * the early return also keeps L = 0 out of the division. */
 int lanes_per_row(const KernelPainterlyIntegrator &p, const int width)
 {
   if (p.chain == CHAIN_ROW) {
     return 1;
   }
-  return (width + p.lane_length - 1) / p.lane_length;
-}
-
-/* The pixels of one lane (SPEC §3). ROW is the whole row, and LANE is lane_length pixels in global
- * image coordinates. */
-int pixels_per_lane(const KernelPainterlyIntegrator &p, const int width)
-{
-  return p.chain == CHAIN_ROW ? width : p.lane_length;
+  if (width == 0) {
+    return 0;
+  }
+  const int lane_pixels = pixels_per_lane(p, width);
+  return (width + lane_pixels - 1) / lane_pixels;
 }
 
 void accumulate_pixel(PainterlyRenderBuffers &buffers,
@@ -56,8 +64,16 @@ PainterlyPathTrace::PainterlyPathTrace(const PainterlyGlobalsCPU &kg,
   if (p.chain == CHAIN_LANE && p.lane_length < 1) {
     throw std::invalid_argument("PainterlyPathTrace: lane_length must be >= 1 for CHAIN_LANE");
   }
-  if (p.max_depth < 0) {
-    throw std::invalid_argument("PainterlyPathTrace: max_depth must be >= 0");
+  /* The phase lock clears low bits of the 22-bit K0 (SPEC §3, §8), so q lies in
+   * [0, PAINTERLY_K0_BITS]. Outside it, the shift 1u << q of painterly_chain_start is undefined
+   * for q < 0 or q >= 32 (TQ.1 F4). */
+  if (p.k0_phase_lock_bits < 0 || p.k0_phase_lock_bits > PAINTERLY_K0_BITS) {
+    throw std::invalid_argument("PainterlyPathTrace: k0_phase_lock_bits must be in [0, " +
+                                std::to_string(PAINTERLY_K0_BITS) + "]");
+  }
+  /* max_depth >= 1, the domain of the oracle's --max-depth and of the T3.13 socket (TQ.1 F8). */
+  if (p.max_depth < 1) {
+    throw std::invalid_argument("PainterlyPathTrace: max_depth must be >= 1");
   }
   check_buffers();
   /* Each worker sizes its own scratch in place. Copying one vector into all of them would also

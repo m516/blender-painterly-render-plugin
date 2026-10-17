@@ -27,8 +27,13 @@ PainterlyThreadPool::PainterlyThreadPool(const int num_threads)
     }
   }
   catch (...) {
-    /* The started workers would wait forever for work, and their destructors would then hang. */
+    /* The started workers would wait forever for work, and their destructors would then hang. So
+     * they are stopped, and joined here by clear() (each thread joins in its destructor,
+     * util/thread.cpp). After the throw, the members are destroyed in reverse declaration order,
+     * and mutex_, work_ready_ and work_done_, which the workers lock, wait on and notify, would go
+     * before workers_ (TQ.1 F2). */
     request_stop();
+    workers_.clear();
     throw;
   }
 }
