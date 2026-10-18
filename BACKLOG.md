@@ -316,6 +316,71 @@ Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 Card: `docs/tasks/M3/T3.14-session.md`. Depends on: M3-T3.13.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 
+## M3-FIX-T3.13a: painterly/scene follow-ups (spiral-frame and fill tests, the R(e) bound, exception safety)
+Why: the landing review of t-m3-13b (`70d1e66`) found these, and Opus checked each one at that commit:
+1. No test sets a nonzero `spiral_rotation` for the `camera` or `smallpaint` frame, or for `object` with a rotation other
+   than the identity (`src/test/test_scene.cpp:553-632`). So reversing either product in `device_scene.cpp`, or giving
+   `smallpaint` the rotation, passes every test.
+2. The scene-level fill is untested. The tests read only `ds.data.integrator.spiral_frame`, and test the jitter on
+   `PainterlyCamera` alone (`test_scene.cpp:634-698`). Deleting `integrator.device_update(...)`, the
+   `camera.device_update(...)` call or `background.device_update(...)` in `device_scene.cpp` passes every test (the
+   audit's surviving mutants).
+3. The bound comment at `test_scene.cpp:76-89` miscounts. A product of three library results has three library roundings
+   and two multiply roundings, not three. "Within 1 ulp" allows a relative error of 2^-23, not 2^-24. Its "0.40 of its
+   bound" names no committed script.
+4. `PainterlyScene::device_update` rewrites the device scene before checks that can throw (mesh index, singular
+   transform, spiral object, unknown frame, Embree), and it calls `bind_globals()` only at the end. After a throw, the
+   globals therefore point into reallocated arrays.
+5. `material.h:36` lets a NaN weight through: `lobe.weight.x < 0.0` is false for NaN. The ior check at `:39` is NaN-safe.
+   `object.h` uses `CCL_NAMESPACE_BEGIN` without including a header that defines it.
+Ruling (Opus, 2026-10-18): the deviation at `device_scene.cpp:182-194` is accepted.
+- An object whose mesh has no triangles cannot be hit. Its `normal_to_world` therefore stays zero, and its
+  `object_to_world` is not checked for singularity.
+- `painterly_embree_scene_create` skips such an object in exactly the same way.
+- The card is synced below.
+Do:
+- `src/test/test_scene.cpp`: add tests. Each of these mutations of `src/painterly/scene/device_scene.cpp` must make at
+  least one of them fail. Apply the mutations one at a time, to a scratch copy, never committed:
+  - (m1) `painterly_matmul_3x3(temp, rotation, frame);` → `painterly_matmul_3x3(rotation, temp, frame);`
+  - (m2) `painterly_matmul_3x3(spiral_object_rotation_, rotation, frame);` → `painterly_matmul_3x3(rotation, spiral_object_rotation_, frame);`
+  - (m3) in the `SPIRAL_FRAME_SMALLPAINT` branch, `frame[i] = identity[i];` → `frame[i] = rotation[i];`
+  - (m4) delete the line `integrator.device_update(ds.data.integrator);`
+  - (m5) in `camera.device_update(ds.data.cam, double(integrator.get_jitter()));`, replace `double(integrator.get_jitter())` by `0.0`
+  - (m6) delete the line `background.device_update(ds.data.background, ds.suns);`
+  The expected values follow the card's rules: exact where the arithmetic is exact (e = 0, axis-permutation rotations),
+  otherwise the float32 bound derived as below. Never compare the code with its own output.
+- `PainterlyScene::device_update` gives the strong guarantee. Build the new arrays and the Embree scene in locals, and
+  only once every check has passed, move them into the device scene and call `bind_globals()`. Add a test: after a
+  successful `device_update`, make each throwing path throw in turn (an out-of-range mesh index; a singular
+  `object_to_world` on a mesh with triangles; frame `object` with no spiral object; an unknown `spiral_frame`). Catch
+  `std::invalid_argument`, then check that every array of the device scene has its earlier size and contents, the
+  kernel data is unchanged, and every pointer `bind_globals()` sets still points into the device scene's own arrays.
+- Rewrite the comment at `test_scene.cpp:76-89` so the bound counts every rounding that `euler_to_transform`
+  (`util/transform.h:246-256`) and the reference actually perform. State the library-accuracy assumption it rests on.
+  Compute the resulting factor with a command, for example exact `fractions` arithmetic, and quote the command and its
+  output in the comment. Delete the "0.40 of its bound" sentence. Change `F32_SPIRAL_ENTRY_FACTOR` only to that
+  derived factor.
+- `src/painterly/scene/material.h`: write the weight check in the NaN-safe form of the ior check. Add a test that a NaN
+  weight in any channel raises `std::invalid_argument`.
+- `src/painterly/scene/object.h`: include the headers it uses, including the one that defines `CCL_NAMESPACE_BEGIN`.
+- `docs/tasks/M3/T3.13-scene.md`, to sync the card with the ruling:
+  - after "A singular `object_to_world` makes `device_update` throw `std::invalid_argument`", add "when its mesh has
+    triangles (an object whose mesh has none cannot be hit; its `normal_to_world` stays zero and is not checked, as
+    `painterly_embree_scene_create` skips it: Opus ruling, 2026-10-18)";
+  - in the `src/test/test_scene.cpp` bullet, "`normal_to_world` of every object" becomes "`normal_to_world` of every
+    object whose mesh has triangles";
+  - record both edits in `docs/tasks/M3/AMENDMENTS-fixups.md`, in its existing entry format.
+Outcome:
+- `CHECK` exits 0, with R12's prefix and R11's `-Dembree_DIR`.
+- For each of m1-m6, applied alone to a scratch copy of the clone and rebuilt, `build/q/src/test/painterly_tests` exits
+  non-zero. The report lists each mutation with the name of a failing test case.
+- `git grep -nF '0.40 of its bound' -- src/test/test_scene.cpp` prints nothing. The new bound comment quotes its
+  command and that command's output.
+- `git diff HEAD -- docs/tasks/M3/T3.13-scene.md` shows exactly the two edits above.
+- `git status --porcelain` lists only files in allowedPaths.
+allowedPaths: `src/painterly/scene/device_scene.cpp`, `src/painterly/scene/device_scene.h`, `src/painterly/scene/scene.h`, `src/painterly/scene/scene.cpp`, `src/painterly/scene/material.h`, `src/painterly/scene/object.h`, `src/test/test_scene.cpp`, `docs/tasks/M3/T3.13-scene.md`, `docs/tasks/M3/AMENDMENTS-fixups.md`
+Depends on: M3-T3.13.
+
 ## M3-T3.15: the _painterly Python API exactly as in _painterly.pyi
 Card: `docs/tasks/M3/T3.15-bindings.md`. Depends on: M3-T3.14.
 Outcome: the card's Acceptance, translated; `CHECK` exits 0; and the symbol audit passes.
