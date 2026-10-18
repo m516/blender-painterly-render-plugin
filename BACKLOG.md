@@ -256,6 +256,40 @@ Card: `docs/handoff/drafts/M3-fixups/T3.28-licences-notices-docs.md`.
 Depends on: M3-FIX-T3.27.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 
+## M3-FIX-NODE24: GitHub Actions on the Node.js 24 runtime
+Why:
+- Every CI run warns: "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on
+  Node.js 24: actions/cache@v4, actions/checkout@v4" (CI 39101523186 on `2c8223e`). `wheels.yml` also uses
+  `actions/setup-python@v5`, `actions/upload-artifact@v4` and `actions/download-artifact@v4`, which target Node.js 20 too.
+- Opus read each action's `action.yml` (`runs.using`) at the newest tag of each major on 2026-10-18 (`git ls-remote
+  --tags`, raw.githubusercontent.com). The first major on `node24` is checkout v5 (v5.1.0), cache v5 (v5.1.0),
+  setup-python v6 (v6.3.0), upload-artifact v6 (v6.0.0) and download-artifact v7 (v7.0.0). `astral-sh/setup-uv@v7`
+  (v7.6.0) is already on `node24`.
+- Their release notes list nothing that affects this repo beyond the runtime and a minimum runner of 2.327.1, which
+  GitHub-hosted runners exceed. download-artifact v5 changed only downloads by artifact ID; `wheels.yml` downloads by
+  name.
+Do:
+- In `.github/workflows/ci.yml` and `.github/workflows/wheels.yml`, change exactly these `uses:` pins and nothing else:
+  `actions/checkout@v4` → `actions/checkout@v5`, `actions/cache@v4` → `actions/cache@v5`, `actions/setup-python@v5` →
+  `actions/setup-python@v6`, `actions/upload-artifact@v4` → `actions/upload-artifact@v6`, `actions/download-artifact@v4`
+  → `actions/download-artifact@v7`.
+- Leave `astral-sh/setup-uv@v7` and `pypa/cibuildwheel@v4.3.0` as they are, and leave the done cards under `docs/tasks/`,
+  which record what ran.
+- No build is needed: the change touches no file that `CHECK` builds, tests or lints.
+Outcome:
+- `git diff -U0 HEAD -- .github/workflows | grep -E '^[-+] ' | grep -v -E '^[-+]\s+uses: actions/(checkout|cache|setup-python|upload-artifact|download-artifact)@v[0-9]+$'`
+  prints nothing.
+- `diff <(git show HEAD:.github/workflows/ci.yml HEAD:.github/workflows/wheels.yml | grep -o -E 'uses: [^@]+') <(cat .github/workflows/ci.yml .github/workflows/wheels.yml | grep -o -E 'uses: [^@]+')`
+  prints nothing (the same actions, in the same order).
+- `git grep -n -E 'actions/(checkout|cache)@v4|actions/setup-python@v5|actions/(upload|download)-artifact@v4' -- .github`
+  prints nothing.
+- `MAIN/.venv/bin/python -I -c "import yaml; [yaml.safe_load(open(f)) for f in ('.github/workflows/ci.yml','.github/workflows/wheels.yml')]; print('YAML-OK')"`
+  prints `YAML-OK`.
+- `git status --porcelain` lists exactly the two workflow files.
+- Host only, after landing (Opus): the next CI run on the branch has no "Node.js 20 is deprecated" annotation.
+allowedPaths: `.github/workflows/ci.yml`, `.github/workflows/wheels.yml`
+Depends on: M3-FIX-T3.28.
+
 ## M3-PROPAGATE: carry the fix-up renames into the cards not yet run
 Why: T3.19-T3.24 renamed, moved or removed names that the later cards still use. Change each card text to match the code
 at integration HEAD:
