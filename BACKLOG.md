@@ -506,6 +506,181 @@ prints 20.
 allowedPaths: `docs/handoff/findings/M7-M9-review-2.json`.
 Depends on: BOOT-0a, so that no task is verified against `CHECK` before the knobs exist.
 
+## PANEL-M7-M9-a: check the review findings on T7.1 (report only)
+Why: `docs/handoff/queue.md` §8 revises the drafts in `docs/handoff/drafts/M7-M9/` from their review findings, and no
+one has checked those findings yet. A finding is a claim to test, not evidence. Opus reads this panel, rules wherever
+the verdict is not `confirmed`, and then plans the revision. The panel runs in five parts, one after another; this
+part covers T7.1.
+Do:
+- Check, each on its own, every finding under the keys `review <card> executability` and `review <card> design` for
+  T7.1, in `docs/handoff/findings/M7-M9-reviews.json` (which has only T7.1 and T7.2) and
+  `docs/handoff/findings/M7-M9-review-2.json`.
+  - Open every file the finding cites, at HEAD, and read the cited lines. Never take its quotes or line numbers as read.
+  - Re-derive the claim from the draft, any other draft it involves, `docs/spec.md`, `docs/plan.md`,
+    `docs/architecture.md` and the committed code.
+  - For Blender's behaviour, read Blender 5.2.2's bundled Python. This item lets you search these three directories of
+    it, and no other: `MAIN/.cache/blender/blender-5.2.2-linux-x64/5.2/scripts/startup/`, `.../scripts/modules/` and
+    `.../scripts/presets/`. A read-only probe may run
+    `MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'`; quote the code
+    and its output.
+- Write `docs/handoff/findings/M7-M9-panel-T7.1.json`: a JSON list with one object per finding, ordered by source
+  (`M7-M9-reviews.json` first), then key as in the file, then index. Fields:
+  - `source` (the file name), `key`, and `index` (the finding's 0-based position in that key's list);
+  - `verdict`: `confirmed` (the defect is real as stated, and its fix removes it), `partly` (real, but the issue or
+    the fix is wrong in a way `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the file:line spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object in this list that states the same defect, else `null`;
+  - `fix`: the edit to the draft as exact old and new text. Required for `confirmed`; for `partly`, the corrected
+    edit where you can give one; otherwise `null`. Do not apply it;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
+- Change no other file.
+Outcome:
+- This command prints `PANEL-OK` and the number of objects:
+  `MAIN/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'T7.1'};w={(s,k,i) for s in ('M7-M9-reviews.json','M7-M9-review-2.json') for k,v in json.load(open(d+s)).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M7-M9-panel-T7.1.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`
+- `git status --porcelain` lists only `docs/handoff/findings/M7-M9-panel-T7.1.json`.
+allowedPaths: `docs/handoff/findings/M7-M9-panel-T7.1.json`
+Depends on: REVIEW-M7-M9.
+
+## PANEL-M7-M9-b: check the review findings on T7.2 (report only)
+Why: `docs/handoff/queue.md` §8 revises the drafts in `docs/handoff/drafts/M7-M9/` from their review findings, and no
+one has checked those findings yet. A finding is a claim to test, not evidence. Opus reads this panel, rules wherever
+the verdict is not `confirmed`, and then plans the revision. The panel runs in five parts, one after another; this
+part covers T7.2.
+Do:
+- Check, each on its own, every finding under the keys `review <card> executability` and `review <card> design` for
+  T7.2, in `docs/handoff/findings/M7-M9-reviews.json` (which has only T7.1 and T7.2) and
+  `docs/handoff/findings/M7-M9-review-2.json`.
+  - Open every file the finding cites, at HEAD, and read the cited lines. Never take its quotes or line numbers as read.
+  - Re-derive the claim from the draft, any other draft it involves, `docs/spec.md`, `docs/plan.md`,
+    `docs/architecture.md` and the committed code.
+  - For Blender's behaviour, read Blender 5.2.2's bundled Python. This item lets you search these three directories of
+    it, and no other: `MAIN/.cache/blender/blender-5.2.2-linux-x64/5.2/scripts/startup/`, `.../scripts/modules/` and
+    `.../scripts/presets/`. A read-only probe may run
+    `MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'`; quote the code
+    and its output.
+- Write `docs/handoff/findings/M7-M9-panel-T7.2.json`: a JSON list with one object per finding, ordered by source
+  (`M7-M9-reviews.json` first), then key as in the file, then index. Fields:
+  - `source` (the file name), `key`, and `index` (the finding's 0-based position in that key's list);
+  - `verdict`: `confirmed` (the defect is real as stated, and its fix removes it), `partly` (real, but the issue or
+    the fix is wrong in a way `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the file:line spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object in this list that states the same defect, else `null`;
+  - `fix`: the edit to the draft as exact old and new text. Required for `confirmed`; for `partly`, the corrected
+    edit where you can give one; otherwise `null`. Do not apply it;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
+- Change no other file.
+Outcome:
+- This command prints `PANEL-OK` and the number of objects:
+  `MAIN/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'T7.2'};w={(s,k,i) for s in ('M7-M9-reviews.json','M7-M9-review-2.json') for k,v in json.load(open(d+s)).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M7-M9-panel-T7.2.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`
+- `git status --porcelain` lists only `docs/handoff/findings/M7-M9-panel-T7.2.json`.
+allowedPaths: `docs/handoff/findings/M7-M9-panel-T7.2.json`
+Depends on: PANEL-M7-M9-a.
+
+## PANEL-M7-M9-c: check the review findings on T7.3, T7.4 and T7.5 (report only)
+Why: `docs/handoff/queue.md` §8 revises the drafts in `docs/handoff/drafts/M7-M9/` from their review findings, and no
+one has checked those findings yet. A finding is a claim to test, not evidence. Opus reads this panel, rules wherever
+the verdict is not `confirmed`, and then plans the revision. The panel runs in five parts, one after another; this
+part covers T7.3, T7.4 and T7.5.
+Do:
+- Check, each on its own, every finding under the keys `review <card> executability` and `review <card> design` for
+  T7.3, T7.4 and T7.5, in `docs/handoff/findings/M7-M9-reviews.json` (which has only T7.1 and T7.2) and
+  `docs/handoff/findings/M7-M9-review-2.json`.
+  - Open every file the finding cites, at HEAD, and read the cited lines. Never take its quotes or line numbers as read.
+  - Re-derive the claim from the draft, any other draft it involves, `docs/spec.md`, `docs/plan.md`,
+    `docs/architecture.md` and the committed code.
+  - For Blender's behaviour, read Blender 5.2.2's bundled Python. This item lets you search these three directories of
+    it, and no other: `MAIN/.cache/blender/blender-5.2.2-linux-x64/5.2/scripts/startup/`, `.../scripts/modules/` and
+    `.../scripts/presets/`. A read-only probe may run
+    `MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'`; quote the code
+    and its output.
+- Write `docs/handoff/findings/M7-M9-panel-T7.3-T7.5.json`: a JSON list with one object per finding, ordered by source
+  (`M7-M9-reviews.json` first), then key as in the file, then index. Fields:
+  - `source` (the file name), `key`, and `index` (the finding's 0-based position in that key's list);
+  - `verdict`: `confirmed` (the defect is real as stated, and its fix removes it), `partly` (real, but the issue or
+    the fix is wrong in a way `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the file:line spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object in this list that states the same defect, else `null`;
+  - `fix`: the edit to the draft as exact old and new text. Required for `confirmed`; for `partly`, the corrected
+    edit where you can give one; otherwise `null`. Do not apply it;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
+- Change no other file.
+Outcome:
+- This command prints `PANEL-OK` and the number of objects:
+  `MAIN/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'T7.3','T7.4','T7.5'};w={(s,k,i) for s in ('M7-M9-reviews.json','M7-M9-review-2.json') for k,v in json.load(open(d+s)).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M7-M9-panel-T7.3-T7.5.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`
+- `git status --porcelain` lists only `docs/handoff/findings/M7-M9-panel-T7.3-T7.5.json`.
+allowedPaths: `docs/handoff/findings/M7-M9-panel-T7.3-T7.5.json`
+Depends on: PANEL-M7-M9-b.
+
+## PANEL-M7-M9-d: check the review findings on T8.1 and T8.2 (report only)
+Why: `docs/handoff/queue.md` §8 revises the drafts in `docs/handoff/drafts/M7-M9/` from their review findings, and no
+one has checked those findings yet. A finding is a claim to test, not evidence. Opus reads this panel, rules wherever
+the verdict is not `confirmed`, and then plans the revision. The panel runs in five parts, one after another; this
+part covers T8.1 and T8.2.
+Do:
+- Check, each on its own, every finding under the keys `review <card> executability` and `review <card> design` for
+  T8.1 and T8.2, in `docs/handoff/findings/M7-M9-reviews.json` (which has only T7.1 and T7.2) and
+  `docs/handoff/findings/M7-M9-review-2.json`.
+  - Open every file the finding cites, at HEAD, and read the cited lines. Never take its quotes or line numbers as read.
+  - Re-derive the claim from the draft, any other draft it involves, `docs/spec.md`, `docs/plan.md`,
+    `docs/architecture.md` and the committed code.
+  - For Blender's behaviour, read Blender 5.2.2's bundled Python. This item lets you search these three directories of
+    it, and no other: `MAIN/.cache/blender/blender-5.2.2-linux-x64/5.2/scripts/startup/`, `.../scripts/modules/` and
+    `.../scripts/presets/`. A read-only probe may run
+    `MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'`; quote the code
+    and its output.
+- Write `docs/handoff/findings/M7-M9-panel-M8.json`: a JSON list with one object per finding, ordered by source
+  (`M7-M9-reviews.json` first), then key as in the file, then index. Fields:
+  - `source` (the file name), `key`, and `index` (the finding's 0-based position in that key's list);
+  - `verdict`: `confirmed` (the defect is real as stated, and its fix removes it), `partly` (real, but the issue or
+    the fix is wrong in a way `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the file:line spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object in this list that states the same defect, else `null`;
+  - `fix`: the edit to the draft as exact old and new text. Required for `confirmed`; for `partly`, the corrected
+    edit where you can give one; otherwise `null`. Do not apply it;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
+- Change no other file.
+Outcome:
+- This command prints `PANEL-OK` and the number of objects:
+  `MAIN/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'T8.1','T8.2'};w={(s,k,i) for s in ('M7-M9-reviews.json','M7-M9-review-2.json') for k,v in json.load(open(d+s)).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M7-M9-panel-M8.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`
+- `git status --porcelain` lists only `docs/handoff/findings/M7-M9-panel-M8.json`.
+allowedPaths: `docs/handoff/findings/M7-M9-panel-M8.json`
+Depends on: PANEL-M7-M9-c.
+
+## PANEL-M7-M9-e: check the review findings on T9.1, T9.2 and T9.3 (report only)
+Why: `docs/handoff/queue.md` §8 revises the drafts in `docs/handoff/drafts/M7-M9/` from their review findings, and no
+one has checked those findings yet. A finding is a claim to test, not evidence. Opus reads this panel, rules wherever
+the verdict is not `confirmed`, and then plans the revision. The panel runs in five parts, one after another; this
+part covers T9.1, T9.2 and T9.3.
+Do:
+- Check, each on its own, every finding under the keys `review <card> executability` and `review <card> design` for
+  T9.1, T9.2 and T9.3, in `docs/handoff/findings/M7-M9-reviews.json` (which has only T7.1 and T7.2) and
+  `docs/handoff/findings/M7-M9-review-2.json`.
+  - Open every file the finding cites, at HEAD, and read the cited lines. Never take its quotes or line numbers as read.
+  - Re-derive the claim from the draft, any other draft it involves, `docs/spec.md`, `docs/plan.md`,
+    `docs/architecture.md` and the committed code.
+  - For Blender's behaviour, read Blender 5.2.2's bundled Python. This item lets you search these three directories of
+    it, and no other: `MAIN/.cache/blender/blender-5.2.2-linux-x64/5.2/scripts/startup/`, `.../scripts/modules/` and
+    `.../scripts/presets/`. A read-only probe may run
+    `MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'`; quote the code
+    and its output.
+- Write `docs/handoff/findings/M7-M9-panel-M9.json`: a JSON list with one object per finding, ordered by source
+  (`M7-M9-reviews.json` first), then key as in the file, then index. Fields:
+  - `source` (the file name), `key`, and `index` (the finding's 0-based position in that key's list);
+  - `verdict`: `confirmed` (the defect is real as stated, and its fix removes it), `partly` (real, but the issue or
+    the fix is wrong in a way `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the file:line spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object in this list that states the same defect, else `null`;
+  - `fix`: the edit to the draft as exact old and new text. Required for `confirmed`; for `partly`, the corrected
+    edit where you can give one; otherwise `null`. Do not apply it;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
+- Change no other file.
+Outcome:
+- This command prints `PANEL-OK` and the number of objects:
+  `MAIN/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'T9.1','T9.2','T9.3'};w={(s,k,i) for s in ('M7-M9-reviews.json','M7-M9-review-2.json') for k,v in json.load(open(d+s)).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M7-M9-panel-M9.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`
+- `git status --porcelain` lists only `docs/handoff/findings/M7-M9-panel-M9.json`.
+allowedPaths: `docs/handoff/findings/M7-M9-panel-M9.json`
+Depends on: PANEL-M7-M9-d.
+
 ## EXP-REPRO: the committed results of experiments 001-006 reproduce on this machine
 Why:
 - On 2026-10-15 the project moved from a cloud container to this machine, and the render cache did not move.
