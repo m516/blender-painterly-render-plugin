@@ -273,11 +273,13 @@ Do:
   `actions/checkout@v4` → `actions/checkout@v5`, `actions/cache@v4` → `actions/cache@v5`, `actions/setup-python@v5` →
   `actions/setup-python@v6`, `actions/upload-artifact@v4` → `actions/upload-artifact@v6`, `actions/download-artifact@v4`
   → `actions/download-artifact@v7`.
+- This includes the `actions/setup-python@v5` step that M6a-T6.3 adds to `ci.yml`'s `windows` job, which is why this
+  item waits for M6a-T6.3.
 - Leave `astral-sh/setup-uv@v7` and `pypa/cibuildwheel@v4.3.0` as they are, and leave the done cards under `docs/tasks/`,
   which record what ran.
 - No build is needed: the change touches no file that `CHECK` builds, tests or lints.
 Outcome:
-- `git diff -U0 HEAD -- .github/workflows | grep -E '^[-+] ' | grep -v -E '^[-+]\s+uses: actions/(checkout|cache|setup-python|upload-artifact|download-artifact)@v[0-9]+$'`
+- `git diff -U0 HEAD -- .github/workflows | grep -E '^[-+][^-+]' | grep -v -E '^[-+]\s+uses: actions/(checkout|cache|setup-python|upload-artifact|download-artifact)@v[0-9]+$'`
   prints nothing.
 - `diff <(git show HEAD:.github/workflows/ci.yml HEAD:.github/workflows/wheels.yml | grep -o -E 'uses: [^@]+') <(cat .github/workflows/ci.yml .github/workflows/wheels.yml | grep -o -E 'uses: [^@]+')`
   prints nothing (the same actions, in the same order).
@@ -288,7 +290,68 @@ Outcome:
 - `git status --porcelain` lists exactly the two workflow files.
 - Host only, after landing (Opus): the next CI run on the branch has no "Node.js 20 is deprecated" annotation.
 allowedPaths: `.github/workflows/ci.yml`, `.github/workflows/wheels.yml`
-Depends on: M3-FIX-T3.28.
+Depends on: M3-FIX-T3.28, M6a-T6.3.
+
+## M3-FIX-TQ2-CPP: the FMA canary can fail; one make_ray; a bound comment cites a real file (TQ.2 F1, F4, F7)
+Why: `docs/audits/TQ.2.md`, checked by Opus at `f7b633d`.
+- F1. The canary `dot() is not contracted into fused multiply-adds (the -ffp-contract=off canary)`
+  (`src/test/test_math_double3.cpp:229`) cannot fail in any build the project makes. The tests compile with at most
+  `-msse4.2` (`src/cycles/CMakeLists.txt:63`), and only `transform_avx2.cpp` gets `-mfma` (`:64-65`). Without an FMA
+  instruction set GCC has nothing to contract, so deleting `-ffp-contract=off` (`cmake/painterly_embree_config.cmake:40`)
+  passes every test.
+- F4. `src/test/test_bvh.cpp:57-58` cites `docs/tasks/M3/T3.21-contract-touchups.md, appendix A`, which does not exist;
+  the appendix is in `docs/handoff/drafts/M3-fixups/T3.21-contract-touchups.md`.
+- F7. `PainterlyRay make_ray(const Triple &, const Triple &)` is defined identically in `src/test/test_analytic.cpp:88`
+  and `src/test/test_bounce.cpp:143`.
+Do:
+- Compile `src/test/test_math_double3.cpp`, and only it, with FMA enabled when the compiler is GCC or Clang on x86-64, so
+  that `-ffp-contract=off` is the only thing that keeps `dot()` from contracting. Choose the mechanism (a per-source
+  compile option in `src/test/CMakeLists.txt`, or a target pragma in the file) and name it. Change no flag of any other
+  source. Update the canary's comment to say which builds it guards.
+- Correct the citation in `test_bvh.cpp`. If the sentence at `:73` ("relative errors from 1.0 u to 1.3 u") has no
+  committed script or command behind it, add the command and its output to the comment, or delete the sentence.
+- Move `make_ray` into a new header `src/test/test_ray.h` and include it from both files.
+Outcome:
+- `CHECK` exits 0.
+- The mutation, in your clone and never committed: delete `-ffp-contract=off` from
+  `cmake/painterly_embree_config.cmake:40`, configure and build into a separate directory `build/qm` with the same
+  knobs, and `build/qm/src/test/painterly_tests -tc='*canary*'` exits non-zero. Then restore the file with
+  `git checkout -- cmake/painterly_embree_config.cmake`. The report quotes the failing check and the exit status.
+- `git grep -n 'docs/tasks/M3/T3.21-contract-touchups.md' -- src` prints nothing.
+- `git grep -n 'PainterlyRay make_ray(const Triple' -- src/test` prints exactly one line, in `src/test/test_ray.h`.
+- `git status --porcelain` lists only allowedPaths.
+allowedPaths: `src/test/test_math_double3.cpp`, `src/test/CMakeLists.txt`, `src/test/test_bvh.cpp`, `src/test/test_analytic.cpp`, `src/test/test_bounce.cpp`, `src/test/test_ray.h`
+Depends on: M3-T3.14.
+
+## M3-FIX-TQ2-PY: the prebuilt-Embree proof runs and cannot pass empty; compare_results tells booleans from numbers (TQ.2 F2, F3, F5)
+Why: `docs/audits/TQ.2.md`, checked by Opus at `f7b633d`.
+- F2. `tests/core/test_embree_prebuilt.py:199-212` hard-codes this machine's paths to the Embree and doctest sources and
+  sets `EMBREE_INSTALL = REPO_ROOT / "build" / "embree-install"`, which nothing creates (the host's install is
+  `MAIN/.cache/embree-prebuilt/install`, R11). Both slow tests therefore skip on every run (`:227`, `:253`).
+- F3. `ComparisonReport.identical` (`tools/embree_prebuilt.py:132-136`) is true when neither side has a unit, so
+  `compare-flags` can print "EMBREE FLAGS IDENTICAL: 0 units": the vacuous pass its docstring (`:34-37`) says it avoids.
+- F5. `tools/compare_results.py:182-183` compares leaves with Python `==`, so `true` against `1` and `false` against `0`
+  count as identical, although the module docstring treats a boolean as not a number.
+Do:
+- `test_embree_prebuilt.py`: take the three paths from the environment variables `PAINTERLY_EMBREE_SOURCE`,
+  `PAINTERLY_DOCTEST_SOURCE` and `PAINTERLY_EMBREE_INSTALL`, with no default path of this machine. A test skips, naming
+  the variable, only when one is unset.
+- `embree_prebuilt.py`: a comparison where either side has no unit is not identical, and `compare-flags` then exits
+  non-zero with a message that says so. Add a test.
+- `compare_results.py`: two leaves are identical only when their JSON types match as well as their values (booleans,
+  integers, floats, strings and null are distinct). Say in the docstring whether `1` and `1.0` match, and why. Add tests
+  for `true` against `1`, `false` against `0`, and your choice for `1` against `1.0`.
+- Do not regenerate `docs/handoff/repro/`; if the new comparison would change a committed EXP-REPRO result, say which
+  leaf in your answer.
+Outcome:
+- `CHECK` exits 0.
+- `PAINTERLY_EMBREE_SOURCE=MAIN/.cache/src/embree PAINTERLY_DOCTEST_SOURCE=MAIN/.cache/src/doctest PAINTERLY_EMBREE_INSTALL=MAIN/.cache/embree-prebuilt/install PYTHONPATH="$PWD/analysis" MAIN/.venv/bin/python -m pytest -q -rs -m slow tests/core/test_embree_prebuilt.py`
+  runs both slow tests and reports them passed, none skipped.
+- Each new test fails against the files at HEAD; the report names each test and its failing line.
+- `git grep -n '/run/media' -- tests tools src` prints nothing.
+- `git status --porcelain` lists only allowedPaths.
+allowedPaths: `tests/core/test_embree_prebuilt.py`, `tools/embree_prebuilt.py`, `tools/compare_results.py`, `tests/core/test_compare_results.py`
+Depends on: BOOT-0b.
 
 ## M3-PROPAGATE: carry the fix-up renames into the cards not yet run
 Why: T3.19-T3.24 renamed, moved or removed names that the later cards still use. Change each card text to match the code
@@ -415,16 +478,47 @@ Outcome:
 allowedPaths: `src/painterly/scene/device_scene.cpp`, `src/painterly/scene/device_scene.h`, `src/painterly/scene/scene.h`, `src/painterly/scene/scene.cpp`, `src/painterly/scene/material.h`, `src/painterly/scene/object.h`, `src/test/test_scene.cpp`, `docs/tasks/M3/T3.13-scene.md`, `docs/tasks/M3/AMENDMENTS-fixups.md`
 Depends on: M3-T3.13.
 
+## M3-FIX-T3.13b: painterly/scene test strength and single definitions (TQ.2 F6, F7)
+Why: `docs/audits/TQ.2.md`, checked by Opus at `f7b633d`.
+- `src/test/test_scene.cpp:653` and `:655` check the same value twice: `expected = 2.0 * jitter`, with `jitter`
+  `double(1.0f / 1400.0f)` (`:637`), then the literal `2.0 * double(1.0f / 1400.0f)`, which the comment calls the
+  reference.
+- The test at `test_scene.cpp:280-313` uses only dyadic values (0.5f, 0.25f, 8, 0.125f). Their float32 and decimal forms
+  agree, so it cannot tell the card's `double(float)` widening from a decimal round trip.
+- M_s->cam is defined twice, as transposes (`src/painterly/scene/camera.cpp:20`, `device_scene.cpp:45`), and the 3x3
+  identity three times (`scene.h:104`, `scene.cpp:32`, `device_scene.cpp:209`). `camera.cpp:6` includes a header it does
+  not use.
+Do:
+- Replace the second jitter check with an independent reference: the bits of `2 * double(float32(1/1400))` as a
+  hex-float literal computed by a command you run (for example with Python's `struct`); put the command and its output
+  in the comment.
+- Add a non-dyadic value (for example `0.1f`, where `double(0.1f) != 0.1`) to the test at `:280-313`, with its expected
+  bits computed the same way.
+- Define M_s->cam once (derive the transpose from it, or both from one table) and the 3x3 identity once, shared by the
+  three files; remove the unused include. Output stays bit-identical: every existing test passes unchanged.
+Outcome:
+- `CHECK` exits 0.
+- The mutation, in your clone and never committed: in the conversion the `:280-313` test covers, replace `double(x)` by
+  `std::stod(std::to_string(x))`, rebuild, and `build/q/src/test/painterly_tests` exits non-zero; the report names the
+  failing case. Then restore the file with `git checkout --`.
+- `git status --porcelain` lists only allowedPaths.
+allowedPaths: `src/test/test_scene.cpp`, `src/painterly/scene/camera.cpp`, `src/painterly/scene/camera.h`, `src/painterly/scene/device_scene.cpp`, `src/painterly/scene/scene.h`, `src/painterly/scene/scene.cpp`
+Depends on: M3-FIX-T3.13a.
+
 ## M3-T3.15: the _painterly Python API exactly as in _painterly.pyi
-Card: `docs/tasks/M3/T3.15-bindings.md`. Depends on: M3-T3.14.
+Card: `docs/tasks/M3/T3.15-bindings.md`.
+- M3-FIX-T3.28 also edits `src/blender/CMakeLists.txt`, so this item waits for it.
+- The card gained `src/blender/selftest.h` and `src/blender/selftest.cpp` in M3-PROPAGATE (`fdc6357`).
 Outcome: the card's Acceptance, translated; `CHECK` exits 0; and the symbol audit passes.
+allowedPaths: `src/blender/selftest.h`, `src/blender/selftest.cpp`, `src/blender/python.cpp`, `src/blender/CMakeLists.txt`, `tests/core/test_api_contract.py`
+Depends on: M3-T3.14, M3-FIX-T3.28.
 
 ## M3-T3.16: exact parity with smallpaint_oracle, bit for bit
 Card: `docs/tasks/M3/T3.16-oracle-parity.md`. Depends on: M3-T3.15.
 - The oracle here is the dev build's `build/q/src/app/smallpaint_oracle` with `--halton exact` (SPEC §2).
 - Never use MAIN's experiments' oracle.
 Outcome: the card's Acceptance, translated; `CHECK` exits 0. The card's slow 400 px test must pass too:
-`PAINTERLY_BUILD_DIR=build/q /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_oracle_parity.py`.
+`PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_oracle_parity.py` (R12).
 
 ## M3-T3.17: triangle path statistically matches the oracle
 Card: `docs/tasks/M3/T3.17-triangle-path.md`. Depends on: M3-T3.16.
