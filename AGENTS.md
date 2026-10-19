@@ -51,8 +51,8 @@ Károly Zsolnai-Fehér's `smallpaint_painterly`, a look that comes from a Halton
 
 ## Rules
 - **Stay inside your working directory** (the clone you start in). Read, list, search and write only there. The one
-  exception: READ the `MAIN` paths above by exact path. Never search (grep/find/rg/ls -R) outside your root; the shared
-  tree is huge and on a slow drive.
+  exception: READ the `MAIN` paths above by exact path. Never search (grep/find/rg) outside your --root; the shared
+  little-puzzles tree is huge and on a slow drive. That includes `ls -R`.
 - **The queue's own files are not inputs.** Never read `MAIN/.tmp/`: other tasks' proposals and diffs, audit prompts,
   the mailbox and the integration clone. Work from your card, your task and your clone. When a task may reuse an earlier
   attempt's work, it names the exact file.

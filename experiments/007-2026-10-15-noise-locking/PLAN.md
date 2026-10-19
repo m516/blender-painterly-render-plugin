@@ -8,6 +8,13 @@
 > - Read the render cache read-only through `PAINTERLY_CACHE` and `PAINTERLY_BUILD_DIR`, as BACKLOG.md gives them. Never
 >   render into it.
 > - This card starts only after EXP-REPRO has found every committed output of 001-004 and 006 byte-identical.
+>
+> **Amendment 3 (Opus, 2026-10-18; execution only, the Method is unchanged).** This card runs as a DeepSeek queue
+> task, so two instructions below follow `AGENTS.md` instead:
+> - A Conclusion starts with `DRAFT (DeepSeek) — pending Opus review.`, not "DRAFT (Haiku)".
+> - Never run a job in the background and poll (`run_in_background`, `&`, detached): nothing outlives one bash call
+>   in the worker sandbox. Run long work in the foreground, in resumable chunks that finish inside one call
+>   (30 min), writing one result file per item and skipping items already done.
 
 The pre-registration is `README.md` (Background, Hypothesis and Method). This card implements its Method. It does not
 change the hypotheses or rules. If something in them cannot be implemented as written, stop and report it. Opus then
