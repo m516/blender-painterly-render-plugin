@@ -5,7 +5,7 @@ whether a hash, test or tool reads it (that text stays exempt and changes only t
 
 ## Status (2026-10-18)
 
-- Mapped: 133 tracked `.md` files outside `third_party/`, the 5 `LICENSES/` texts, and the live
+- Mapped: all 134 tracked `.md` files outside `third_party/` (this one included), the 5 `LICENSES/` texts, and the live
   `.tmp/ds-queue/RULINGS.md`. Read-only Sonnet readers wrote the rows; Opus checked the claims used in Order.
 - Cut so far: nothing. DeepSeek does the cutting (halve, quiz, grade) once the DeepSeek credit is back.
 - Quizzes: `~/.claude/doc-quizzes/43-<doc>.json`, outside the tree the DeepSeek sandbox can read.
@@ -111,4 +111,22 @@ Stale statements found in this group:
 
 ## Map: task cards (docs/tasks/)
 
-Pending: a read-only reader is mapping the 63 cards (done records vs live specs). This section follows.
+63 files, 4,066 lines: 46 done cards (2,971 lines), 13 live cards (754 lines) and 4 notes. Done cards are records: an
+auditor tracing a landed commit reads them, and code, experiments and later cards cite many of them by line as the
+source of a constant. Live cards are the specification a pending task builds from.
+
+| path | lines | reader(s) | after reading, the reader must... | verdict | status | note |
+|---|---|---|---|---|---|---|
+| `docs/tasks/README.md` | 31 | steward (card writer) | write a card in the 9-section template | cut 3-4 and 23-31 | editable | Haiku, Workflow and gate-agent text is dead since 2026-10-15. `findings/M3-fixups-reviews.json:74` cites :29 (the text is at 27-28). |
+| `M0/` (5), `M1/T1.1`-`T1.16` (16), `M2/` (11), `M3/T3.1`-`T3.13`, `M3/TQ.1-audit.md` (14) | 2,971 | auditors; code and experiment comments | know what a landed commit was specified to do | keep | frozen records | Cited by line as constant sources: `T1.4:25`, `T1.7:22` (the "193" of experiment 002), `T1.8:21`, `T1.2:41-47` and `:79-81`, `T2.4:32`, `T2.9:7,35,76-94` (a test fixture), `T2.10:99`, `T3.2:15-20`. M6a and t-fix327b read `T2.11` and `T3.1`-`T3.3` as rules. `T3.13` is also an edit target of t-fix313a. Uncited: `T1.14`, `T2.6`. |
+| `M3/T3.14`-`T3.18`, `M4/T4.1`-`T4.4`, `M5/T5.1`-`T5.4` (13) | 754 | workers, planner, auditors | build exactly the listed files and pass Acceptance | keep; cut each trailing `## Commit` block (3 lines; the queue writes the subject) | live spec (t-m3-14b, t-m3-15b, t-m3-16 to t-m3-18, t-m4-1 to t-m4-4, t-m5-1 to t-m5-4) | Never shift `T3.15:15`, `T4.1:23` or `T4.4:12-16` (cited by line). |
+| `M1/_experiment_protocol.md` | 20 | workers (t-m3-18, t-m6a-3), card writers | run an experiment by items 1-9 | keep | live spec; items cited by number | Items 7 and 9 now say "DRAFT (DeepSeek)" and "the queue makes the commit" (2026-10-18). Never renumber. |
+| `M1/_phase_b_results.md` | 107 | auditors | know the phase-B results of 002-004 and 006 | keep | frozen record | Only `T1.12:2` cites it. |
+| `M3/AMENDMENTS-fixups.md` | 184 | workers, auditors | append an entry per card edit, in its format | keep | live (t-fix313a appends entries 10-11) | Its header (":5 Two sources", ":12 Entry 6 ... only such hunk") turns false when t-fix313a appends: check at landing. |
+
+Problems found in this group:
+1. `M1/_experiment_protocol.md` items 7 and 9 said "DRAFT (Haiku)" and "Commit ...". Fixed on 2026-10-18.
+2. `M4/T4.1:57` and `M4/T4.4:42` gave Makefile recipes with a literal `.venv/bin/python`; the Makefile uses `$(VENV)` since
+   BOOT-0a. Fixed on 2026-10-18 (no line shifted).
+3. `M3/T3.17:24` says "shared cache", which R7 and R12 forbid; only t-m3-17's body corrects it.
+4. `M3/T3.11:30` (a done record) still says `VERTEX_PASS`; the code has `VERTEX_TINT` (`kernel/integrator/path.h:33`).

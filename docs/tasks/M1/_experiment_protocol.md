@@ -14,6 +14,7 @@
    - the printed result tables.
    It must be re-runnable and deterministic.
 6. **`## Results`.** Tables of numbers (means ± sd, p-values, Holm decisions). No adjectives without numbers.
-7. **`## Conclusion`.** Start with the line `DRAFT (Haiku) — pending Opus review.`, then for each hypothesis: supported / refuted / inconclusive, with the deciding numbers. Opus finalizes it.
+7. **`## Conclusion`.** Start with the line `DRAFT (DeepSeek) — pending Opus review.`, then for each hypothesis: supported / refuted / inconclusive, with the deciding numbers. Opus finalizes it.
 8. **Index.** Add a row to `experiments/README.md` with status `draft`.
-9. **Commit** README.md, jobs.py, analyze.py, results.json and the figures. Never commit `.cache/`.
+9. **Files to commit:** README.md, jobs.py, analyze.py, results.json and the figures, never `.cache/`. In the queue,
+   list them in your answer; the queue makes the commit (AGENTS.md).
