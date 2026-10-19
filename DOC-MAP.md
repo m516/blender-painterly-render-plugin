@@ -7,7 +7,12 @@ whether a hash, test or tool reads it (that text stays exempt and changes only t
 
 - Mapped: all 134 tracked `.md` files outside `third_party/` (this one included), the 5 `LICENSES/` texts, and the live
   `.tmp/ds-queue/RULINGS.md`. Read-only Sonnet readers wrote the rows; Opus checked the claims used in Order.
-- Cut so far: nothing. DeepSeek does the cutting (halve, quiz, grade) once the DeepSeek credit is back.
+- Cut so far: **RULINGS.md consolidated** (2026-10-18). One standing ruling, machine R35, now carries every standing
+  rule outside the preamble, and machine R1-R34 are superseded. The live rulings in each prompt fell from 44,533 to
+  12,281 bytes (-72%). A fresh reader answered the RULINGS quiz from the result before any supersede was applied.
+  Old ids map through R35's brackets: `S1 [R11 now active]`, `S2 [R17]`, `S3 [R18]`; R16 is AGENTS.md's scratch rule; R19
+  is spent.
+- Next: the other docs, by DeepSeek (halve, quiz, grade) once the DeepSeek credit is back.
 - Quizzes: `~/.claude/doc-quizzes/43-<doc>.json`, outside the tree the DeepSeek sandbox can read.
 - CLAUDE.md is cut only on Micah's direct word in a 43 session.
 

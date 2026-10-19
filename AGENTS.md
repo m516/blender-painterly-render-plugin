@@ -56,7 +56,7 @@ Károly Zsolnai-Fehér's `smallpaint_painterly`, a look that comes from a Halton
 - **The queue's own files are not inputs.** Never read `MAIN/.tmp/`: other tasks' proposals and diffs, audit prompts,
   the mailbox and the integration clone. Work from your card, your task and your clone. When a task may reuse an earlier
   attempt's work, it names the exact file.
-- **Scratch files never enter the diff (R16).** Write temporary files under `/tmp` or a git-ignored path of your clone
+- **Scratch files never enter the diff.** Write temporary files under `/tmp` or a git-ignored path of your clone
   (`.cache/`, `build/`, `.tmp/`). Any other untracked file fails the whole task. Before your final answer,
   `git status --porcelain` must list only files inside allowedPaths.
 - **No host paths in committed code or tests.** Never write an absolute path of this machine (`/run/media/...`, the
