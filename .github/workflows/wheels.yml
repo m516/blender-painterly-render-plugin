@@ -7,11 +7,16 @@ on:
     tags: ["v*"]
   workflow_dispatch:
   pull_request:
+    # third_party/: the vendored Cycles sources compiled into the module. tools/symbol_audit.py: the audit that the
+    # wheels job runs. This file: the jobs themselves (T3.28).
     paths:
       - "src/**"
       - "cmake/**"
       - "CMakeLists.txt"
       - "pyproject.toml"
+      - "third_party/**"
+      - "tools/symbol_audit.py"
+      - ".github/workflows/wheels.yml"
 
 permissions:
   contents: read

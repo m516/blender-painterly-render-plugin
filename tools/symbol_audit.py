@@ -468,7 +468,7 @@ def _audit_pe(path: Path) -> list[Check]:
 
     export_check = Check(
         "exports",
-        "exports: PyInit__painterly and nanobind's NB_EXPORT exception classes only",
+        "PyInit__painterly and nanobind's NB_EXPORT exception classes only",
         _pe_export_violations(exports),
     )
     dependency_check = Check(

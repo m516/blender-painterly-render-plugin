@@ -364,3 +364,17 @@ def test_windows_export_outside_the_nanobind_exception_classes_fails() -> None:
     for extra in ("rtcNewDevice", "?foo@bar@@YAXXZ"):
         exports = [audit.MODULE_SYMBOL, *NANOBIND_EXCEPTION_EXPORTS_WINDOWS, extra]
         assert audit._pe_export_violations(exports) == [f"export {extra}"]
+
+
+def test_windows_report_names_the_export_check_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The text report prints '<name>: <rule>', so the PE rule does not repeat 'exports:'."""
+    one_export = OBJDUMP_PRIVATE_HEADERS.replace("       2   0x1010  helper_export\n", "")
+    assert "helper_export" not in one_export
+    # No dumpbin, so _audit_pe parses llvm-objdump output, which _run returns canned (no tool runs).
+    monkeypatch.setattr(audit.shutil, "which", lambda _tool: None)
+    monkeypatch.setattr(audit, "_run", lambda _command: one_export)
+    checks = audit._audit_pe(Path("_painterly.pyd"))
+    report = audit._render_text(audit.AuditResult("_painterly.pyd", "PE", checks))
+    assert report.splitlines()[1] == (
+        "[PASS] exports: PyInit__painterly and nanobind's NB_EXPORT exception classes only"
+    )

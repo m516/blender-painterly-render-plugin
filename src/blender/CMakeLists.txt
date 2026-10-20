@@ -14,7 +14,8 @@ target_compile_definitions(_painterly PRIVATE PAINTERLY_VERSION="${PROJECT_VERSI
 target_link_libraries(_painterly PRIVATE painterly_embree cycles_util)
 painterly_target_warnings(_painterly)
 
-# Only PyInit__painterly is exported. Hidden visibility (root CMakeLists) covers everything else.
+# Linux and macOS export only PyInit__painterly. Hidden visibility (root CMakeLists) covers most symbols; the version
+# script and the exported-symbols list below also drop those marked visible, such as nanobind's NB_EXPORT classes.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Embree's vtables reference __cxa_pure_virtual only weakly, so the static libstdc++ member would not be linked and the
   # weak import would bind to the host process's libstdc++. A strong reference links our own copy (made local by --exclude-libs).
@@ -27,6 +28,7 @@ elseif(APPLE)
   target_link_options(_painterly PRIVATE
     -Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports_macos.txt)
 endif()
-# Windows: nanobind already exports only PyInit, so no .def file is needed.
+# Windows: no .def file. The module exports PyInit__painterly and the members of nanobind's two NB_EXPORT exception
+# classes (__declspec(dllexport), nanobind nb_defs.h:27), which tools/symbol_audit.py allows (T2.9).
 
 install(TARGETS _painterly LIBRARY DESTINATION .)

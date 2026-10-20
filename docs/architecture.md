@@ -94,7 +94,10 @@ On analytic scenes the core equals `smallpaint_oracle` **bit for bit** (`tests/c
 - every build uses `-ffp-contract=off`.
 
 ## Isolation inside Blender
-`_painterly` exports exactly one symbol, `PyInit__painterly`, and shares no C++ library with Blender's process:
+On Linux and macOS `_painterly` exports exactly one symbol, `PyInit__painterly`. On Windows it also exports the members
+of nanobind's two `NB_EXPORT` exception classes, `python_error` and `builtin_exception` (T2.9). A PE image's imports
+bind by DLL name, so these exports cannot interpose into another module. On every OS `_painterly` shares no C++ library
+with Blender's process:
 - Embree is static, in its own API namespace, with internal tasking (no TBB);
 - the C++ runtime is static;
 - vendored Cycles code is compiled into `namespace painterly`.
