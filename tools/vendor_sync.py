@@ -4,10 +4,11 @@
 Subcommands (paths in the manifest are relative to each upstream's `root`):
 
   fetch                       check out every upstream at its pinned commit under .cache/vendor/
-  sync                        copy each VENDORED.toml entry from its checkout, apply patches/*.patch
-                              in lexical order, and rewrite VENDORED.toml with the resulting hashes
+  sync                        copy each VENDORED.toml entry from its pinned commit, apply
+                              patches/*.patch in lexical order, and rewrite VENDORED.toml with the
+                              resulting hashes
   check [--upstream]          verify third_party/cycles against VENDORED.toml with no network;
-                              with --upstream also re-derive every file from its checkout and
+                              with --upstream also re-derive every file from its pinned commit and
                               patches, byte for byte
   add [--upstream NAME] PATH... [--dest-prefix P]
                               vendor upstream files (dest = PATH, or P/<file name> with
@@ -15,6 +16,13 @@ Subcommands (paths in the manifest are relative to each upstream's `root`):
   remove DEST...              delete the entries and their files, then sync
   closure HEADER...           print the transitive quoted-#include closure of HEADERs inside the
                               cycles root
+
+Upstream bytes come from the pinned commit's git objects (`git cat-file blob <commit>:<path>`,
+file lists from `git ls-tree`), never from a checkout's working tree (T3.27, M3 review panel #0).
+So a locally edited, deleted or untracked file in a checkout, or end-of-line conversion at checkout
+(`core.autocrlf`, `.gitattributes`), cannot reach third_party/cycles or its hashes, and
+`check --upstream` compares against the pinned bytes. Every subcommand that reads a checkout
+refuses one whose HEAD is not the pinned commit.
 
 Exit status: 0 on success, 1 on a failed check or an error, 2 on a usage error. Only the standard
 library and the git CLI are used. Upstream checkouts are read as data and never executed (CLAUDE.md
@@ -198,12 +206,15 @@ def check_structure(manifest: Manifest) -> None:
         dests.add(entry.dest)
 
 
-def load_manifest(path: Path = MANIFEST) -> Manifest:
+def load_manifest(path: Path | None = None) -> Manifest:
     """Parse and validate VENDORED.toml, including the SHA-256 format of every recorded hash.
 
-    Raises VendorError when the file cannot be read, a key is missing or malformed, or the
-    structure is invalid.
+    path defaults to MANIFEST, looked up when the function runs (so tests can point MANIFEST at
+    a temporary file). Raises VendorError when the file cannot be read, a key is missing or
+    malformed, or the structure is invalid.
     """
+    if path is None:
+        path = MANIFEST
     try:
         with path.open("rb") as handle:
             data = tomllib.load(handle)
@@ -261,21 +272,28 @@ def render_manifest(manifest: Manifest) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _git(args: list[str], cwd: Path | None = None) -> str:
-    """Run git with args and return its stdout without the trailing newline.
+def _git_bytes(args: list[str], cwd: Path | None = None) -> bytes:
+    """Run git with args and return its stdout exactly as git wrote it.
 
     A failing git command raises VendorError carrying git's own error text.
     """
     command = ["git", *args]
     try:
-        result = subprocess.run(
-            command, cwd=cwd, env=GIT_ENV, check=True, capture_output=True, text=True
-        )
+        result = subprocess.run(command, cwd=cwd, env=GIT_ENV, check=True, capture_output=True)
     except subprocess.CalledProcessError as err:
-        raise VendorError(f"{' '.join(command)} failed: {err.stderr.strip()}") from err
+        stderr = err.stderr.decode("utf-8", errors="replace").strip()
+        raise VendorError(f"{' '.join(command)} failed: {stderr}") from err
     except OSError as err:
         raise VendorError(f"cannot run git: {err}") from err
-    return result.stdout.strip()
+    return result.stdout
+
+
+def _git(args: list[str], cwd: Path | None = None) -> str:
+    """Run git with args and return its stdout as UTF-8 text, stripped of surrounding whitespace.
+
+    A failing git command raises VendorError carrying git's own error text.
+    """
+    return _git_bytes(args, cwd).decode("utf-8").strip()
 
 
 def _git_head(repo: Path) -> str | None:
@@ -297,6 +315,65 @@ def checkout_dir(upstream: Upstream) -> Path:
     """Checkout directory of upstream, e.g. .cache/vendor/blender-v5.2.2 for cycles."""
     suffix = upstream.tag or upstream.commit[:SHORT_SHA_LEN]
     return CHECKOUT_DIR / f"{CHECKOUT_PREFIX[upstream.name]}-{suffix}"
+
+
+def _object_spec(upstream: Upstream, path: str = "") -> str:
+    """The git revision `<commit>:<repository path>` of a root-relative path in the pinned commit.
+
+    The empty path names the upstream root itself: `<commit>:intern/cycles` for cycles, and the
+    commit's top tree `<commit>:` when the root is the repository root.
+    """
+    in_repository = "/".join(part for part in (upstream.root, path) if part)
+    return f"{upstream.commit}:{in_repository}"
+
+
+def _object_type(checkout: Path, spec: str) -> str | None:
+    """Type ("blob", "tree", ...) of the object that the revision spec names, or None if none.
+
+    Only the object store of the checkout's own repository (its .git) is read.
+    """
+    try:
+        return _git(["--git-dir", str(checkout / ".git"), "cat-file", "-t", spec])
+    except VendorError:
+        return None
+
+
+def _missing_file(upstream: Upstream, path: str) -> VendorError:
+    """The error for a root-relative path that is not a file in upstream's pinned commit."""
+    return VendorError(f"{path} is not a file in upstream {upstream.name} at {upstream.commit}")
+
+
+def upstream_files(upstream: Upstream, checkout: Path) -> frozenset[str]:
+    """Root-relative paths of every file under upstream's root in its pinned commit.
+
+    The list comes from the commit's tree objects (`git ls-tree -r`), not from the working tree,
+    so an untracked or deleted working-tree file changes nothing. Directories are not listed.
+    """
+    listing = _git_bytes(
+        ["--git-dir", str(checkout / ".git"), "ls-tree", "-r", "-z", _object_spec(upstream)]
+    )
+    files: set[str] = set()
+    for record in listing.split(b"\0"):
+        if not record:
+            continue
+        # One record per entry: "<mode> <type> <object id>\t<path>" (git ls-tree -z).
+        info, _, name = record.partition(b"\t")
+        if info.split(b" ")[1] == b"blob":
+            files.add(name.decode("utf-8"))
+    return frozenset(files)
+
+
+def upstream_blob(upstream: Upstream, checkout: Path, path: str) -> bytes:
+    """Bytes of the root-relative path in upstream's pinned commit, from the checkout's git objects.
+
+    `git cat-file blob` prints the stored object unchanged: no working-tree file is read, and no
+    end-of-line conversion or other checkout filter applies. Raises VendorError when the pinned
+    commit has no file at path.
+    """
+    spec = _object_spec(upstream, path)
+    if _object_type(checkout, spec) != "blob":
+        raise _missing_file(upstream, path)
+    return _git_bytes(["--git-dir", str(checkout / ".git"), "cat-file", "blob", spec])
 
 
 def _clone_tag(upstream: Upstream, dest: Path) -> None:
@@ -334,7 +411,8 @@ def ensure_checkout(upstream: Upstream) -> Path:
     A checkout already at the pin is left alone. A new checkout is built in a scratch directory and
     renamed into place, so an interrupted fetch leaves no partial checkout. A directory at the
     checkout path that is not at the pin raises VendorError and is never overwritten. Returns the
-    checkout directory; the upstream root is `root` inside it.
+    checkout directory, the repository top. Callers read upstream files from its git objects
+    (upstream_files, upstream_blob), never from its working tree.
     """
     target = checkout_dir(upstream)
     if target.exists():
@@ -364,22 +442,19 @@ def ensure_checkout(upstream: Upstream) -> Path:
             shutil.rmtree(staging, ignore_errors=True)
             raise
         _report(f"{upstream.name}: fetched {target.name} at {upstream.commit}")
-    if upstream.root and not (target / upstream.root).is_dir():
-        raise VendorError(f"{upstream.name}: root {upstream.root!r} is missing from {target}")
+    if upstream.root and _object_type(target, _object_spec(upstream)) != "tree":
+        raise VendorError(
+            f"{upstream.name}: root {upstream.root!r} is not a directory in {upstream.commit}"
+        )
     return target
 
 
-def source_roots(manifest: Manifest, names: Iterable[str]) -> dict[str, Path]:
-    """Root directory of each named upstream (its checkout plus `root`).
+def source_checkouts(manifest: Manifest, names: Iterable[str]) -> dict[str, Path]:
+    """Checkout directory of each named upstream, as ensure_checkout returns it.
 
     Checkouts that are absent are fetched first.
     """
-    roots: dict[str, Path] = {}
-    for name in sorted(set(names)):
-        upstream = manifest.upstreams[name]
-        checkout = ensure_checkout(upstream)
-        roots[name] = checkout / upstream.root if upstream.root else checkout
-    return roots
+    return {name: ensure_checkout(manifest.upstreams[name]) for name in sorted(set(names))}
 
 
 def patch_files() -> list[Path]:
@@ -397,24 +472,20 @@ def patch_targets(patches: Iterable[Path]) -> set[str]:
     return targets
 
 
-def _derive(manifest: Manifest, roots: Mapping[str, Path], staging: Path) -> list[Entry]:
+def _derive(manifest: Manifest, checkouts: Mapping[str, Path], staging: Path) -> list[Entry]:
     """Build the vendored tree inside staging; return the entries with hashes and `patched` filled.
 
-    Each upstream file is copied in, then the patches are applied in lexical order. staging becomes
-    its own git repository first. git apply run from inside this repository resolves patch paths
-    against the repository top and silently skips the patches, so the patches must be applied in a
-    repository of their own.
+    checkouts maps each upstream name to its checkout (source_checkouts). Each upstream file is
+    written in from its pinned commit (upstream_blob), then the patches are applied in lexical
+    order. staging becomes its own git repository first. git apply run from inside this
+    repository resolves patch paths against the repository top and silently skips the patches, so
+    the patches must be applied in a repository of their own.
     """
     _git(["init", "--quiet", str(staging)])
     upstream_hashes: dict[str, str] = {}
     for entry in manifest.entries:
-        root = roots[entry.upstream]
-        source = root / entry.upstream_path
-        if not source.is_file():
-            raise VendorError(
-                f"{entry.upstream_path} is not a file in upstream {entry.upstream} ({root})"
-            )
-        data = source.read_bytes()
+        upstream = manifest.upstreams[entry.upstream]
+        data = upstream_blob(upstream, checkouts[entry.upstream], entry.upstream_path)
         target = staging / entry.dest
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
@@ -446,11 +517,11 @@ def sync_manifest(manifest: Manifest) -> Manifest:
     no entry lists are left alone; `check` reports them.
     """
     check_structure(manifest)
-    roots = source_roots(manifest, (entry.upstream for entry in manifest.entries))
+    checkouts = source_checkouts(manifest, (entry.upstream for entry in manifest.entries))
     CHECKOUT_DIR.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".sync-", dir=CHECKOUT_DIR))
     try:
-        entries = _derive(manifest, roots, staging)
+        entries = _derive(manifest, checkouts, staging)
         for entry in entries:
             target = VENDOR_DIR / entry.dest
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -503,16 +574,16 @@ def offline_problems(manifest: Manifest) -> list[str]:
 
 
 def upstream_problems(manifest: Manifest) -> list[str]:
-    """Differences found by re-deriving every entry from its upstream checkout and patches.
+    """Differences found by re-deriving every entry from its pinned commit and patches.
 
     The comparison is byte for byte, and it covers both hashes and the `patched` flag.
     """
-    roots = source_roots(manifest, (entry.upstream for entry in manifest.entries))
+    checkouts = source_checkouts(manifest, (entry.upstream for entry in manifest.entries))
     CHECKOUT_DIR.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".check-", dir=CHECKOUT_DIR))
     problems: list[str] = []
     try:
-        derived = _derive(manifest, roots, staging)
+        derived = _derive(manifest, checkouts, staging)
         for recorded, fresh in zip(manifest.entries, derived, strict=True):
             if fresh.upstream_sha256 != recorded.upstream_sha256:
                 problems.append(
@@ -539,35 +610,39 @@ def upstream_problems(manifest: Manifest) -> list[str]:
     return problems
 
 
-def _resolve_include(root: Path, including: str, include: str) -> str | None:
+def _resolve_include(present: frozenset[str], including: str, include: str) -> str | None:
     """Root-relative path that `#include "include"` in the file `including` resolves to, or None.
 
     The C preprocessor searches the including file's own directory first, then the include path,
-    which here is root.
+    which here is the root. present holds the root-relative paths of the files under the root.
     """
     for candidate in (posixpath.join(posixpath.dirname(including), include), include):
         normal = posixpath.normpath(candidate)
         if normal == ".." or normal.startswith(("../", "/")):
             continue
-        if (root / normal).is_file():
+        if normal in present:
             return normal
     return None
 
 
-def include_closure(root: Path, seeds: Iterable[str]) -> tuple[set[str], set[tuple[str, str]]]:
-    """Transitive closure of the quoted #include lines reachable from seeds inside root.
+def include_closure(
+    upstream: Upstream, checkout: Path, seeds: Iterable[str]
+) -> tuple[set[str], set[tuple[str, str]]]:
+    """Transitive closure of the quoted #include lines reachable from seeds under upstream's root.
 
-    Returns (files, missing). files are root-relative POSIX paths, seeds included. missing holds
-    (include text, including file) pairs for quoted includes that resolve to no file under root,
-    and (seed, "command line") for seeds that are absent. These are the shim candidates.
-    Conditional blocks are not evaluated, so every #include line counts.
+    Files and their text come from the pinned commit (upstream_files, upstream_blob), never from
+    the working tree of checkout. Returns (files, missing). files are root-relative POSIX paths,
+    seeds included. missing holds (include text, including file) pairs for quoted includes that
+    resolve to no file under the root, and (seed, "command line") for seeds that are absent. These
+    are the shim candidates. Conditional blocks are not evaluated, so every #include line counts.
     """
+    present = upstream_files(upstream, checkout)
     files: set[str] = set()
     missing: set[tuple[str, str]] = set()
     pending: deque[str] = deque()
     for seed in seeds:
         relative = _rel_path(seed, "header")
-        if (root / relative).is_file():
+        if relative in present:
             if relative not in files:
                 files.add(relative)
                 pending.append(relative)
@@ -575,10 +650,10 @@ def include_closure(root: Path, seeds: Iterable[str]) -> tuple[set[str], set[tup
             missing.add((relative, "command line"))
     while pending:
         current = pending.popleft()
-        text = (root / current).read_bytes().decode("utf-8", errors="replace")
+        text = upstream_blob(upstream, checkout, current).decode("utf-8", errors="replace")
         for match in INCLUDE_RE.finditer(text):
             include = match.group(1)
-            found = _resolve_include(root, current, include)
+            found = _resolve_include(present, current, include)
             if found is None:
                 missing.add((include, current))
             elif found not in files:
@@ -603,12 +678,12 @@ def _prune_empty_dirs(directory: Path) -> None:
 def cmd_fetch() -> int:
     """Check out every pinned upstream; a checkout already at its pin is left alone."""
     manifest = load_manifest()
-    source_roots(manifest, manifest.upstreams)
+    source_checkouts(manifest, manifest.upstreams)
     return 0
 
 
 def cmd_sync() -> int:
-    """Regenerate third_party/cycles from the checkouts and patches, then rewrite VENDORED.toml."""
+    """Regenerate third_party/cycles from the pinned commits and patches; rewrite VENDORED.toml."""
     manifest = sync_manifest(load_manifest())
     print(f"synced {len(manifest.entries)} vendored files; rewrote {_shown(MANIFEST)}")
     return 0
@@ -637,7 +712,8 @@ def cmd_add(upstream: str, upstream_paths: list[str], dest_prefix: str | None) -
     manifest = load_manifest()
     _require(manifest, upstream)
     prefix = None if dest_prefix is None else _rel_path(dest_prefix, "--dest-prefix")
-    roots = source_roots(manifest, [upstream])
+    checkout = source_checkouts(manifest, [upstream])[upstream]
+    present = upstream_files(manifest.upstreams[upstream], checkout)
     taken = {entry.dest for entry in manifest.entries}
     added: list[Entry] = []
     for path in upstream_paths:
@@ -648,10 +724,8 @@ def cmd_add(upstream: str, upstream_paths: list[str], dest_prefix: str | None) -
             raise VendorError(f"{dest} is already vendored")
         if (VENDOR_DIR / dest).exists():
             raise VendorError(f"{dest} exists under third_party/cycles/ but is not vendored")
-        if not (roots[upstream] / upstream_path).is_file():
-            raise VendorError(
-                f"{upstream_path} is not a file in upstream {upstream} ({roots[upstream]})"
-            )
+        if upstream_path not in present:
+            raise _missing_file(manifest.upstreams[upstream], upstream_path)
         taken.add(dest)
         added.append(Entry(upstream=upstream, upstream_path=upstream_path, dest=dest))
     manifest = sync_manifest(Manifest(manifest.upstreams, [*manifest.entries, *added]))
@@ -696,9 +770,10 @@ def cmd_closure(seeds: list[str]) -> int:
     """
     manifest = load_manifest()
     _require(manifest, CYCLES)
-    root = source_roots(manifest, [CYCLES])[CYCLES]
-    files, missing = include_closure(root, seeds)
-    print(f"# closure: {len(files)} files under {manifest.upstreams[CYCLES].root}")
+    upstream = manifest.upstreams[CYCLES]
+    checkout = source_checkouts(manifest, [CYCLES])[CYCLES]
+    files, missing = include_closure(upstream, checkout, seeds)
+    print(f"# closure: {len(files)} files under {upstream.root}")
     for relative in sorted(files):
         print(relative)
     print(f"# missing: {len(missing)}")
@@ -723,13 +798,13 @@ def build_parser() -> argparse.ArgumentParser:
         "fetch", help="check out each upstream at its pinned commit under .cache/vendor/"
     )
     commands.add_parser(
-        "sync", help="regenerate third_party/cycles from the checkouts and patches/"
+        "sync", help="regenerate third_party/cycles from the pinned commits and patches/"
     )
     check = commands.add_parser("check", help="verify third_party/cycles against VENDORED.toml")
     check.add_argument(
         "--upstream",
         action="store_true",
-        help="also re-derive every file from its checkout and patches (needs the checkouts)",
+        help="also re-derive every file from its pinned commit and patches (needs the checkouts)",
     )
     add = commands.add_parser("add", help="vendor upstream files, then sync")
     add.add_argument(
