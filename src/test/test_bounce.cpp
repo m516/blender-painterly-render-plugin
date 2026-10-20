@@ -23,6 +23,7 @@
 
 #include "bitwise.h"
 #include "smallpaint_ref.h"
+#include "test_ray.h"
 
 // smallpaint's three bounce blocks of trace(), copied from
 // third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp. Each block is the original
@@ -138,11 +139,6 @@ BounceCase draw_case(std::mt19937_64 &rng)
   c.pass = draw_index(rng);
   c.depth = draw_index(rng);
   return c;
-}
-
-PainterlyRay make_ray(const Triple &origin, const Triple &direction)
-{
-  return PainterlyRay{to_double3(origin), to_double3(direction)};
 }
 
 // The identity spiral frame (SPEC §1). The other entries are already zero, because the caller

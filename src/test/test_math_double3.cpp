@@ -243,7 +243,13 @@ TEST_CASE("dot() is not contracted into fused multiply-adds (the -ffp-contract=o
   // - A contraction fuses a product into the sum that uses it. The inner sum then becomes
   //   fma(a.x, b.x, -1) = -2^-54 or fma(a.y, b.y, 1) = +2^-54, both exact. Fusing a.z b.z into the
   //   outer sum adds an exact 0 and changes nothing. The result is -2^-54 or +2^-54.
-  // Measured on x86-64 for T3.24: GCC 13 (-ffp-contract=fast -mfma) and Clang 18
+  // This file alone is compiled with -mfma when the compiler is GCC or Clang on x86-64
+  // (src/test/CMakeLists.txt), so the target has an FMA instruction to contract into. In those
+  // builds -ffp-contract=off (cmake/painterly_embree_config.cmake) is the only thing that keeps
+  // dot() uncontracted, and deleting it makes this test fail (TQ.2 F1). In the other builds the
+  // canary still checks the uncontracted result, but it cannot fail: MSVC's /fp:precise forbids
+  // contraction on its own, and a compiler on an architecture without FMA has nothing to contract
+  // into. Measured on x86-64 for T3.24: GCC 13 (-ffp-contract=fast -mfma) and Clang 18
   // (-ffp-contract=on -mfma) both give -0x1p-54.
   //
   // The inputs are read through volatile, so the compiler cannot evaluate the products at compile

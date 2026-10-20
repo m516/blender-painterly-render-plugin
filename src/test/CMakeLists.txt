@@ -48,4 +48,17 @@ target_link_libraries(painterly_tests PRIVATE
   painterly_doctest cycles_util cycles_graph painterly_kernel painterly_bvh painterly_integrator
   painterly_scene painterly_session)
 painterly_target_warnings(painterly_tests)
+
+# The -ffp-contract=off canary of test_math_double3.cpp must be able to fail (TQ.2 F1). GCC and Clang contract a
+# product into the addition that uses it only when the target has an FMA instruction (GCC: -ffp-contract=fast, its
+# default for C++, and Clang: -ffp-contract=on), and the rest of painterly_tests is compiled with at most -msse4.2
+# (src/cycles/CMakeLists.txt:63), which has none. So this one source alone is compiled with an FMA instruction set,
+# and -ffp-contract=off (cmake/painterly_embree_config.cmake) is then the only thing that keeps dot() uncontracted.
+# -mfma implies AVX and SSE4.2 on x86-64, and the source is an ordinary host test with no SIMD requirement of its own.
+# MSVC needs no flag: /fp:precise already forbids contraction, and there is no per-source /arch switch to pair with it.
+# No other source gets an FMA flag, so no other test's arithmetic can change.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  set_source_files_properties(test_math_double3.cpp PROPERTIES COMPILE_OPTIONS "-mfma")
+endif()
+
 add_test(NAME painterly_tests COMMAND painterly_tests)

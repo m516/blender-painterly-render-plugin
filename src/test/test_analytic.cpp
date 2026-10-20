@@ -19,6 +19,7 @@
 
 #include "bitwise.h"
 #include "smallpaint_ref.h"
+#include "test_ray.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -83,11 +84,6 @@ smallpaint_ref::Ray make_ref_ray(const Triple &origin, const Triple &direction)
   ray.o = to_ref(origin);
   ray.d = to_ref(direction);
   return ray;
-}
-
-PainterlyRay make_ray(const Triple &origin, const Triple &direction)
-{
-  return PainterlyRay{to_double3(origin), to_double3(direction)};
 }
 
 KernelPainterlyAnalytic make_sphere(const Triple &centre,

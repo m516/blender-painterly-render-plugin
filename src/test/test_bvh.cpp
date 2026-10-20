@@ -54,9 +54,10 @@ namespace {
 // 4. t = rcp(den) * T (:110), and u = min(U * rcp(U + V + W), 1), v likewise (:30-36).
 // Every transform, vertex and ray of this file is a dyadic rational with few significant bits,
 // and every operation of steps 2 and 3 has an exactly representable result on them (checked
-// operation by operation in exact rational arithmetic: docs/tasks/M3/T3.21-contract-touchups.md,
-// appendix A). A correctly rounded operation whose result is representable returns it exactly,
-// on every ISA and whether or not it is fused into an FMA: d = 0. Ng is therefore exact.
+// operation by operation in exact rational arithmetic, with the script of appendix A of
+// docs/handoff/drafts/M3-fixups/T3.21-contract-touchups.md). A correctly rounded operation whose
+// result is representable returns it exactly, on every ISA and whether or not it is fused into an
+// FMA: d = 0. Ng is therefore exact.
 // The reciprocal is the one operation whose result depends on the ISA:
 // - arm64: the IEEE quotient 1 / x (common/simd/vfloat4_sse2.h:306-307, vfloat8_avx.h:256-261),
 //   |d| <= u.
@@ -69,9 +70,9 @@ namespace {
 // So |d| < 5 u <= gamma(5) for every reciprocal: it counts as RCP_ROUNDINGS = 5 roundings. t, u
 // and v each take one reciprocal and one product, so their relative error is at most gamma(6)
 // (HIT_ROUNDINGS). The clamp min(., 1) only moves a value above 1 towards the exact value, which
-// is at most 1. As a check: with each of Embree's isa=sse2, sse4.2, avx and avx2, the hits of
-// this file had relative errors from 1.0 u to 1.3 u (T3.21), and M2's selftest gave
-// t = 0.49999997 for an exact 0.5, a relative error of u.
+// is at most 1. As a check, M2's selftest gave t = 0.49999997 for an exact 0.5, a relative
+// error of u (docs/tasks/M3/T3.10-embree-bvh.md:39, experiments/005-2026-10-08-native-coexistence/
+// README.md:270).
 constexpr double F32_UNIT_ROUNDOFF = 0x1p-24;
 constexpr int RCP_ROUNDINGS = 5;
 constexpr int HIT_ROUNDINGS = RCP_ROUNDINGS + 1;
