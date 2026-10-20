@@ -1,0 +1,441 @@
+[
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 executability",
+    "index": 0,
+    "verdict": "partly",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:137-146 (Step 2: \":139 `That experiment is 008 (006, \"Hypotheses for later work\", \"Jitter dose-response\": row chain, 400 px,`; :141 `- If `experiments/` has a directory `008-*` whose name does not contain `jitter`, stop and report: Opus re-points this`; :143-145 Case A tests `there is no `experiments/008-*` directory, the `008` row of the index in `experiments/README.md` does not have the Status `final``), :152 `# Experiment 008, Conclusion: \"<the sentence, verbatim>\"`, :159 `# jitter: experiment 008, Conclusion`. The hard-coding is exactly as the finding says.\ndocs/handoff/queue.md:79 (`T6.5 must not hard-code an experiment number (\"next free number at run time\").`) and :95 (`Experiments inside these cards (T7.3, T7.4, T9.2, T9.3) take the next free number at run time.`): both rules govern an experiment a card *creates*, and T7.2 creates none, so the \"harness rule\" the finding cites does not forbid naming an already-committed experiment.\nexperiments/README.md:8-18 (the index ends at `| 009 | 2026-10-15 | scale-limits | ... | draft | pre-registered; analysis pending |`; `| 008 | 2026-10-15 | jitter-dose-response | ... | draft |`).\nCommand: `ls -d experiments/[0-9][0-9][0-9]-*-jitter-dose-response` -> `experiments/008-2026-10-15-jitter-dose-response` (one match). So 008 is today the jitter dose-response experiment, its Status is `draft`, and Case A is the correct branch today; the hazard the finding describes (a renumbered final experiment silently ignored) needs a rename that has not happened.\nThe finding's fix is sound and deterministic: the slug match is unique today, and 0 or >1 matches are decidable.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "That experiment is 008 (006, \"Hypotheses for later work\", \"Jitter dose-response\": row chain, 400 px,",
+        "new": "That experiment is the directory matching `experiments/[0-9][0-9][0-9]-*-jitter-dose-response`; call its number\n   `<NNN>` (006, \"Hypotheses for later work\", \"Jitter dose-response\": row chain, 400 px,"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - If `experiments/` has a directory `008-*` whose name does not contain `jitter`, stop and report: Opus re-points this\n     step to the right experiment.",
+        "new": "   - Run `ls -d experiments/[0-9][0-9][0-9]-*-jitter-dose-response`. Zero matches: Case A applies. More than one match:\n     stop and report."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - **Case A** (the default): there is no `experiments/008-*` directory, the `008` row of the index in\n     `experiments/README.md` does not have the Status `final`, or `experiments/008-*/README.md`'s `## Conclusion` does not\n     begin with `Final (Opus`.",
+        "new": "   - **Case A** (the default): there is no match, the `<NNN>` row of the index in `experiments/README.md` does not have\n     the Status `final`, or `experiments/<NNN>-*/README.md`'s `## Conclusion` does not begin with `Final (Opus`,"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "       # Experiment 008, Conclusion: \"<the sentence, verbatim>\"",
+        "new": "       # Experiment <NNN>, Conclusion: \"<the sentence, verbatim>\""
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "       `# jitter: experiment 008, Conclusion`.",
+        "new": "       `# jitter: experiment <NNN>, Conclusion`."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - Record the case, and each value with its sentence, in the final report.",
+        "new": "   - Record the case, the experiment's number NNN, and each value with its sentence, in the final report."
+      }
+    ],
+    "note": "The hard-coded 008 and the weak guard are real (draft :139, :141, :143-144, :152, :159), and the slug-based edit removes them; but the \"harness rule\" cited is queue.md:79/:95, which binds experiments a card creates, and 008-2026-10-15-jitter-dose-response exists and is `draft`, so Case A is the correct branch today. The finding's \"silently ignores it\" case needs a rename that has not happened."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 executability",
+    "index": 1,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:8-9 (Goal: `Every value a preset sets is cited ... (001, 002, 003; jitter: 006 and the jitter dose-response experiment when it is final)`), :147-164 (Case B: \":147-149 `**Case B**: the experiment is final. Read its `## Conclusion`. For each of Fine strokes, Broad strokes and Soft strokes, look for a sentence that names the preset (case-insensitive) together with a jitter value ...\"; :161 `A preset the Conclusion does not name keeps the default.`), :165-166 (case A report line).\nexperiments/006-2026-10-09-jitter-units/README.md:563-564 (Decisions 2: `The dose-response experiment below sets the knob's range and scale, not this one.`).\nexperiments/008-2026-10-15-jitter-dose-response/README.md:444 (`### E1: the knob's response for M7 (estimation; the registered output uses means only)`), :452-470 (the registered output: `N_C(f_k)` class medians, `Δ_i(k)` per-step changes, `f̂_c`, `default position: N_A(1/1400)`), :472 (`- T7.1 chooses the soft limits from these tables, and T7.2 chooses presets from them. This experiment sets neither.`). The finding's quoted sentence is real, at that line in that file; the scratchpad path it cites (`scratchpad/prereg/008/README.md:326`) does not exist in the tree (`ls -d scratchpad` -> `No such file or directory`), so the citation must be corrected to the committed README.\nSo the registered output is per-key tables, not per-preset sentences: as registered, Case B finds nothing, gives the same result as Case A, and the Goal bullet's \"jitter from the dose-response experiment\" can never be met. The free-text matching is also not a deterministic rule.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- Every value a preset sets is cited, in a comment above it, to a final experiment result (001, 002, 003; jitter: 006 and\n  the jitter dose-response experiment when it is final) or to the SPEC section that defines it.",
+        "new": "- Every value a preset sets is cited, in a comment above it, to a final experiment result (001, 002, 003; jitter: 006) or to\n  the SPEC section that defines it. Jitter stays at its 006 default (SPEC §7) in every preset until a later card sets\n  per-preset values from the jitter dose-response experiment."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - **Case B**: the experiment is final. Read its `## Conclusion`. For each of Fine strokes, Broad strokes and Soft strokes,\n     look for a sentence that names the preset (case-insensitive) together with a jitter value stated as a fraction of the\n     image side or the fitted image side (for example \"1/700 of the side\").\n     - If there is one, that is the preset's jitter. Add to its file, after the last assignment:\n       ```python\n       # Experiment 008, Conclusion: \"<the sentence, verbatim>\"\n       # Unit: a fraction of the camera's fitted image side (SPEC §7).\n       painterly.jitter = <the value as written, as a Python expression, e.g. 1 / 700>\n       ```\n       Wrap the quoted sentence over several comment lines so that no line exceeds 100 characters. If the value is 0,\n       also add the line `# Zero jitter: no footprint, so edges alias (006, Decisions 2).`\n       Add `\"jitter\": <the same expression>` to that preset's `values` in `EXPECTED` (Step 7), with the comment\n       `# jitter: experiment 008, Conclusion`.\n     - A value equal to the socket default (1/1400 of the side) adds nothing: `reset_cb` already gives it.\n     - A preset the Conclusion does not name keeps the default.\n     - Stop and report if the value is in other units (pixels, image-plane units), if one preset gets two different values,\n       or if a value is named for Smallpaint Reference or Showcase. Those two reproduce the reference look and keep the\n       default jitter.",
+        "new": "   - **Case B**: the experiment is final. Stop and report: the experiment registers per-key tables (E1: `N_A`, `N_W`, `N_T`\n     medians, per-step `Δ_i`, the scale class and `f̂_c`) and states `This experiment sets neither` the presets nor the soft\n     limits, so Opus amends Step 2 with per-preset jitter values chosen from those tables. Haiku runs Case A only."
+      }
+    ],
+    "note": "Verified: 006 hands the knob's range and scale to the dose-response experiment, and 008's E1 hands the preset choice back to T7.2, so Case B can never fire and the Goal's jitter claim is empty in every outcome. Only the citation needs fixing: the quoted E1 sentence is experiments/008-2026-10-15-jitter-dose-response/README.md:472, not the absent scratchpad path."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 executability",
+    "index": 2,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:649-650 (`- `git ls-files src/blender/addon/presets/painterly/render | sort` prints exactly these five paths:`), :642 (`8. Run the acceptance commands and write the final report.`), :220-221 (Step 4 runs `git mv ... smallpaint_reference.py ... Smallpaint_Reference.py`), :246 (Step 5 writes the four new files).\nCLAUDE.md:66-68 (rule 7: `Run every acceptance command on your card and make sure all pass.` then ``git add` only your files, then commit once`).\nReproduced in a scratch git repo under .ds-scratch/gitprobe with .gitignore `__pycache__/`, a committed `presets/painterly/render/smallpaint_reference.py`, then `git mv` to `Smallpaint_Reference.py`, two new untracked preset files and a gitignored `__pycache__/Showcase.cpython-313.pyc`:\n  `git ls-files presets/painterly/render | sort` -> `presets/painterly/render/Smallpaint_Reference.py` (only the staged rename).\n  `git ls-files --cached --others --exclude-standard -- presets/painterly/render | sort` -> `Fine_strokes.py`, `Showcase_(approx.).py`, `Smallpaint_Reference.py` (the untracked files listed, the `__pycache__/` file not).\nSo the check cannot print the five paths before `git add`, and the proposed command does print them while skipping the gitignored cache.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `git ls-files src/blender/addon/presets/painterly/render | sort` prints exactly these five paths:\n  `…/Broad_strokes.py`, `…/Fine_strokes.py`, `…/Showcase_(approx.).py`, `…/Smallpaint_Reference.py`, `…/Soft_strokes.py`.",
+        "new": "- `git ls-files --cached --others --exclude-standard -- src/blender/addon/presets/painterly/render | sort` prints exactly\n  these five paths, before or after `git add`, and never the `__pycache__/` that `bpy.utils.execfile` leaves there:\n  `src/blender/addon/presets/painterly/render/Broad_strokes.py`,\n  `src/blender/addon/presets/painterly/render/Fine_strokes.py`,\n  `src/blender/addon/presets/painterly/render/Showcase_(approx.).py`,\n  `src/blender/addon/presets/painterly/render/Smallpaint_Reference.py`,\n  `src/blender/addon/presets/painterly/render/Soft_strokes.py`."
+      }
+    ],
+    "note": "Reproduced: with the rename staged and the four new files untracked, `git ls-files` lists one path, so the check fails as the finish protocol runs it. The proposed command lists the untracked files and skips the gitignored `__pycache__/`; the five paths are also spelled in full, which the `…/` form did not allow to be compared literally (five, because the draft still ships Soft strokes; four if `review T7.2 design` index 1 is applied)."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 executability",
+    "index": 3,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:133-136 (Step 1: `git grep -n -e \"smallpaint_reference\\.py\" -e \"\\\"smallpaint_reference\\\"\" -- src tests` `finds the reference preset's file name only in `tests/blender/test_properties.py` (T4.2's preset test). A hit in any other file means another card uses the file: stop and report it.`), :324-327 (Step 6: `In T4.2's preset test (the one Step 1 found), change the reference preset's file name ...`).\ndocs/tasks/M4/T4.2-properties-ui.md:50 (`- the preset file executes without error and sets `chain == \"image\"`.`): T4.2 never says the test spells the file name, so zero hits is a reachable state and the card gives no instruction for it. Neither branch of Step 1 (\"found only in\" / \"hit in any other file\") covers zero hits.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     file name only in `tests/blender/test_properties.py` (T4.2's preset test). A hit in any other file means another card\n     uses the file: stop and report it.",
+        "new": "     file name only in `tests/blender/test_properties.py` (T4.2's preset test). A hit in any other file means another card\n     uses the file: stop and report it. Zero hits (T4.2's test locates the preset another way): Step 6 has nothing to\n     change; skip it and say so in the final report."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "6. **`tests/blender/test_properties.py`.** In T4.2's preset test (the one Step 1 found), change the reference preset's",
+        "new": "6. **`tests/blender/test_properties.py`.** If Step 1 found no hit, leave the file unchanged and say so in the final report.\n   Otherwise, in T4.2's preset test (the one Step 1 found), change the reference preset's"
+      }
+    ],
+    "note": "Zero hits is reachable (T4.2:50 only requires that the preset executes and sets `chain`), and neither Step 1 nor Step 6 says what to do; the added lines close both."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 executability",
+    "index": 4,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:24-27 (`2. It sets `chain` and `reference_scene` and unsets `output_mode` and `passes`, but leaves `alpha`, `u2_mode`, `k0_phase_lock_bits`, `continue_after_emitter`, `jitter`, `lane_length` and `max_depth` at whatever an earlier preset or the user set. Reference mode keeps those user values (T4.3), ...`).\ndocs/tasks/M4/T4.3-render-loop.md:20-21 (`- `apply_reference_knobs() -> dict` returns the one cited dict of smallpaint-unit knobs — `diffuse_gain = float32(0.1)`, `emission_gain = 2`, `ray_epsilon = float32(1e-4)`, `max_depth = 20`, `spiral_frame = \"smallpaint\"` (F = I, SPEC §1).`) and :38 (`Set integrator knobs from `scene.painterly`: generated socket properties by name, then the `apply_reference_knobs()` dict in reference mode.`). The dict is applied after the socket properties, so `max_depth` is 20 in every reference render whatever the user set: it cannot leak, and the finding's correction is right. The defect the paragraph argues for still holds for the other six knobs (none of them is in `apply_reference_knobs()`).\nsrc/painterly/scene/integrator.cpp:85 and src/test/test_scene.cpp:246 (`CHECK(integrator.get_max_depth() == 20);`) agree that 20 is the socket default, which is why the list's error is invisible without T4.3.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "2. It sets `chain` and `reference_scene` and unsets `output_mode` and `passes`, but leaves `alpha`, `u2_mode`,\n   `k0_phase_lock_bits`, `continue_after_emitter`, `jitter`, `lane_length` and `max_depth` at whatever an earlier preset or\n   the user set. Reference mode keeps those user values (T4.3), so after \"Soft strokes\" the reference preset would render\n   with α = 0.25.",
+        "new": "2. It sets `chain` and `reference_scene` and unsets `output_mode` and `passes`, but leaves `alpha`, `u2_mode`,\n   `k0_phase_lock_bits`, `continue_after_emitter`, `jitter` and `lane_length` at whatever an earlier preset or the user set.\n   Reference mode keeps those user values (T4.3), so after \"Soft strokes\" the reference preset would render with α = 0.25.\n   (`max_depth` is not on that list: `apply_reference_knobs()` pins it to 20 in reference mode, T4.3. It stays in\n   `PRESET_SOCKETS`, where it matters for the three Blender-scene presets.)"
+      }
+    ],
+    "note": "Verified: T4.3 applies `apply_reference_knobs()` after the socket properties and pins `max_depth = 20`, so the paragraph's list is wrong by one item; its argument survives for the other six knobs."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 0,
+    "verdict": "partly",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:115 (the table row: ``Showcase_(approx.).py` | Showcase (approx.) | `reference_scene = True`, unsets `output_mode`; `chain` stays \"row\" | SPEC §8, §9; experiment 003 H3 (row ≡ image, 0 of 46 keys)`), :250-258 (the file: `# Showcase (approx.): the reference look on smallpaint's GUI scene, rendered in parallel.` ... `This preset is its nearest reproducible stand-in: the built-in scene with the reference look.`). So Showcase sets exactly `reference_scene` and unsets `output_mode`, and Smallpaint Reference (:114) sets those plus `chain = \"image\"`; 003 H3 makes the two chains indistinguishable, so the two presets give the same look.\ndocs/spec.md:314 (`**Standalone 2016 scene** (`--scene standalone`, for the showcase preset experiment only).`), :315-320 (900², 8 spp, IOR 1.9, right sphere r 0.45, light radius eps, pixel-major). docs/plan.md:50 (`The website showcase cannot be reproduced from the published code; it becomes a qualitative preset.`).\nexperiments/001-2026-10-08-oracle-reproduction/README.md:311-312 (`Loop order is part of the look: pixel-major order (the 2016 standalone) correlates only 0.29 with the reference, against 0.59 for pass-major at 64 passes.`).\nsrc/app/smallpaint_oracle.cpp:52-53 (`enum class SceneKind { gui, standalone };`, `pixel_major`, `pixel_major_omp`), :606-612 (the `--scene gui|standalone` and `--chain ...|pixel-major|pixel-major-omp:T` usage lines): the oracle already supports the experiment.\ndocs/plan.md:311 (`| T7.2 | Presets from experiment results: \"Smallpaint Reference\", \"Showcase (approx.)\", \"Fine strokes\", \"Broad strokes\" | T7.1, M1 | preset round-trip test |`) still names the preset as a deliverable, and no card in docs/handoff/drafts/M7-M9/ runs a showcase experiment (`grep -n showcase` finds only T7.2 and T7.5's prose).",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # The website showcase image cannot be reproduced from the published code (docs/plan.md, \"What\n     # makes the look\", item 6; SPEC §9 lists how the 2016 standalone scene differs). This preset is\n     # its nearest reproducible stand-in: the built-in scene with the reference look. reset_cb leaves",
+        "new": "     # The website showcase image cannot be reproduced from the published code (docs/plan.md, \"What\n     # makes the look\", item 6; SPEC §9 lists how the 2016 standalone scene differs). This preset is\n     # therefore the built-in scene with the reference look, which 003 H3 shows is the same look as\n     # \"Smallpaint Reference\" (row ≡ image); it is not the 2016 standalone look, which 001 H5 shows is a\n     # different one (pixel-major correlates 0.29 with the reference, pass-major 0.59). No card yet runs\n     # the standalone showcase experiment SPEC §9 reserves. reset_cb leaves"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "| `Showcase_(approx.).py` | Showcase (approx.) | `reference_scene = True`, unsets `output_mode`; `chain` stays \"row\" | SPEC §8, §9; experiment 003 H3 (row ≡ image, 0 of 46 keys) |",
+        "new": "| `Showcase_(approx.).py` | Showcase (approx.) | `reference_scene = True`, unsets `output_mode`; `chain` stays \"row\" | SPEC §8; experiment 003 H3 (row ≡ image, 0 of 46 keys); not the SPEC §9 standalone scene (001 H5) |"
+      }
+    ],
+    "note": "Every factual step reproduces: the preset equals Smallpaint Reference on the look keys, SPEC §9 reserves the standalone scene for a showcase preset experiment, and no card runs one. The proposed fix (drop the preset, 42 -> 34 tests) contradicts docs/plan.md:311, which names the preset as a T7.2 deliverable, so removing it is Opus's plan change, not a card edit; the edit given states the measurement instead."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 1,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/plan.md:311 (T7.2's deliverables: `\"Smallpaint Reference\", \"Showcase (approx.)\", \"Fine strokes\", \"Broad strokes\"` — four, no Soft strokes). docs/handoff/drafts/M7-M9/T7.2-presets.md:52 (`- `src/blender/addon/presets/painterly/render/Soft_strokes.py``), :118 (the table row `alpha = 0.25`), :304-319 (the file: `# Soft strokes: lower stroke contrast and softer highlights, from a partly normalized bounce (002).`).\nexperiments/006-2026-10-09-jitter-units/README.md:521-523 (`The footprint averages each pixel's paths over an image-plane square of half-width jitter × side. It lowers the amplitude and raises the short-range correlation, so the strokes get softer.`) and :557 (`2. **Jitter is documented as an artist knob for stroke softness (M7).**`).\nexperiments/002-2026-10-08-ingredient-ablation/README.md:75-85 (H3 tests only `r4.luma`, monotone decrease over alpha). Its results.json `effect_summary['alpha_025']`, printed with `PYTHONPATH=\"$PWD/analysis\" .venv/bin/python -P -s -c \"...\"`:\n  `r4.lag1.x 0.1777 0.2033 -2.879 -0.1256`\n  `r4.lag1.y 0.2205 0.2412 -2.937 -0.0857`\n  `r4.luma 118.0614 144.3752 -710.111 -0.1823`\n  `r4.structure_std 4.8331 5.738 -15.143 -0.1577`\n  `all.clip_fraction 0.0 0.0043 -56.351 -0.9935`\n  `all.pattern_corr 0.0798 0.5889 -242.86 -0.8645`\nBoth lag-1 axes fall, so by 006's definition the strokes get harder, not softer; the back wall dims by 18%; the realization falls from 0.589 to 0.080; and of these only `r4.luma` was tested. The finding's numbers all reproduce.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "# T7.2 — Presets from experiment results: Smallpaint Reference, Showcase (approx.), Fine, Broad and Soft strokes",
+        "new": "# T7.2 — Presets from experiment results: Smallpaint Reference, Showcase (approx.), Fine and Broad strokes"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `src/blender/addon/presets/painterly/render/Soft_strokes.py`\n",
+        "new": ""
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "| `Soft_strokes.py` | Soft strokes | `alpha = 0.25`; `jitter` per Step 2 | experiment 002 H3 (0.25: the smallest α measured); Step 2 |\n",
+        "new": ""
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - `Soft_strokes.py`:\n     ```python\n     # Soft strokes: lower stroke contrast and softer highlights, from a partly normalized bounce (002).\n     #\n     # Applied through PAINTERLY_PT_render_presets, whose reset_cb first returns every knob in\n     # presets.PRESET_SOCKETS to its socket default.\n     import bpy\n\n     painterly = bpy.context.scene.painterly\n\n     # Experiment 002, H3 (alpha_025 vs positive; image chain, 400 px, 64 passes, 8 pairs). 0.25 is\n     # the smallest alpha measured. Tested key: back wall r4.luma 118.1 vs 144.4 (-18%). Effect\n     # summaries: stroke amplitude r4.structure_std 4.83 vs 5.74 (-16%, d -15); clip fraction\n     # 0.00003 vs 0.0043; lag-1 along rows r4.lag1.x 0.178 vs 0.203 (-13%, d -2.9). The texture's\n     # realization changes (pattern correlation 0.080 vs 0.589).\n     painterly.alpha = 0.25\n     ```\n",
+        "new": "   - No `Soft_strokes.py`: a \"Soft strokes\" preset waits for the jitter dose-response experiment to be final and takes\n     jitter (006 Decision 2: the measured softness control) at a value Opus picks from its E1 tables. docs/plan.md:311\n     lists four presets, and `alpha = 0.25` is not a softness knob: it lowers both lag-1 axes (006's definition of\n     softer is lower amplitude *and* higher short-range correlation), dims the back wall by 18% and loses the\n     realization (0.080 vs 0.589; 002 H3 tested only `r4.luma`).\n"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- The presets popover in the Sampling panel header (T7.1) lists five shipped presets: **Broad strokes**, **Fine strokes**,\n  **Showcase (approx.)**, **Smallpaint Reference** and **Soft strokes** (Blender sorts them by file name).",
+        "new": "- The presets popover in the Sampling panel header (T7.1) lists four shipped presets: **Broad strokes**, **Fine strokes**,\n  **Showcase (approx.)** and **Smallpaint Reference** (Blender sorts them by file name)."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "5. **The four new presets.** Write each file with exactly this content, plus the case B jitter lines of Step 2 where",
+        "new": "5. **The three new presets.** Write each file with exactly this content, plus the case B jitter lines of Step 2 where"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     begin with `Final (Opus`. Then `jitter` stays at its socket default in all five presets.",
+        "new": "     begin with `Final (Opus`. Then `jitter` stays at its socket default in all four presets."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "       # experiment 002, H3.\n       \"Soft_strokes.py\": Expected(\"Soft strokes\", {\"alpha\": 0.25}),\n",
+        "new": ""
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   It was run against Blender 5.2.2 with a stand-in for the T4.2 add-on: 42 tests pass in case A and in a case B variant.",
+        "new": "   It was run against Blender 5.2.2 with a stand-in for the T4.2 add-on: 30 tests pass in case A and in a case B variant."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `.venv/bin/python -m pytest tests/blender/test_presets.py -q` prints `42 passed`: 1 shipped-files test, 1 scope test,\n  5 file-shape tests, 30 prior-state cases and 5 round trips.",
+        "new": "- `.venv/bin/python -m pytest tests/blender/test_presets.py -q` prints `30 passed`: 1 shipped-files test, 1 scope test,\n  4 file-shape tests, 20 prior-state cases and 4 round trips."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `make extension` (T4.4) succeeds, and the zip it names ships the five presets:",
+        "new": "- `make extension` (T4.4) succeeds, and the zip it names ships the four presets:"
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "', 'Soft_strokes.py')}; missing",
+        "new": "')}; missing"
+      }
+    ],
+    "note": "Verified: the plan lists four presets, and 006 defines softness as lower amplitude plus higher short-range correlation while alpha = 0.25 lowers both lag-1 axes (0.178/0.221 vs 0.203/0.241), dims the back wall 18% and drops the realization to 0.080; only `r4.luma` of those keys was tested. Dropping the fifth preset is the edit consistent with docs/plan.md:311 and with 006 Decision 2; the test count follows from the file (30 = 1 + 1 + 4 + 4·(2+3) + 4)."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 2,
+    "verdict": "confirmed",
+    "evidence": "Same defect as `review T7.2 executability` index 1, read independently. docs/handoff/drafts/M7-M9/T7.2-presets.md:147-149 (Case B's free-text match: `look for a sentence that names the preset (case-insensitive) together with a jitter value ...`), :8-9 (Goal: `jitter: 006 and the jitter dose-response experiment when it is final`).\nexperiments/008-2026-10-15-jitter-dose-response/README.md:452-470 (the registered output is `N_C(f_k)` medians, `Δ_i(k)`, `f̂_c`, `default position: N_A(1/1400)`), :472 (`- T7.1 chooses the soft limits from these tables, and T7.2 chooses presets from them. This experiment sets neither.`).\nexperiments/006-2026-10-09-jitter-units/README.md:564 (`The dose-response experiment below sets the knob's range and scale, not this one.`).\nCommand: `ls -d experiments/[0-9][0-9][0-9]-*-jitter-dose-response` -> `experiments/008-2026-10-15-jitter-dose-response`.",
+    "duplicate_of": {
+      "source": "M7-M9-reviews.json",
+      "key": "review T7.2 executability",
+      "index": 1
+    },
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - **Case B**: the experiment is final. Read its `## Conclusion`. For each of Fine strokes, Broad strokes and Soft strokes,\n     look for a sentence that names the preset (case-insensitive) together with a jitter value stated as a fraction of the\n     image side or the fitted image side (for example \"1/700 of the side\").",
+        "new": "   - **Case B**: the experiment is final. Stop and report: it registers per-key tables and states that it sets neither the\n     presets nor the soft limits, so Opus amends Step 2 with per-preset jitter values from its E1 tables. Haiku runs Case A only."
+      }
+    ],
+    "note": "The same circular hand-off as the executability finding: the registered output is tables, not per-preset sentences, so Case B cannot fire; this entry restates it from the design lens."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 3,
+    "verdict": "partly",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:78-81 and :183-193 (`PRESET_SOCKETS` includes `\"passes\"`), :88-89 (`reset_cb` ... `property_unset(name)` ... `for name in PRESET_SOCKETS`), :108-110 (`passes` 1024 ... `at its socket default after the preset`), :175 (`# - passes: stroke clarity (experiment 001, Decisions);`). So applying any preset unsets `passes`, which returns it to 1024: an artist at 64 passes gets 1024 after \"Broad strokes\". True as stated.\nexperiments/001-2026-10-08-oracle-reproduction/README.md:317-318 (`The \"Smallpaint Reference\" preset uses **1024 passes**. ... Users trade time for stroke clarity with `passes`.`): the source ties 1024 to the reference preset.\nsrc/painterly/scene/integrator.cpp:49-50 (`/* Experiment 001: the reference preset's pass count. */` `SOCKET_INT(passes, \"Passes\", 1024);`) and src/test/test_scene.cpp:240 (`CHECK(integrator.get_passes() == 1024);`): 1024 is the socket default, so T4.2's `property_unset(\"passes\")` (docs/tasks/M4/T4.2-properties-ui.md:38) and the card's reset give the same value.\nAgainst the proposed fix: docs/handoff/drafts/M7-M9/T7.2-presets.md:17 (Goal: `A user preset saved with the add-preset button holds exactly `PRESET_SOCKETS`, and applying it restores them (round trip).`) and :215-216 (`preset_values = [f\"painterly.{name}\" for name in PRESET_SOCKETS]`): removing `passes` would drop the pass count from every user preset, so a saved style would no longer restore it. T7.3:189 also fixes the tuple with `passes` in it.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "`lane_length` 16 px, `passes` 1024, `u2_mode` \"same\", `k0_phase_lock_bits` 0, `alpha` 0, `max_depth` 20,\n`continue_after_emitter` True and `jitter` 1/1400 of the fitted image side.",
+        "new": "`lane_length` 16 px, `passes` 1024, `u2_mode` \"same\", `k0_phase_lock_bits` 0, `alpha` 0, `max_depth` 20,\n`continue_after_emitter` True and `jitter` 1/1400 of the fitted image side. Because `passes` is in `PRESET_SOCKETS`, every\npreset, the three style presets included, resets the pass count to 1024 (experiment 001, Decisions); a preview at 64 passes\nbecomes a 1024-pass render after any preset. That is deliberate: 1024 is the pass count the reference look is defined at."
+      }
+    ],
+    "note": "The behaviour reproduces, but the proposed fix is wrong for this card: removing `passes` from `PRESET_SOCKETS` breaks the Goal's round-trip promise (a user preset would no longer carry the pass count) and contradicts T7.3:189, which fixes the tuple with `passes` in it. The corrected edit states the budget consequence instead."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 4,
+    "verdict": "partly",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:596-605 (`if socket in expected.values: ... else: assert after[socket] == default, socket; assert not settings.is_property_set(socket), socket`), :379-390 (`EXPECTED` with `\"Smallpaint_Reference.py\": Expected(\"Smallpaint Reference\", {\"chain\": \"image\"}, True)`). So for the reference preset the test pins only `chain` to a literal; every other `PRESET_SOCKETS` knob is checked against the socket default. True.\ndocs/handoff/drafts/M7-M9/T7.2-presets.md:226-230 (the prose restatement: `passes 1024 (experiment 001), u2_mode \"same\", alpha 0 and continue_after_emitter True (experiment 002), max_depth 20 (SPEC §6) and jitter 1/1400 of the fitted image side, smallpaint's 1/700 image-plane units`).\nBut the defaults are not unguarded: src/test/test_scene.cpp:232-257 (`TEST_CASE(\"painterly integrator: the SPEC §8 socket defaults\")` with `CHECK(integrator.get_u2_mode() == U2_SAME);`, `CHECK(integrator.get_alpha() == 0.0f);`, `CHECK(integrator.get_max_depth() == 20);`, `CHECK(integrator.get_jitter() == 1.0f / 1400.0f);`) pins every one of them, so a drift fails a C++ test rather than going unnoticed; what `test_presets.py` adds is the link from the preset to those values.\nTwo of the proposed citations are wrong: `continue_after_emitter` is not `painterly.cpp:262` (that line is `add(new Sphere(0.5, Vec(-1.9, 0, -3)), Vec(0, 0, 0), 120, 1)); // Light`) but painterly.cpp:189-212, where `trace()` adds the emission at :200 and then keeps bouncing; and `passes` 1024 is experiment 001's decision, not a smallpaint value. `max_depth` 20 is right (painterly.cpp:190 `if (depth >= 20) return;`), as are :276-278 (the lockstep Halton pair) and :291-292 (`cam.x = cam.x + RND / 700;`).",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "   - `test_user_preset_round_trip` saves the state after each preset through the add operator into `tmp_path`, with",
+        "new": "   - `test_smallpaint_values` applies the reference preset from the perturbed prior and asserts a module literal\n     `SMALLPAINT_VALUES`, each entry cited: `chain` \"image\" (painterly.cpp:282-301), `u2_mode` \"same\"\n     (painterly.cpp:276-278), `alpha` 0 (SPEC §4), `continue_after_emitter` True (painterly.cpp:189-212: the emission is\n     added at :200 and the path keeps bouncing), `max_depth` 20 (painterly.cpp:190), `k0_phase_lock_bits` 0 (SPEC §3),\n     `jitter` float32(1/1400) (painterly.cpp:291-292; SPEC §7). `passes` 1024 is experiment 001's value, not a smallpaint\n     line, so it is cited to 001.\n   - `test_user_preset_round_trip` saves the state after each preset through the add operator into `tmp_path`, with"
+      }
+    ],
+    "note": "The gap is real: `test_presets.py` compares the reference preset's unset knobs to socket defaults, never to smallpaint's values. But the prose cannot go stale silently, because src/test/test_scene.cpp:232-257 pins every default; and two of the proposed citations are wrong (`continue_after_emitter` is painterly.cpp:189-212, not :262, and `passes` 1024 is 001's)."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 5,
+    "verdict": "partly",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:271 (`# Fine strokes: strokes cut into 16-pixel lanes, shorter along rows (experiment 003).`) and :280-284 (the body: `along columns r4.lag1.y 0.2812 vs 0.2399 (+17%, d +7.2); stroke amplitude r4.structure_std 5.777 vs 5.738 (d +0.38). Each lane start is a seam column with about 50% more amplitude, aligned across rows (SPEC §3). lane_length is in pixels: the seam spacing on the image halves at every doubling of the side.`).\nexperiments/003-2026-10-08-lane-length/README.md:173 (Table 1a: `| lane_16 | 129,600 | 0.5002 ± 0.0021 | -0.1521 | -45.52 | 5.777 ± 0.112 | +0.006801 | +0.3787 |`) and :188 (Table 1b: `| lane_16 | 0.1554 ± 0.0071 | -0.2306 | -8.08 | 0.2812 ± 0.0059 | +0.1721 | +7.195 |`). docs/spec.md:81-84 (`at L = 16 the lag-1 is −23% along rows and +17% along columns`; `Each lane start is a **seam column**.`; `visible at short L`).\nSo the summary line does say only \"shorter along rows\", but the comment block below it already states the +17% along columns, the seam columns and the pixel-unit scaling. Only the first line and the render-size caveat are missing.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # Fine strokes: strokes cut into 16-pixel lanes, shorter along rows (experiment 003).",
+        "new": "     # Fine strokes: strokes cut into 16-pixel lanes, shorter along rows, longer along columns, with a\n     # seam column every 16 px (experiment 003; amplitude unchanged). Measured at 400 px only: lane_length\n     # is in pixels, so at larger renders the lanes are a smaller fraction of the image."
+      }
+    ],
+    "note": "The first comment line is incomplete, but the block under it already carries the column effect, the seam columns and the pixel-unit caveat, so only the summary line needs the fix; the numbers (5.777 vs 5.738, -23%/+17%, d -8.08/+7.195) all reproduce."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 6,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:123-125 (`The cited effects were measured with the oracle on the reference scene (every sphere a ghost, chain `image`, 400 px, 64 passes). On a Blender scene, where only lights are ghosts (002 H5) and the chain is `row`, their size may differ. The directions are the citable result.`).\nexperiments/002-2026-10-08-ingredient-ablation/README.md:101-108 (H5: `ghost=lights` is what Blender can do by default), :250 (`| H5 | ghost_lights vs positive; diffuse family, 46 keys | Holm over 46, two-sided permutation | 45 of 46 rejected; min attainable p 1.55e-4 < 2.17e-4 | distinguishable |`), :341 (`**H5: lights-only ghosting is distinguishable from the reference look (45 of 46 keys).**`), :355 (Blender parity is judged against `--ghost lights`). 002's own presets' effects (H3 alpha, H4 continue-after-emitter) were measured at `ghost=all`, as 002:129-137 lists every configuration with `chain=image` and no `ghost` option (oracle default `all`, src/app/smallpaint_oracle.cpp:55 `GhostPolicy g_ghost = GhostPolicy::all;`).\nSo no experiment measures these three knobs' directions under lights-only ghosting, while the card calls the directions citable for Blender scenes. src/app/smallpaint_oracle.cpp:614 (`--ghost all|lights|none             (default all)`) shows the oracle could run that experiment.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "directions are the citable result. T7.5 renders each preset.",
+        "new": "directions are citable for the reference scene only: a Blender scene's lights-only look is a different one (002 H5,\n45 of 46 keys), and no experiment has measured these knobs under it. T7.5 renders each preset."
+      }
+    ],
+    "note": "Verified: 002 H5 shows lights-only ghosting is a distinct look, and every preset's cited effect was measured at `ghost=all`, so the directions are not citable for Blender scenes as the sentence claims."
+  },
+  {
+    "source": "M7-M9-reviews.json",
+    "key": "review T7.2 design",
+    "index": 7,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:120-121 (units are named for the knobs only: `Units: `jitter` is a fraction of the camera's fitted image side (SPEC §7), `lane_length` is in pixels, `passes` counts passes, `alpha` is the dimensionless exponent ...`) and :297-301, :280-284, :314-318 (the evidence comments: `r4.structure_std 9.94 vs 5.74`, `r4.luma 126.8 vs 144.4`, `clip fraction 0.0118 vs 0.0043`, `r4.lag1.x 0.1554 vs 0.2020` — no units anywhere).\nanalysis/painterly_analysis/metrics.py:199-204 (`structure_std` ... `The inputs are high-passed images, so the result is in display bytes.`), :48 (`Rec.709 luma of (..., 3) display bytes. Returns (...) float64 display bytes.`), :256-257 (`clip_fraction` ... `Fraction of pixels in which at least one channel equals 255. Dimensionless, in [0, 1].`), :161 (`Lag-``lag`` autocorrelation ... Dimensionless.`). experiments/008-2026-10-15-jitter-dose-response/README.md:19 (`Measured row-chain points of `r4.structure_std` (display bytes)`) names the unit, as the finding says.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # Experiment 002, H4 (stop_at_emitter vs positive; image chain, 400 px, 64 passes, 8 pairs; 44\n     # of 46 keys differ): back-wall stroke amplitude r4.structure_std 9.94 vs 5.74 (+73%, d +59);\n     # lag-1 along columns r4.lag1.y 0.357 vs 0.241 (+48%), along rows r4.lag1.x 0.134 vs 0.203\n     # (-34%); back wall r4.luma 126.8 vs 144.4 (-12%); clip fraction 0.0118 vs 0.0043. Diffuse\n     # draws per pixel per pass fall from 16.27 to 5.06 (002, Table 2).",
+        "new": "     # Experiment 002, H4 (stop_at_emitter vs positive; image chain, 400 px, 64 passes, 8 pairs; 44\n     # of 46 keys differ): back-wall stroke amplitude r4.structure_std 9.94 vs 5.74 display bytes\n     # (+73%, d +59); lag-1 along columns r4.lag1.y 0.357 vs 0.241 (+48%), along rows r4.lag1.x 0.134\n     # vs 0.203 (-34%), dimensionless; back wall r4.luma 126.8 vs 144.4 display bytes (-12%); clip\n     # fraction 0.0118 vs 0.0043 of the pixels. Diffuse draws per pixel per pass fall from 16.27 to 5.06\n     # (002, Table 2)."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # Experiment 003 (lane_16 vs row; 400 px, 64 passes, 8 pairs): back-wall lag-1 autocorrelation\n     # along rows r4.lag1.x 0.1554 vs 0.2020 (-23%, d -8.1), along columns r4.lag1.y 0.2812 vs\n     # 0.2399 (+17%, d +7.2); stroke amplitude r4.structure_std 5.777 vs 5.738 (d +0.38). Each lane\n     # start is a seam column with about 50% more amplitude, aligned across rows (SPEC §3).\n     # lane_length is in pixels: the seam spacing on the image halves at every doubling of the side.",
+        "new": "     # Experiment 003 (lane_16 vs row; 400 px, 64 passes, 8 pairs): back-wall lag-1 autocorrelation\n     # (dimensionless) along rows r4.lag1.x 0.1554 vs 0.2020 (-23%, d -8.1), along columns\n     # r4.lag1.y 0.2812 vs 0.2399 (+17%, d +7.2); stroke amplitude r4.structure_std 5.777 vs 5.738\n     # display bytes (d +0.38). Each lane start is a seam column with about 50% more amplitude, aligned\n     # across rows (SPEC §3). lane_length is in pixels: the seam spacing, as a fraction of the image,\n     # halves at every doubling of the side."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # Experiment 002, H3 (alpha_025 vs positive; image chain, 400 px, 64 passes, 8 pairs). 0.25 is\n     # the smallest alpha measured. Tested key: back wall r4.luma 118.1 vs 144.4 (-18%). Effect\n     # summaries: stroke amplitude r4.structure_std 4.83 vs 5.74 (-16%, d -15); clip fraction\n     # 0.00003 vs 0.0043; lag-1 along rows r4.lag1.x 0.178 vs 0.203 (-13%, d -2.9). The texture's\n     # realization changes (pattern correlation 0.080 vs 0.589).",
+        "new": "     # Experiment 002, H3 (alpha_025 vs positive; image chain, 400 px, 64 passes, 8 pairs). 0.25 is\n     # the smallest alpha measured. Tested key: back wall r4.luma 118.1 vs 144.4 display bytes (-18%).\n     # Effect summaries: stroke amplitude r4.structure_std 4.83 vs 5.74 display bytes (-16%, d -15);\n     # clip fraction 0.00003 vs 0.0043 of the pixels; lag-1 along rows r4.lag1.x 0.178 vs 0.203\n     # (dimensionless, -13%, d -2.9). The texture's realization changes (pattern correlation 0.080 vs\n     # 0.589, dimensionless)."
+      }
+    ],
+    "note": "Verified against metrics.py: `structure_std` and `luma` are display bytes, `clip_fraction` is a fraction of pixels and lag-1 is dimensionless; the card names units for the knobs but not for the evidence it quotes."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 executability",
+    "index": 0,
+    "verdict": "confirmed",
+    "evidence": "Re-read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:642 (`8. Run the acceptance commands and write the final report.`), :649-650 (`- `git ls-files src/blender/addon/presets/painterly/render | sort` prints exactly these five paths:`). CLAUDE.md:66-68 (rule 7).\nReproduced in .ds-scratch/gitprobe (a scratch git repo with the card's file layout): after `git mv` and writing two new preset files, `git ls-files presets/painterly/render | sort` -> `presets/painterly/render/Smallpaint_Reference.py`; `git ls-files --cached --others --exclude-standard -- presets/painterly/render | sort` -> the renamed file plus both untracked ones, with a gitignored `__pycache__/` file present and not listed.",
+    "duplicate_of": {
+      "source": "M7-M9-reviews.json",
+      "key": "review T7.2 executability",
+      "index": 2
+    },
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `git ls-files src/blender/addon/presets/painterly/render | sort` prints exactly these five paths:",
+        "new": "- `git ls-files --cached --others --exclude-standard -- src/blender/addon/presets/painterly/render | sort` prints\n  exactly these five paths, before or after `git add`:"
+      }
+    ],
+    "note": "Same defect as the first review's executability index 2, re-checked and reproduced; it is the same edit (five paths, because the draft still ships Soft strokes; four if `review T7.2 design` index 1 is applied)."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 executability",
+    "index": 1,
+    "verdict": "partly",
+    "evidence": "Re-read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:137-149 (`That experiment is 008 ... If `experiments/` has a directory `008-*` whose name does not contain `jitter`, stop and report`). The hard-coding claim reproduces.\nThe added claim `the experiments tree now reaches 009, so the number is stale as well as hard-coded` does not: `ls -d experiments/[0-9][0-9][0-9]-*-jitter-dose-response` -> `experiments/008-2026-10-15-jitter-dose-response`, and experiments/README.md:17 lists `| 008 | 2026-10-15 | jitter-dose-response | ... | draft |`. 008 is exactly the jitter dose-response experiment; 009 (`scale-limits`) is a different experiment, so the number is not stale.\ndocs/handoff/queue.md:79 and :95: the \"never hard-code\" rules bind an experiment a card creates, and T7.2 creates none.",
+    "duplicate_of": {
+      "source": "M7-M9-reviews.json",
+      "key": "review T7.2 executability",
+      "index": 0
+    },
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "That experiment is 008 (006, \"Hypotheses for later work\", \"Jitter dose-response\": row chain, 400 px,",
+        "new": "That experiment is the directory matching `experiments/[0-9][0-9][0-9]-*-jitter-dose-response`; call its number\n   `<NNN>` (006, \"Hypotheses for later work\", \"Jitter dose-response\": row chain, 400 px,"
+      }
+    ],
+    "note": "The hard-coded 008 reproduces, but the added \"stale\" claim is wrong: 008-2026-10-15-jitter-dose-response is the jitter dose-response experiment, so only the hard-coding part of the finding holds."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 executability",
+    "index": 2,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:537-539 (`names = sorted(p.name for p in SHIPPED_DIR.iterdir() if p.suffix == \".py\")`; `assert names == sorted(EXPECTED)`), :646-654 (the `42 passed` line, the `git ls-files` check and the zip check over `z.namelist()`), :608-616 (the 42 breakdown). The card never mentions `__pycache__` (`grep -n __pycache__ docs/handoff/drafts/M7-M9/T7.2-presets.md` -> no match).\n.gitignore:7 (`__pycache__/`). docs/tasks/M4/T4.1-extension-skeleton.md:23 (`- `[build] paths_exclude_pattern = [\"__pycache__/\", \"/tests/\"]``).\nProbe, exactly as run (MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'):\ncode: import bpy, os, pathlib; d = pathlib.Path(os.path.abspath('.ds-scratch/probe2')); d.mkdir(exist_ok=True); f = d / 'preset_x.py'; f.write_text('x = 1\\n', encoding='utf-8'); print('BEFORE', sorted(p.name for p in d.iterdir())); bpy.utils.execfile(str(f)); print('AFTER', sorted(p.name for p in d.iterdir()))\noutput: `BEFORE ['preset_x.py']` / `AFTER ['__pycache__', 'preset_x.py']`\nSo `script.execute_preset` -> `bpy.utils.execfile` (scripts/startup/bl_operators/presets.py:302) does leave `__pycache__/` in the presets directory. `test_shipped_presets` survives it (the `.py` filter) and `.gitignore` keeps it out of git, but the zip check does not look and the card does not say.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "7. **`tests/blender/test_presets.py`.** Write exactly this file. In case B, add the jitter entries of Step 2 to `EXPECTED`.",
+        "new": "7. **`tests/blender/test_presets.py`.** Write exactly this file. In case B, add the jitter entries of Step 2 to `EXPECTED`.\n   `bpy.utils.execfile` compiles every preset file it runs and leaves `presets/painterly/render/__pycache__/`; `.gitignore`\n   and the manifest's `paths_exclude_pattern` (T4.1) keep it out of git and out of the extension zip, and the tests filter\n   `.py`, so leave the directory in place."
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "  prints `[]` and exits 0. Then",
+        "new": "  prints `[]` and exits 0, and `[n for n in z.namelist() if \"__pycache__\" in n]` is `[]` (the manifest's\n  `paths_exclude_pattern`, T4.1). Then"
+      }
+    ],
+    "note": "Reproduced with a Blender 5.2.2 probe: `bpy.utils.execfile` creates `__pycache__/` next to the preset file, so the zip check must exclude it explicitly and the card must say the directory is expected."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 design",
+    "index": 0,
+    "verdict": "partly",
+    "evidence": "Re-read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:115 (the table row justifying Showcase with `experiment 003 H3 (row ≡ image, 0 of 46 keys)`), :248-268 (the file, whose comment calls it `its nearest reproducible stand-in`). docs/spec.md:314 (`Standalone 2016 scene` ... `for the showcase preset experiment only`). docs/plan.md:311 names the preset as a T7.2 deliverable.\nThe facts reproduce (Showcase = Smallpaint Reference with `chain` left at `row`, and 003 H3 shows the two chains indistinguishable), but the fix proposed here — drop the preset and card an experiment — removes a deliverable docs/plan.md:311 names, which is Opus's plan change, not a card edit.",
+    "duplicate_of": {
+      "source": "M7-M9-reviews.json",
+      "key": "review T7.2 design",
+      "index": 0
+    },
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "     # its nearest reproducible stand-in: the built-in scene with the reference look. reset_cb leaves",
+        "new": "     # therefore the built-in scene with the reference look, which 003 H3 shows is the same look as\n     # \"Smallpaint Reference\" (row ≡ image); it is not the 2016 standalone look (001 H5), and no card\n     # yet runs the standalone showcase experiment SPEC §9 reserves. reset_cb leaves"
+      }
+    ],
+    "note": "Same defect and same reasoning as the first review's design index 0: the facts hold, but dropping the preset needs a plan change, so the edit given states the measurement instead."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 design",
+    "index": 1,
+    "verdict": "confirmed",
+    "evidence": "Re-read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:52 (`Soft_strokes.py` in Create), :118 (`alpha = 0.25`), :304-319 (the file). experiments/006-2026-10-09-jitter-units/README.md:557 (`2. **Jitter is documented as an artist knob for stroke softness (M7).**`) and :521-523 (softer = lower amplitude and higher short-range correlation). experiments/002-2026-10-08-ingredient-ablation/results.json `effect_summary['alpha_025']`: `r4.lag1.x` 0.1777 vs 0.2033 (d -2.879), `r4.lag1.y` 0.2205 vs 0.2412 (d -2.937), `all.pattern_corr` 0.0798 vs 0.5889 — both lag-1 axes fall, so alpha = 0.25 is not softness as 006 defines it. docs/plan.md:311 lists four presets.",
+    "duplicate_of": {
+      "source": "M7-M9-reviews.json",
+      "key": "review T7.2 design",
+      "index": 1
+    },
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "- `src/blender/addon/presets/painterly/render/Soft_strokes.py`\n",
+        "new": ""
+      },
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "| `Soft_strokes.py` | Soft strokes | `alpha = 0.25`; `jitter` per Step 2 | experiment 002 H3 (0.25: the smallest α measured); Step 2 |\n",
+        "new": ""
+      }
+    ],
+    "note": "Same defect as the first review's design index 1, re-checked: the fifth preset is not in the plan and its name contradicts 006's measured softness control; the numbers reproduce from 002's results.json."
+  },
+  {
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.2 design",
+    "index": 2,
+    "verdict": "confirmed",
+    "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T7.2-presets.md:78-81 and :183-193 (`PRESET_SOCKETS` has no `spiral_frame`), :108-110 (`Every knob of `PRESET_SOCKETS` not listed in \"Sets\" is at its socket default after the preset`), :123-125 (the caveat mentions only the chain and the ghost policy), :179-182 (`A preset never touches ... the brush frame (spiral_frame, spiral_rotation)`).\ndocs/spec.md:30-34 (F is `camera` by default: `F = R_cam→world · M_s→cam · R(spiral_rotation)`; `smallpaint` gives `F = I`), :111 (`d = N + F·s  # painterly.cpp:205 — NOT rotated into N's frame`). docs/tasks/M4/T4.3-render-loop.md:20-21 (`spiral_frame = \"smallpaint\"` (F = I, SPEC §1) in `apply_reference_knobs()`). src/painterly/scene/integrator.cpp:51-53 (`SOCKET_ENUM(spiral_frame, \"Spiral Frame\", spiral_frame_values, SPIRAL_FRAME_CAMERA);`).\nSo every cited effect was measured with F = I, the reference scene's frame; a Blender scene defaults to `spiral_frame = camera` (F = R_cam→world·M_s→cam) and the user may set `world` or `object`, and the bounce direction depends on F. The finding is right, and the gap is larger than it says, because the default is not even the measured frame.",
+    "duplicate_of": null,
+    "fix": [
+      {
+        "file": "docs/handoff/drafts/M7-M9/T7.2-presets.md",
+        "old": "directions are the citable result. T7.5 renders each preset.",
+        "new": "directions hold only for Spiral Frame Smallpaint (F = I): a scene with Spiral Frame Camera, World or Object has a\n  different bounce distribution (SPEC §1, §4), so the size *and* the direction of a cited effect can differ there.\n  T7.5 renders each preset."
+      }
+    ],
+    "note": "Verified from SPEC §1/§4 and T4.3: the effects were measured at F = I, Blender scenes default to F = R_cam→world·M_s→cam, and the card's only caveat is about the chain and the lights."
+  }
+]
