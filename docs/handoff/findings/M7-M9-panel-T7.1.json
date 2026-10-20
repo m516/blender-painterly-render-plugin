@@ -1,0 +1,409 @@
+[
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 executability",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:259-260 (the `ValueError` check names `bpy.types.PainterlyRenderSettings.bl_rna.properties`; `properties.register()` runs before `ui.register()`). docs/tasks/M4/T4.2-properties-ui.md:9 (`class PainterlyRenderSettings(bpy.types.PropertyGroup)`, attached as `bpy.types.Scene.painterly`).\nProbe (MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'):\ncode: import bpy / class S(bpy.types.PropertyGroup): pass / bpy.utils.register_class(S) / bpy.types.Scene.s = bpy.props.PointerProperty(type=S) / print(\"IN_DIR\", \"S\" in dir(bpy.types)) / try: bpy.types.S except AttributeError as e: print(\"GETATTR\", type(e).__name__, e) / print(\"CYCLES_IN_DIR\", \"CyclesRenderSettings\" in dir(bpy.types)) / print(\"CLASS_RNA\", sorted(S.bl_rna.properties.keys())) / print(\"POINTER_RNA\", sorted(bpy.types.Scene.bl_rna.properties[\"s\"].fixed_type.properties.keys()))\noutput: IN_DIR False | GETATTR AttributeError 'module' object has no attribute 'S' | CYCLES_IN_DIR False | CLASS_RNA ['name', 'rna_type'] | POINTER_RNA ['name', 'rna_type']",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "`from . import operators, presets`",
+    "new": "`from . import operators, presets, properties`"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "`bpy.types.PainterlyRenderSettings.bl_rna.properties`",
+    "new": "`properties.PainterlyRenderSettings.bl_rna.properties`"
+   }
+  ],
+  "note": "Reproduced: `bpy.types` has no attribute for a registered PropertyGroup in 5.2.2, so that check raises AttributeError inside `ui.register()` and every tests/blender test errors. The reviewer's extra Step 1 precondition is redundant (T4.2 already makes this class the one registered as `Scene.painterly`), so only the import-and-validate edit is kept."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 executability",
+  "index": 1,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:377 (`\"apply_display_idname\"`: `bpy.types.PAINTERLY_OT_apply_display_settings.bl_idname`), :199 (Step 1 only requires `exists and has a bl_idname`), :279 (the Film panel uses the class attribute `operators.PAINTERLY_OT_apply_display_settings.bl_idname`). docs/tasks/M4/T4.2-properties-ui.md:40-43 (the operator is named, its `bl_idname` is never fixed).\nProbe: code: import bpy / class PAINTERLY_OT_apply_display_settings(bpy.types.Operator): bl_idname = \"render.painterly_apply_display_settings\" / bl_label = \"x\" / def execute(self, context): return {\"FINISHED\"} / bpy.utils.register_class(PAINTERLY_OT_apply_display_settings) / print(\"CLS_IN_DIR\", \"PAINTERLY_OT_apply_display_settings\" in dir(bpy.types)) / print(\"RNA_IN_DIR\", \"RENDER_OT_painterly_apply_display_settings\" in dir(bpy.types)) / try: bpy.types.PAINTERLY_OT_apply_display_settings except AttributeError as e: print(\"GETATTR\", type(e).__name__, e) / print(\"CLS_BL_IDNAME\", PAINTERLY_OT_apply_display_settings.bl_idname)\noutput: CLS_IN_DIR False | RNA_IN_DIR True | GETATTR AttributeError 'module' object has no attribute 'PAINTERLY_OT_apply_display_settings' | CLS_BL_IDNAME render.painterly_apply_display_settings",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "`bpy.types.PAINTERLY_OT_apply_display_settings.bl_idname`",
+    "new": "`importlib.import_module(f\"{package}.operators\").PAINTERLY_OT_apply_display_settings.bl_idname`"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "No module-level import of `bpy`, `_painterly` or the add-on.",
+    "new": "No module-level import of `bpy`, `_painterly` or the add-on; `importlib` is imported at module level (Step 6.4 needs it)."
+   }
+  ],
+  "note": "Reproduced: `bpy.types` exposes a Python operator under the RNA identifier derived from its `bl_idname`, never under its class name, and T4.2 fixes no `bl_idname`. Reading the class attribute through the imported module is the fix; the reviewer's alternative (pinning `bl_idname`) would add a constraint T4.2 never states."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 executability",
+  "index": 2,
+  "verdict": "confirmed",
+  "evidence": "Read: docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:381 (`for every cls in bpy.types.Panel.__subclasses__() with cls.is_registered`), :334-336 (`classes` registration order, with no class statement anywhere in the card), :249-250 (`Keep T4.2's PainterlyButtonsPanel mixin`). docs/tasks/M4/T4.2-properties-ui.md:31-32 (a `PainterlyButtonsPanel` mixin with `bl_space_type`/`bl_region_type`/`bl_context`/`COMPAT_ENGINES`/`poll`; no `bpy.types.Panel` base is stated). Blender 5.2.2 startup/bl_ui/utils.py:60-64 (`class CyclesButtonsPanel:`, a plain class and not a Panel) is the model T4.2 copies.\nProbe, exactly as run (MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'):\nimport bpy\nclass Mix:\n    bl_space_type = \"PROPERTIES\"\n    bl_region_type = \"WINDOW\"\n    bl_context = \"render\"\n    def draw(self, context):\n        pass\nclass RENDER_PT_t_a(Mix, bpy.types.Panel):\n    bl_label = \"A\"\nclass Base(bpy.types.Panel):\n    bl_space_type = \"PROPERTIES\"\n    bl_region_type = \"WINDOW\"\n    bl_context = \"render\"\n    def draw(self, context):\n        pass\nclass RENDER_PT_t_c(Base):\n    bl_label = \"C\"\nbpy.utils.register_class(RENDER_PT_t_a)\nbpy.utils.register_class(RENDER_PT_t_c)\nsubs = [c.__name__ for c in bpy.types.Panel.__subclasses__()]\nprint(\"A_DIRECT\", \"RENDER_PT_t_a\" in subs, \"C_DIRECT\", \"RENDER_PT_t_c\" in subs, \"C_REGISTERED\", RENDER_PT_t_c.is_registered)\nOutput: A_DIRECT True C_DIRECT False C_REGISTERED True\n(`bl_space_type`, `bl_region_type`, `bl_context` and `draw` are set on the mixin and on `Base` because `register_class` rejects a Panel without them: the first attempt without them raised `AttributeError: expected Panel, RENDER_PT_t_a class to have an \"draw\" attribute`, and without `bl_region_type` it raises `expected Panel, RENDER_PT_t_a class to have an 'bl_region_type' attribute`.)",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "        - `\"panels\"`: for every `cls` in `bpy.types.Panel.__subclasses__()` with `cls.is_registered`, keyed by `cls.__name__`:",
+    "new": "        - `\"panels\"`: for every `cls` in `_all_subclasses(bpy.types.Panel)` with `cls.is_registered`, keyed by `cls.__name__`:"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   - `dump_registry(package)`, inside Blender:",
+    "new": "   - `dump_registry(package)`, inside Blender:\n     - `_all_subclasses(base)`: the transitive closure of `base.__subclasses__()`, deduplicated, in a deterministic order (breadth-first over `__subclasses__()`), so a panel stays visible whatever its base classes are."
+   }
+  ],
+  "note": "Reproduced: `__subclasses__()` is direct-only, and the card fixes no panel base, so an intermediate Panel-derived base would drop panels out of the registry and R1 would report them missing. The recursive helper is the fix that does not constrain the implementation; option (a) (forcing the class statement) also works but pins a base the card does not need."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 executability",
+  "index": 3,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:462-463 (Step 7.1: `Assert that \"PAINTERLY\" is the bl_idname of a registered bpy.types.RenderEngine subclass (as T4.4)`). docs/tasks/M4/T4.4-extension-build-it.md:9-11 (the same wording, `assert that \"PAINTERLY\" is the bl_idname of a registered bpy.types.RenderEngine subclass`).\nProbe: code: import bpy / print(\"SUBS\", [(c.__name__, getattr(c, \"bl_idname\", \"MISSING\"), c.is_registered) for c in bpy.types.RenderEngine.__subclasses__()]) / try: print(\"LITERAL\", [c.bl_idname for c in bpy.types.RenderEngine.__subclasses__()]) except AttributeError as e: print(\"LITERAL_RAISES\", type(e).__name__, e) / print(\"GETATTR_SET\", sorted({getattr(c, \"bl_idname\", None) for c in bpy.types.RenderEngine.__subclasses__()}, key=str))\noutput: SUBS [('HydraRenderEngine', 'MISSING', True), ('CyclesRender', 'CYCLES', True)] | LITERAL_RAISES AttributeError type object 'HydraRenderEngine' has no attribute 'bl_idname' | GETATTR_SET ['CYCLES', None]",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   1. Call `addon_utils.enable(\"bl_ext.user_default.painterly\", default_set=True)`. Assert that `\"PAINTERLY\"` is the\n      `bl_idname` of a registered `bpy.types.RenderEngine` subclass (as T4.4).",
+    "new": "   1. Call `addon_utils.enable(\"bl_ext.user_default.painterly\", default_set=True)`. Assert that `\"PAINTERLY\"` is the\n      `bl_idname` of a registered `bpy.types.RenderEngine` subclass (as T4.4), spelled\n      `assert \"PAINTERLY\" in {getattr(c, \"bl_idname\", None) for c in bpy.types.RenderEngine.__subclasses__()}`:\n      `HydraRenderEngine` is a registered subclass without a `bl_idname`, so the literal form raises AttributeError."
+   }
+  ],
+  "note": "Reproduced: the first `bpy.types.RenderEngine` subclass under `--factory-startup` is `HydraRenderEngine`, which has no `bl_idname`, so a literal comprehension raises before `any` can short-circuit. The `getattr` form is the fix; T4.4's card text carries the same wording and needs the same edit in its own revision."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 executability",
+  "index": 4,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:512-513 (the acceptance compares printed `name | ui_name | description` lines with the Step 2 table \"character for character\"), :431-435 (R7 compares `render_settings_rna[name]` with the same `ui_name`/`description` that `properties.py` copied from `_painterly.integrator_sockets()`), :206-236 (the Step 2 table, 21 rows at :213-233). src/painterly/scene/integrator.cpp:109-332 (`painterly_integrator_ui_info()`, the only source of those strings).\nCommand: python -c \"...\" reading the draft's Step 2 table (the 21 rows between the `|---|---|---|---|` row at :212 and the first blank line at :234) and the 21 `painterly_integrator_ui_info()` entries of integrator.cpp: output `TABLE_ROWS 21 TABLE_SPAN 213 233 | CPP_ENTRIES 21 | IDENTICAL True` \u2014 so the table is machine-readable and currently matches the committed C++ verbatim, but nothing in the card's commands asserts that.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - For each socket: `render_settings_rna[name][\"name\"] == ui_name`, `[\"description\"] == description`, and both are\n         non-empty. The `ui_name`s are pairwise distinct.",
+    "new": "       - For each socket: `(render_settings_rna[name][\"name\"], render_settings_rna[name][\"description\"]) ==\n         EXPECTED_UI_TEXT[name]`, both are non-empty, and the `EXPECTED_UI_TEXT` key set equals the socket name set.\n         The `ui_name`s are pairwise distinct. `EXPECTED_UI_TEXT: dict[str, tuple[str, str]]` is the Step 2 table,\n         committed verbatim in `panel_registry.py` beside `EXPECTED_PANELS`, so a typo in `integrator.cpp` fails here\n         rather than at an eyeball comparison."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "- `.venv/bin/python -c \"import sys; sys.path.insert(0, 'build/dev/src/blender'); import _painterly; [print(s['name'], s['ui_name'], s['description'], sep=' | ') for s in _painterly.integrator_sockets()]\"`\n  prints the Step 2 table, character for character, in socket order. Put this output in the final report.",
+    "new": "- `.venv/bin/python -c \"import sys; sys.path.insert(0, 'build/dev/src/blender'); import _painterly; [print(s['name'], s['ui_name'], s['description'], sep=' | ') for s in _painterly.integrator_sockets()]\"`\n  prints the Step 2 table, character for character, in socket order; R7 makes that comparison automatic against\n  `EXPECTED_UI_TEXT`. Put this output in the final report."
+   }
+  ],
+  "note": "Real: no command compares the C++ strings with the table, and R7 compares RNA with the same C++ strings, so a typo passes everything. The reviewer's own parse of the table is wrong (`split(' | ')` yields 5 cells and a `'  '` first cell; `strip('|').split('|')` is needed), so the fix commits the table into the checker instead of parsing markdown at test time."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:12-13 (Goal: `A property that the render currently ignores is greyed out ... Nothing is hidden`), :139-144 (ACTIVE_WHEN has only lane_length, spiral_rotation, spiral_object, exposure), :177-182 (STATES: default, lane_linear_object, reference, ghost_lights_off; none sets chain = image), :157-158 (only the Lights render panel is greyed in reference mode). docs/spec.md:72 (`image` ... `It is single-threaded`), :73 (`K starts at 0 at the beginning of the render and is never reset`), :204-207 (`Analytic primitives keep smallpaint's normals`). src/painterly/kernel/sample/sampler.h:84-86 (`if (p.chain == CHAIN_IMAGE) { return 0; }`, before the phase-lock mask at :89-91), src/painterly/integrator/path_trace.cpp:126-149 (`render_image_chain` is a serial loop over `scratch_[0]`, with no `pool_.parallel_for`), docs/tasks/M4/T4.3-render-loop.md:20-21 (REFERENCE_KNOBS = diffuse_gain, emission_gain, ray_epsilon, max_depth, spiral_frame; k0_phase_lock_bits, threads and two_sided are not pinned, so they stay active in reference mode).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "# property -> (controlling socket, the values of that socket for which the property is used)\nACTIVE_WHEN = {\n    \"lane_length\": (\"chain\", frozenset({\"lane\"})),  # SPEC \u00a73: only chain = lane uses it\n    \"spiral_rotation\": (\"spiral_frame\", frozenset({\"camera\", \"world\", \"object\"})),  # SPEC \u00a71: smallpaint F = I\n    \"spiral_object\": (\"spiral_frame\", frozenset({\"object\"})),  # SPEC \u00a71\n    \"exposure\": (\"output_mode\", frozenset({\"scene_linear\"})),  # SPEC \u00a78: L/255 * exposure\n}",
+    "new": "# property -> (controlling property, the values of that property for which the property is used)\nACTIVE_WHEN = {\n    \"lane_length\": (\"chain\", frozenset({\"lane\"})),  # SPEC \u00a73: only chain = lane uses it\n    \"spiral_rotation\": (\"spiral_frame\", frozenset({\"camera\", \"world\", \"object\"})),  # SPEC \u00a71: smallpaint F = I\n    \"spiral_object\": (\"spiral_frame\", frozenset({\"object\"})),  # SPEC \u00a71\n    \"exposure\": (\"output_mode\", frozenset({\"scene_linear\"})),  # SPEC \u00a78: L/255 * exposure\n    \"k0_phase_lock_bits\": (\"chain\", frozenset({\"row\", \"lane\"})),  # SPEC \u00a73: the image chain starts at K = 0\n    \"threads\": (\"chain\", frozenset({\"row\", \"lane\"})),  # SPEC \u00a73: the image chain is single-threaded\n    \"two_sided\": (\"reference_scene\", frozenset({False})),  # SPEC \u00a76: triangles only, and the reference scene is analytic\n}"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "         `name in reference_knobs`), or `name` is one of `lane_length`, `spiral_rotation`, `spiral_object` and `exposure`,\n         and its condition from `ui.ACTIVE_WHEN` fails for the effective values. Write those four conditions out literally\n         in the checker; do not import `ui`.",
+    "new": "         `name in reference_knobs`), or `name` is one of `lane_length`, `spiral_rotation`, `spiral_object`, `exposure`,\n         `k0_phase_lock_bits`, `threads` and `two_sided`, and its condition from `ui.ACTIVE_WHEN` fails for the effective\n         values. Write those seven conditions out literally in the checker; do not import `ui`."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "STATES = {\n    \"default\": {},\n    \"lane_linear_object\": {\"chain\": \"lane\", \"output_mode\": \"scene_linear\", \"spiral_frame\": \"object\"},\n    \"reference\": {\"reference_scene\": True},\n    \"ghost_lights_off\": {\"ghost_lights\": False},\n}",
+    "new": "STATES = {\n    \"default\": {},\n    \"image\": {\"chain\": \"image\"},\n    \"lane_linear_object\": {\"chain\": \"lane\", \"output_mode\": \"scene_linear\", \"spiral_frame\": \"object\"},\n    \"reference\": {\"reference_scene\": True},\n    \"ghost_lights_off\": {\"ghost_lights\": False},\n}"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - The effective value of `k` is `reference_knobs[k]` if `settings[\"reference_scene\"] and k in reference_knobs`, else\n         `settings[k]`.",
+    "new": "       - The effective value of `k` is `reference_knobs[k]` if `settings[\"reference_scene\"] and k in reference_knobs`, else\n         `settings[k]`.\n       - For every `k` in `dump[\"reference_knobs\"]` that is not `diffuse_gain` or `spiral_frame`,\n         `dump[\"reference_knobs\"][k] == dump[\"sockets\"][k][\"default\"]`. Those two are the documented exceptions and the\n         checker names each with its SPEC section in a comment: `diffuse_gain` (SPEC \u00a74: Blender albedos are 0\u20261, the\n         reference uses 0.1 with smallpaint `cl`) and `spiral_frame` (SPEC \u00a71: F = I for scenes authored in smallpaint\n         coordinates). `ray_epsilon` and `emission_gain` are float32 literals that agree exactly with their sockets, so no\n         tolerance is needed or used."
+   }
+  ],
+  "note": "Reproduced from SPEC \u00a73/\u00a76 and the committed core: with chain = image K0 is 0 (so clearing its low bits is a no-op), the image chain never uses the thread pool, and two_sided acts on triangles only while the reference scene is analytic. None of the three is in REFERENCE_KNOBS, so all three are drawn active in exactly the configuration the Smallpaint Reference preset produces, and no STATES case sets chain = image for R6 to catch it."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:157-158 (only RENDER_PT_painterly_lights is greyed in reference mode), :281-309 (the light panel sets `active` only on the ghost sub-column), :312-315 (beam shape: no activity rule), :326-330 (both Surface panels: no rule), :443-446 (R8 checks only the ghost row's `active`). docs/tasks/M4/T4.3-render-loop.md:36-40 (reference mode calls `reference.build_smallpaint_scene(...)` instead of `sync.build_scene`, so no Blender light, material or world is read). docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:349-351 (RecordingLayout records `the effective flags at call time`, i.e. the AND over ancestors), :393-396 (polls and draws are recorded per owned panel).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "- The light panel's ghost row is active iff `settings.ghost_lights and not settings.reference_scene`, with\n  `settings = context.scene.painterly`.",
+    "new": "- The light panel's ghost row is active iff `settings.ghost_lights and not settings.reference_scene`, with\n  `settings = context.scene.painterly`.\n- `PAINTERLY_LIGHT_PT_light`, `PAINTERLY_LIGHT_PT_beam_shape`, `PAINTERLY_MATERIAL_PT_surface` and\n  `PAINTERLY_WORLD_PT_surface` set `self.layout.active = not settings.reference_scene` first: reference mode builds the\n  scene with `build_smallpaint_scene` and never calls `sync.build_scene`, so no Blender light, material or world is read\n  (T4.3). The ghost row keeps its own rule; the recorded effective value is the AND of the two."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - For `POINT` and `SPOT`, there is exactly one prop call `(owner \"PainterlyLightSettings\", name \"ghost\", text None)`.\n         Its `active == (settings[\"ghost_lights\"] and not settings[\"reference_scene\"])`.\n       - For the other labels, there is none.",
+    "new": "       Ghost:\n       - For `POINT` and `SPOT`, there is exactly one prop call `(owner \"PainterlyLightSettings\", name \"ghost\", text None)`.\n         Its `active == (settings[\"ghost_lights\"] and not settings[\"reference_scene\"])`, which is the AND of the panel's\n         own `active` and the ghost row's rule.\n       - For the other labels, there is none.\n       - Every other recorded prop call in `PAINTERLY_LIGHT_PT_light` and `PAINTERLY_LIGHT_PT_beam_shape` has\n         `active == (not settings[\"reference_scene\"])`."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "     - **R10 film and presets.**",
+    "new": "       - Every recorded call in both Surface panels has `active == (not settings[\"reference_scene\"])`.\n     - **R10 film and presets.**"
+   }
+  ],
+  "note": "Real: reference mode reads no Blender light, material or world, yet only the Lights render panel is greyed, so one reason produces two UI states. The reviewer's R8/R9 rule (`the ghost call additionally requires settings[\"ghost_lights\"]`) is wrong: RecordingLayout records the effective active, so once the panel is greyed that call already records `ghost_lights and not reference_scene`, and the draft's existing rule at :445 is correct; the corrected edit keeps the ghost rule and adds the panel-level one."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 2,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:13 (`Nothing is hidden, so every property is always drawn exactly once`), :310-311 (`Cycles' temperature, exposure, normalize and soft-falloff rows are left out, because Painterly ignores them`), :524-526 (`They are not drawn, so the panel shows only what renders`). docs/tasks/M4/T4.1-extension-skeleton.md:29 (`bl_use_eevee_viewport = True`), docs/spec.md:212-213 (light power is smallpaint emission, independent of radius). Blender 5.2.2 probe: `import bpy` then, per kind, `[n for n in (\"use_temperature\",\"temperature\",\"exposure\",\"normalize\",\"use_soft_falloff\",\"spread\") if n in light.bl_rna.properties]` gives POINT ['use_temperature','temperature','exposure','normalize','use_soft_falloff'], SPOT the same, SUN the first four, AREA the first four plus 'spread'; and `bpy.types.PointLight.bl_rna.properties[\"exposure\"].description` is 'Scales the power of the light exponentially, multiplying the intensity by 2^exposure'. startup/bl_ui/properties_data_light.py:75-140 (DATA_PT_EEVEE_light draws use_temperature, temperature, exposure, normalize, use_soft_falloff), and startup/bl_ui/properties_render.py:17-25 (RenderButtonsPanel).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "     These are exactly the inputs T5.3 reads. Cycles' temperature, exposure, normalize and soft-falloff rows are left out,\n     because Painterly ignores them (\"Not in this card\").",
+    "new": "     These are exactly the inputs T5.3 reads. Cycles' temperature, exposure, normalize and soft-falloff rows are drawn\n     greyed rather than hidden: hiding them would contradict the Goal's \"Nothing is hidden\", and with\n     `bl_use_eevee_viewport = True` (T4.1) Material Preview renders the light through EEVEE, which honours them, so an\n     artist would have no way to see why the viewport and the render differ. Append after the block above:\n     ```python\n     sub = col.column()\n     sub.active = False\n     sub.prop(light, \"use_temperature\")\n     sub.prop(light, \"temperature\")\n     sub.prop(light, \"exposure\")\n     sub.prop(light, \"normalize\")\n     if light.type in {'POINT', 'SPOT'}:\n         sub.prop(light, \"use_soft_falloff\")\n     ```"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - `POINT` and `SPOT`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"shadow_soft_size\", \"Radius\")]`;\n       - `SUN`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"angle\", None)]`;\n       - `AREA_SQUARE` and `AREA_DISK`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"shape\", None), (\"size\", None)]`;\n       - `AREA_RECTANGLE` and `AREA_ELLIPSE`: the same with `(\"size\", \"Size X\"), (\"size_y\", \"Y\")` in place of `(\"size\", None)`.",
+    "new": "       - `POINT` and `SPOT`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"shadow_soft_size\", \"Radius\"),\n         (\"use_temperature\", None), (\"temperature\", None), (\"exposure\", None), (\"normalize\", None),\n         (\"use_soft_falloff\", None)]`;\n       - `SUN`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"angle\", None), (\"use_temperature\", None),\n         (\"temperature\", None), (\"exposure\", None), (\"normalize\", None)]`;\n       - `AREA_SQUARE` and `AREA_DISK`: `[(\"type\", None), (\"color\", None), (\"energy\", None), (\"shape\", None), (\"size\", None),\n         (\"use_temperature\", None), (\"temperature\", None), (\"exposure\", None), (\"normalize\", None)]`;\n       - `AREA_RECTANGLE` and `AREA_ELLIPSE`: the same with `(\"size\", \"Size X\"), (\"size_y\", \"Y\")` in place of `(\"size\", None)`;\n       - every `use_temperature`, `temperature`, `exposure`, `normalize` and `use_soft_falloff` call has `active` False."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "- **Light inputs that Painterly ignores** (temperature, exposure, normalize, soft falloff, area spread). They are not drawn,\n  so the panel shows only what renders. Whether the sync should honour them (a Cycles-authored scene with `exposure \u2260 0` or\n  `use_temperature` renders differently) is an Opus SPEC decision.",
+    "new": "- **Light inputs that Painterly ignores** (temperature, exposure, normalize, soft falloff, area spread). Temperature,\n  exposure, normalize and soft falloff are drawn greyed, so the artist can see and reset them; area `spread` is not drawn,\n  because T5.3 does not read it. Whether the sync should honour them (a Cycles-authored scene with `exposure \u2260 0` or\n  `use_temperature` renders differently) is an Opus SPEC decision."
+   }
+  ],
+  "note": "Real: the card hides five light inputs in the same card whose Goal says nothing is hidden, and with `bl_use_eevee_viewport = True` those inputs do change Material Preview, so hiding them hides the cause of a viewport/render difference. The probe confirms which properties exist per light type, so the greyed block and the R8 lists are executable as written."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 3,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:229 (`emission_scale` description: `Factor from Blender light power (W) and sun strength to smallpaint emission. At 1, a 120 W point light of radius 0.5 is smallpaint's light. ...`), :295 (`col.prop(light, \"shadow_soft_size\", text=\"Radius\")`), :245 (`PainterlyLightSettings.ghost` text, which says the sphere grows with the bounce length but nothing about size). docs/spec.md:212-213 (`Point and spot lights are ghost spheres ... Their power is treated as smallpaint emission, independent of radius`), :142-143 (the ghost sphere's radius is `L\u00b7sqrt((L\u00b2\u22121)|o\u2212c|\u00b2 + r\u00b2)`, so it grows with r). Blender 5.2.2 probe: `bpy.types.PointLight.bl_rna.properties[\"shadow_soft_size\"].description` is 'Light size for ray shadow sampling (Raytraced shadows)'. `bpy.types.PointLight.bl_rna.properties[\"normalize\"].description` is 'Normalize intensity by light area, for consistent total light output regardless of size and shape' \u2014 the Blender rule the tooltip should contradict.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `emission_scale` | `Emission Scale` | `Factor from Blender light power (W) and sun strength to smallpaint emission. At 1, a 120 W point light of radius 0.5 is smallpaint's light. Blender's default 1000 W light clips in Display Referred output` | SPEC \u00a76, \u00a78 |",
+    "new": "   | `emission_scale` | `Emission Scale` | `Factor from Blender light power (W) and sun strength to smallpaint emission. At 1, a 120 W point light of radius 0.5 is smallpaint's light. Blender's default 1000 W light clips in Display Referred output. Power is used as emission whatever the light's Radius or Size, so a larger light is hit by more paths and lights the scene more` | SPEC \u00a76, \u00a78 |"
+   }
+  ],
+  "note": "Real: the only tooltip on the light's size is Blender's shadow-sampling string, and it sits next to a panel where size changes the scene's brightness, the opposite of Cycles and EEVEE. Appending the sentence to `emission_scale` names the unit in the one place that already defines the power mapping, and needs no new string."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 4,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:232 (`exposure` description: `Scale of Scene Linear output. Display Referred ignores it`), :174 (`REQUIRED_BUILTIN` includes `RENDER_PT_color_management`), :278-280 (the Film panel draws the operator). docs/spec.md:279 (`scene_linear`: write `L/255 \u00b7 exposure`), :260 (`Units are always named`). src/painterly/scene/integrator.cpp:81 (`SOCKET_FLOAT(exposure, \"Exposure\", 1.0f)`). docs/tasks/M4/T4.2-properties-ui.md:40-43 (the operator sets `exposure=0` on `view_settings`). Blender 5.2.2 probe: `vs = bpy.context.scene.view_settings` gives VIEW_TRANSFORM 'AgX' LOOK 'None' EXPOSURE 0.0 GAMMA 1.0; `vs.bl_rna.properties[\"exposure\"]` has NAME 'Exposure', DESC 'Exposure (stops) applied before display transform, multiplying by 2^exposure', DEFAULT 0.0; `bpy.types.RENDER_PT_color_management.COMPAT_ENGINES` is ['BLENDER_EEVEE','BLENDER_RENDER','BLENDER_WORKBENCH','CYCLES'], and startup/bl_ui/properties_render.py:51-93 draws `col.prop(view, \"exposure\")` in the same Render tab.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `exposure` | `Exposure` | `Scale of Scene Linear output. Display Referred ignores it` | SPEC \u00a78 |",
+    "new": "   | `exposure` | `Exposure` | `Linear multiplier, not stops, on Scene Linear output (1 leaves it unchanged). Display Referred ignores it. Color Management's Exposure, in stops, is a separate control` | SPEC \u00a78 |"
+   }
+  ],
+  "note": "Real: two controls named Exposure, one a linear multiplier and one in stops, sit in the same Render tab, and the description names no unit. The finding's citation of a 006 \"units named\" lesson does not check out (no such phrase in 006's README); the rule it means is SPEC \u00a77 line 260, `Units are always named`."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 5,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:215 (`seed` description: `Seed of the random numbers for pixel jitter, lobe choice in mixed materials and the starting counter of each row or lane chain. With Chain Image, Jitter 0 and Second Dimension Same, only the lobe choice depends on it`). docs/spec.md:62-65 (`PURPOSE_JITTER_X = 0`, `PURPOSE_JITTER_Y = 1`; `PURPOSE_U2 = 2`: `only when u2_mode = independent`; `PURPOSE_CLOSURE = 3`; `PURPOSE_LANE_K0 = 4`), :109 (`u2 = (u2_mode == same) ? u : rng_unit(PURPOSE_U2 \u2026)`). src/painterly/kernel/sample/sampler.h:87-91 (the lane/row K0 is hashed from `p.seed`), src/painterly/kernel/types.h:19-23 (the PURPOSE_ enumerators).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `seed` | `Seed` | `Seed of the random numbers for pixel jitter, lobe choice in mixed materials and the starting counter of each row or lane chain. With Chain Image, Jitter 0 and Second Dimension Same, only the lobe choice depends on it` | SPEC \u00a72, \u00a73; 006 Table 7 |",
+    "new": "   | `seed` | `Seed` | `Seed of the random numbers for pixel jitter, lobe choice in mixed materials, the second coordinate when Second Dimension is Independent, and the starting counter of each row or lane chain. With Chain Image, Jitter 0 and Second Dimension Same, only the lobe choice depends on it` | SPEC \u00a72, \u00a73; 006 Table 7 |"
+   }
+  ],
+  "note": "Real: SPEC \u00a72 gives the seed four consumers and the description lists three, so its closing sentence only parses if the reader already knows that Independent draws from the seed. The replacement lists all four and keeps the second sentence true."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 6,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:84-86 (`If sync/material.py or sync/world.py selects the surface output in a way other than `node_tree.get_output_node('CYCLES')`, report the difference; do not change either side`), :205 (`Read how sync/material.py and sync/world.py pick the output node, for the final report`), :319-322 (`node = ntree.get_output_node('CYCLES') ...`), :326-330 (both Surface panels), :450-454 (R9 asserts only the node type and socket name). docs/tasks/M5/T5.3-sync-lights-world-materials.md:28 (world: `If the world's node tree has a Background node linked to the World Output`), :29-32 (material: `Constant mapping from the node tree's surface shader`; neither names an output-selection function).\nBlender 5.2.2 probe: a material node tree with an `ALL` output linked to a Principled BSDF and an unlinked `CYCLES` output gives OUTPUTS [('Material Output', 'ALL', True), ('Material Output.001', 'CYCLES', False)] and GET_CYCLES Material Output.001 CYCLES, GET_EEVEE Material Output ALL \u2014 so `get_output_node('CYCLES')` can return a node the panel shows as an empty, unlinked surface while the sync renders the linked `ALL` one.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   - Read how `sync/material.py` and `sync/world.py` pick the output node, for the final report.",
+    "new": "   - Read how `sync/material.py` and `sync/world.py` pick the output node, and stop and report (CLAUDE.md rule 1) if\n     either selects it in a way other than `node_tree.get_output_node('CYCLES')`: the Surface panels would then show a\n     node the render does not use."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "     - `template_node_view(ntree, node, socket)` \u2192 `[\"template_node_view\", node.bl_idname, socket.name, None, \u2026]`;",
+    "new": "     - `template_node_view(ntree, node, socket)` \u2192 `[\"template_node_view\", node.bl_idname, socket.name, node.target, \u2026]`\n       (the `text` column carries the output node's `target`, so R9 can tell the `CYCLES` output from an `ALL` one);"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - `PAINTERLY_MATERIAL_PT_surface` records exactly one call that is not a container:\n         `[\"template_node_view\", \"ShaderNodeOutputMaterial\", \"Surface\", \u2026]`.",
+    "new": "       - `PAINTERLY_MATERIAL_PT_surface` records exactly one call that is not a container:\n         `[\"template_node_view\", \"ShaderNodeOutputMaterial\", \"Surface\", \"CYCLES\", \u2026]`."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - `PAINTERLY_WORLD_PT_surface` likewise, with `\"ShaderNodeOutputWorld\"`.",
+    "new": "       - `PAINTERLY_WORLD_PT_surface` likewise, with `\"ShaderNodeOutputWorld\"` and `\"CYCLES\"`."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "        - material `t71_material`: clear its node tree, add `ShaderNodeOutputMaterial` and `ShaderNodeBsdfPrincipled`, and\n          link `BSDF` \u2192 `Surface`;\n        - world `t71_world`: clear, add `ShaderNodeOutputWorld` and `ShaderNodeBackground`, and link `Background` \u2192 `Surface`;",
+    "new": "        - material `t71_material`: clear its node tree, add `ShaderNodeOutputMaterial` and `ShaderNodeBsdfPrincipled`, and\n          link `BSDF` \u2192 `Surface`; then add a second `ShaderNodeOutputMaterial` with `target = 'CYCLES'` and link the same\n          BSDF to it, so the case proves the panel picks the `CYCLES` output over the `ALL` one;\n        - world `t71_world`: clear, add `ShaderNodeOutputWorld` and `ShaderNodeBackground`, and link `Background` \u2192 `Surface`;\n          then add a second `ShaderNodeOutputWorld` with `target = 'CYCLES'`, linked the same way;"
+   }
+  ],
+  "note": "Real: nothing ties the panel's `get_output_node('CYCLES')` to the node the sync renders, and T5.3 specifies no output-selection function, so the card can pass every check while showing a node Painterly ignores. The probe shows the divergence is reachable in 5.2.2 (an `ALL` output and a `CYCLES` output coexist), so the precondition and the two-output case are both needed."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 7,
+  "verdict": "disputed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:99-111 (the Interface table: the five render panels are `RENDER_PT_painterly_*`; the new ones are `PAINTERLY_LIGHT_PT_light`, `PAINTERLY_LIGHT_PT_beam_shape`, `PAINTERLY_MATERIAL_PT_context_material`, `PAINTERLY_MATERIAL_PT_surface`, `PAINTERLY_WORLD_PT_surface`), :334-336 (`classes` order). Blender 5.2.2 startup/bl_ui/properties_data_light.py:75-77 (`class DATA_PT_EEVEE_light`), :235-248 (`class DATA_PT_spot`); startup/bl_ui/properties_material.py (EEVEE_MATERIAL_PT_*), properties_world.py (EEVEE_WORLD_PT_*); addons_core/cycles/ui.py:1273 (`class CYCLES_PT_context_material`), :1582 (`class CYCLES_LIGHT_PT_light`), :1705 (`class CYCLES_LIGHT_PT_beam_shape`), :1742 (`class CYCLES_WORLD_PT_surface`). docs/tasks/M4/T4.2-properties-ui.md:29-32 (T4.2's scheme is stated for the render panels only: `Panels RENDER_PT_painterly_sampling, _brush, _path, _lights, _film`). Probe: registering panels named `DATA_PT_painterly_light`, `DATA_PT_painterly_beam_shape`, `MATERIAL_PT_painterly_context_material`, `MATERIAL_PT_painterly_surface` and `WORLD_PT_painterly_surface` prints REGISTERED for each, so both schemes execute; the choice is a naming decision, not a defect.",
+  "duplicate_of": null,
+  "fix": null,
+  "note": "Not a defect: the two prefixes follow the two upstream conventions they are copied from \u2014 Blender's own context panels put the context first (`DATA_PT_*`, `EEVEE_MATERIAL_PT_*`), and Cycles puts the engine first (`CYCLES_PT_context_material`, `CYCLES_LIGHT_PT_light`). CLAUDE.md rule 3's consistency requirement is met within each context panel group, and the review cites no card that would break; a rename is a style preference for Opus, not a defect."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 8,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:231 (`output_mode` description: `Display Referred: smallpaint's clipped 8-bit look, which the Standard view transform with dither 0 reproduces up to rounding. Scene Linear: ...`), :278-280 (the Film panel draws the operator with no state), :270-271 (`The button only runs on a click, and the panels never change the view transform themselves`). docs/spec.md:277-280 (`Under Blender's *Standard* view transform with dither 0, this reproduces smallpaint's bytes up to rounding`; `The engine never changes the scene's view transform by itself`), :260 (`Units are always named`). docs/plan.md:356 (the manual check: `apply the \"Smallpaint Reference\" preset, and press F12`). Blender 5.2.2 probe: VIEW_TRANSFORM 'AgX' LOOK 'None' EXPOSURE 0.0 GAMMA 1.0, DITHER 1.0 under `--factory-startup` \u2014 the defaults do not match SPEC \u00a78's Standard / look None / exposure 0 / gamma 1 / dither 0.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `output_mode` | `Output Mode` | `Display Referred: smallpaint's clipped 8-bit look, which the Standard view transform with dither 0 reproduces up to rounding. Scene Linear: unclipped radiance times Exposure, for compositing` | SPEC \u00a78 |",
+    "new": "   | `output_mode` | `Output Mode` | `Display Referred: smallpaint's clipped 8-bit look, which the Standard view transform with dither 0 reproduces up to rounding. Scene Linear: unclipped radiance times Exposure, for compositing. The Use smallpaint display settings button in the Film panel sets them` | SPEC \u00a78 |"
+   }
+  ],
+  "note": "Real: 5.2.2 defaults to AgX with dither 1, so the plan's manual check (preset, then F12) shows an unclipped look unless the artist also presses the Film button, and nothing on the panel says so. Naming the button in the tooltip is the minimal fix; the reviewer's `alert = True` row needs a module constant the card does not create (`operators.py` is on the Do-not-touch list), so that half is left for Opus."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 9,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:512-513 (the acceptance compares the printed table with Step 2 \"character for character\"), :431-435 (R7 asserts only `render_settings_rna[name][\"name\"] == ui_name` and `[\"description\"] == description`, both copied from the same C++ strings, plus non-emptiness), :237-245 (the six hand-written strings of Step 3), :206-233 (the 21 socket strings of Step 2). docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md:1105-1121 (`UI_TEXT`, and :1198-1201 asserts `(info[\"ui_name\"], info[\"description\"]) == UI_TEXT[name]`), :183-184 (`The chain and lane_length texts are T7.1's, with one change each`).",
+  "duplicate_of": {
+   "source": "M7-M9-reviews.json",
+   "key": "review T7.1 executability",
+   "index": 4
+  },
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "SUBPANEL_SOCKETS = {...}      # same placements as ui.SOCKET_SUBPANEL, restated as the expectation\nHAND_WRITTEN_PANELS = {...}   # same placements as ui.HAND_WRITTEN_PANEL, restated as the expectation",
+    "new": "SUBPANEL_SOCKETS = {...}      # same placements as ui.SOCKET_SUBPANEL, restated as the expectation\nHAND_WRITTEN_PANELS = {...}   # same placements as ui.HAND_WRITTEN_PANEL, restated as the expectation\nEXPECTED_UI_TEXT: dict[str, tuple[str, str]]          # the Step 2 table, verbatim, in socket order\nEXPECTED_HAND_WRITTEN_TEXT: dict[str, tuple[str, str]]  # the Step 3 table, verbatim, including ghost"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - Every name in `H` has a non-empty RNA name and description.\n       - `light_settings_rna[\"ghost\"]` has `default` True and a non-empty name and description.",
+    "new": "       - Every name in `H` has a non-empty RNA name and description, and\n         `(render_settings_rna[name][\"name\"], render_settings_rna[name][\"description\"]) ==\n         EXPECTED_HAND_WRITTEN_TEXT[name]` for every name of that dict; `light_settings_rna[\"ghost\"]` is compared the\n         same way against its `(\"Ghost Sphere\", ...)` pair and has `default` True."
+   }
+  ],
+  "note": "Real, and the same defect as executability 4 (no machine check of the Step 2 strings): R7 compares Blender RNA with the same C++ strings, so only the eyeball step would catch a typo. This object's own contribution is the six Step 3 strings, which executability 4 does not cover, so its fix covers only those and the Step 2 half is left to executability 4."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 10,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:217 (`passes` description: `Samples per pixel. The brush texture is a converged pattern: ...`). docs/spec.md:12 (`pass`: `One sample per pixel over the whole image ... \"pass\" alone always means this sample pass`). CLAUDE.md rule 3 (`pass`/`passes` (never \"spp\" in our code)). docs/handoff/drafts/M7-M9/T7.5-artist-guide.md:485 (`\"passes\": \"passes (samples per pixel)\"`) and :2045 (`PROSE: Samples per pixel. The strokes are a converged pattern: ...`) repeat the phrase.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `passes` | `Passes` | `Samples per pixel. The brush texture is a converged pattern: it emerges as passes accumulate, then stays in place` | plan, \"What makes the look\" 3, 5 |",
+    "new": "   | `passes` | `Passes` | `Number of passes; each pass traces one path in every pixel. The brush texture is a converged pattern: it emerges as passes accumulate, then stays in place` | plan, \"What makes the look\" 3, 5 |"
+   }
+  ],
+  "note": "Real: \"Samples per pixel\" is the phrase CLAUDE.md rule 3 replaces, in the very description of the `passes` knob, and T7.5's prose copies it. The replacement keeps the second sentence unchanged and states the pass definition from SPEC \u00a70."
+ },
+ {
+  "source": "M7-M9-reviews.json",
+  "key": "review T7.1 design",
+  "index": 11,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:214 (`lane_length` description: `Pixels per chain when Chain is Lane. Longer lanes come closer to the Row look. Lane starts line up in columns across rows`). docs/spec.md:78 (`lane` ... `lane_length` = L \u2265 1 pixels, default 16), :86 (`j0 = L\u00b7lane_in_row` in *global* image coordinates), :251-259 (006: with image-plane jitter, 400 and 800 px are indistinguishable). experiments/006-2026-10-09-jitter-units/README.md:610-612 (`Lane length belongs on the image plane too (M7). ... lane_length is in pixels, so chain=lane places its seam columns L px apart. On the image plane that spacing halves at every doubling of the side`). docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md:180 and :1113-1117 (T7.3's `lane_length` text already reads `... unless Lane Stagger shifts them`, so the appended sentence must come before that clause to keep T7.3's edit exact).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "   | `lane_length` | `Lane Length` | `Pixels per chain when Chain is Lane. Longer lanes come closer to the Row look. Lane starts line up in columns across rows` | SPEC \u00a73; 003 H1 |",
+    "new": "   | `lane_length` | `Lane Length` | `Pixels per chain when Chain is Lane. Longer lanes come closer to the Row look. Lane starts line up in columns across rows. Measured in pixels, so lane starts sit Lane Length pixels apart at every resolution, and a render at another Resolution Scale spaces them differently on the image` | SPEC \u00a73; 003 H1 |"
+   }
+  ],
+  "note": "Real: the tooltip gives the unit but not its consequence, and 006's final Conclusion raises exactly this for M7. The sentence is inserted before T7.3's clause so the two texts can still be reconciled, but T7.3's stated old text (lane-stagger.md:180, :1113-1117) already ends `... unless Lane Stagger shifts them`, so T7.3's edit must be re-derived against the new sentence rather than applied as written."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.1 executability",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:393-396 (step 5 records `polls[name]` only `For every owned panel with bl_region_type == \"WINDOW\" and bl_space_type == \"PROPERTIES\"`), :404-406 (`A panel is *shown* in a case iff it and every ancestor through bl_parent_id poll True there`), :173 (`EXCLUDED_BUILTIN = (\"DATA_PT_light\", \"DATA_PT_preview\", \"DATA_PT_spot\", \"RENDER_PT_simplify\")`), :181 (the built-ins are joined by `get_panels()`, which adds PAINTERLY to every panel whose COMPAT_ENGINES contains BLENDER_RENDER). Blender 5.2.2 probe: `for n in (\"RENDER_PT_simplify\", \"RENDER_PT_simplify_viewport\", \"RENDER_PT_simplify_render\", \"RENDER_PT_simplify_greasepencil\"): c = getattr(bpy.types, n); print(n, \"COMPAT\", sorted(c.COMPAT_ENGINES), \"PARENT\", getattr(c, \"bl_parent_id\", None), \"REGISTERED\", c.is_registered)` gives RENDER_PT_simplify COMPAT ['BLENDER_EEVEE','BLENDER_RENDER','BLENDER_WORKBENCH'] PARENT None REGISTERED True; RENDER_PT_simplify_viewport COMPAT ['BLENDER_EEVEE','BLENDER_RENDER','BLENDER_WORKBENCH','CYCLES'] PARENT RENDER_PT_simplify; the same for _render and _greasepencil. startup/bl_ui/properties_render.py:1079-1154 (the three are children of the excluded RENDER_PT_simplify), addons_core/cycles/ui.py:2552-2576 (`get_panels()`).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "          For every owned panel with `bl_region_type == \"WINDOW\"` and `bl_space_type == \"PROPERTIES\"`, sorted by name:\n          `polls[name] = bool(cls.poll(ctx))`. When that is True, set",
+    "new": "          For every panel in `dump[\"panels\"]`, sorted by name: `polls[name] = bool(cls.poll(ctx))` if the panel is owned\n          (`owned` True, so a built-in's poll is not called and a poll that raises counts as False). When that is True, set"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "     minus `{\"name\", \"data_version\"}`. A panel is *shown* in a case iff it and every ancestor through `bl_parent_id` poll\n     True there. The rules:",
+    "new": "     minus `{\"name\", \"data_version\"}`. A panel is *shown* in a case iff it and every ancestor through `bl_parent_id` poll\n     True there, and a panel with no recorded poll counts as not shown (its ancestors are built-ins, whose `polls` entry is\n     False). The rules:"
+   }
+  ],
+  "note": "Real: `RENDER_PT_simplify_viewport`, `_render` and `_greasepencil` are not excluded, so `get_panels()` gives them PAINTERLY and they are shown-ness candidates, yet the only recorded polls are the owned panels' and their excluded parent is never polled. The fix records a poll for every panel in the dump (owned only) and states that a missing poll means not shown; the impact stays bounded as the reviewer says, because a built-in issues no `PainterlyRenderSettings` prop call."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.1 executability",
+  "index": 1,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:514 (`\"$(.venv/bin/python tools/fetch_blender.py --version 5.2.2 --print-path-only)\" --command extension validate dist/*.zip passes`), :80-81 (the card's only Makefile change is `blender-ui: extension`, which T7.1 never runs in its acceptance), :507 (the acceptance runs `make env-blender && make check test-blender blender-ui`). Makefile:87 (`check: lint build test` \u2014 no `extension`), Makefile:57-58 (`wheel: uv build --wheel --out-dir dist/`), Makefile:45-47 (`build`). docs/tasks/M4/T4.4-extension-build-it.md:8-17 (`tools/build_extension.py` stages and builds the zip, and writes `build/extension/zip_path.txt`), :47 (T4.4's own acceptance has the same `dist/*.zip` bullet). .gitignore:3 (`dist/`). Blender 5.2.2 probes: `blender -b --factory-startup --command extension validate dist/*.zip` with no `dist/` prints `Error extracting archive \"[Errno 2] No such file or directory: 'dist/*.zip'\"`; `--command extension validate --help` shows a single optional `SOURCE_PATH`; `--command extension validate a.zip b.zip` prints `error: unrecognized arguments: b.zip`. docs/handoff/drafts/M7-M9/T7.2-presets.md:656 already uses the `\"$(cat build/extension/zip_path.txt)\"` form.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "- `\"$(.venv/bin/python tools/fetch_blender.py --version 5.2.2 --print-path-only)\" --command extension validate dist/*.zip` passes.",
+    "new": "- `make extension` then\n  `\"$(.venv/bin/python tools/fetch_blender.py --version 5.2.2 --print-path-only)\" --command extension validate \"$(cat build/extension/zip_path.txt)\"`\n  passes (host-only, not run: it needs the fetched Blender)."
+   }
+  ],
+  "note": "Real: `dist/` is made by `make wheel`/`make extension`, neither of which T7.1's acceptance runs, so on a fresh clone the glob stays literal and validate gets a non-existent path. `extension validate` takes one path, so the `$(cat build/extension/zip_path.txt)` form (T7.2's, line 656) is the correct translation, and the step is host-only under BACKLOG's table."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.1 design",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:146 (`REFERENCE_KNOBS: dict[str, object] = {}  # sync.reference.apply_reference_knobs()`), :376 (`\"reference_knobs\": {k: _jsonable(v) for k, v in reference.apply_reference_knobs().items()}`), :429-430 (the effective value is `reference_knobs[k]` when reference mode is on), :431-435 (R7 checks only names and descriptions). docs/tasks/M4/T4.3-render-loop.md:20-21 (`apply_reference_knobs() -> dict` returns `diffuse_gain = float32(0.1)`, `emission_gain = 2`, `ray_epsilon = float32(1e-4)`, `max_depth = 20`, `spiral_frame = \"smallpaint\"`). src/painterly/scene/integrator.cpp:52 (`SOCKET_ENUM(spiral_frame, \"Spiral Frame\", spiral_frame_values, SPIRAL_FRAME_CAMERA)`), :62 (`SOCKET_INT(max_depth, \"Max Depth\", 20)`), :65 (`SOCKET_FLOAT(diffuse_gain, \"Diffuse Gain\", 1.0f)`), :67 (`SOCKET_FLOAT(emission_gain, \"Emission Gain\", 2.0f)`), :71 (`SOCKET_FLOAT(ray_epsilon, \"Ray Epsilon\", 1e-4f)`). Command: python comparing the five reference values with the socket defaults: `DIFFERS diffuse_gain socket_default 1.0f reference 0.10000000149011612`, `EQUAL emission_gain`, `EQUAL ray_epsilon` (float32(1e-4) is exactly 1e-4f), `EQUAL max_depth`, `DIFFERS spiral_frame socket_default spiral_frame_values, SPIRAL_FRAME_CAMERA reference smallpaint` \u2014 so exactly two of the five are documented exceptions and the other three already agree.",
+  "duplicate_of": {
+   "source": "M7-M9-reviews.json",
+   "key": "review T7.1 design",
+   "index": 0
+  },
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md",
+    "old": "       - The effective value of `k` is `reference_knobs[k]` if `settings[\"reference_scene\"] and k in reference_knobs`, else\n         `settings[k]`.",
+    "new": "       - The effective value of `k` is `reference_knobs[k]` if `settings[\"reference_scene\"] and k in reference_knobs`, else\n         `settings[k]`.\n       - For every `k` in `dump[\"reference_knobs\"]` that is not `diffuse_gain` or `spiral_frame`,\n         `dump[\"reference_knobs\"][k] == dump[\"sockets\"][k][\"default\"]`. Those two are the documented exceptions and the\n         checker names each with its SPEC section in a comment: `diffuse_gain` (SPEC \u00a74: Blender albedos are 0\u20261, the\n         reference uses 0.1 with smallpaint `cl`) and `spiral_frame` (SPEC \u00a71: F = I for scenes authored in smallpaint\n         coordinates). `ray_epsilon` and `emission_gain` are float32 literals that agree exactly with their sockets, so no\n         tolerance is needed or used."
+   }
+  ],
+  "note": "Same defect as `M7-M9-reviews.json` design 0, and the identical edit closes both, so apply that one edit once. Only two of the five reference values differ from their socket defaults (`diffuse_gain` and `spiral_frame`), so the rule names exactly those two as the documented exceptions; the reviewer's \"three float32 knobs\" are not exceptions, because `ray_epsilon`, `emission_gain` and `max_depth` already agree exactly with their sockets."
+ }
+]
