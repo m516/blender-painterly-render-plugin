@@ -29,10 +29,7 @@ void PainterlyScene::clear()
   integrator = PainterlyIntegrator();
   next_object_id_ = 0;
   has_spiral_object_ = false;
-  const double identity[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
-  for (int i = 0; i < 9; i++) {
-    spiral_object_rotation_[i] = identity[i];
-  }
+  spiral_object_rotation_ = PAINTERLY_IDENTITY_3X3;
 }
 
 int PainterlyScene::add_material(const std::vector<KernelPainterlyLobe> &lobes,

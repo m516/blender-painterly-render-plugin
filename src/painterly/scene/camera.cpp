@@ -3,8 +3,6 @@
 
 #include "painterly/scene/camera.h"
 
-#include "painterly/util/math_double3.h"
-
 CCL_NAMESPACE_BEGIN
 
 void PainterlyCamera::set_smallpaint(const int new_width, const int new_height)
@@ -16,10 +14,10 @@ void PainterlyCamera::set_smallpaint(const int new_width, const int new_height)
     m = 0.0;
   }
   /* SPEC §1: M_s->cam has the columns (0,-1,0), (1,0,0), (0,0,1), so its transpose has the rows
-   * (0,-1,0), (1,0,0), (0,0,1). D19: the translation is 0. */
-  const double m_s_to_cam_t[12] = {0.0, -1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+   * (0,-1,0), (1,0,0), (0,0,1). D19: the translation is 0. The transpose is derived from
+   * PAINTERLY_M_S_TO_CAM (camera.h), the matrix's single definition. */
   for (int i = 0; i < 12; i++) {
-    camera_to_world[i] = m_s_to_cam_t[i];
+    camera_to_world[i] = PAINTERLY_M_S_TO_CAM_TRANSPOSE_3X4[size_t(i)];
   }
 }
 

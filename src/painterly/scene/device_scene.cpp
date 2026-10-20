@@ -42,9 +42,6 @@ void painterly_euler_rotation(const float3 euler, double out[9])
   out[8] = double(t.z.z);
 }
 
-/* M_s->cam, the matrix with the columns (0,-1,0), (1,0,0), (0,0,1) (SPEC §1), row-major. */
-constexpr double PAINTERLY_M_S_TO_CAM[9] = {0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
-
 }  // namespace
 
 PainterlyDeviceScene::~PainterlyDeviceScene()
@@ -218,9 +215,8 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
   const int spiral_frame = integrator.get_spiral_frame();
   if (spiral_frame == SPIRAL_FRAME_SMALLPAINT) {
     /* SPEC §1: reference scenes are authored in smallpaint coordinates, so F = I. */
-    const double identity[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
     for (int i = 0; i < 9; i++) {
-      frame[i] = identity[i];
+      frame[i] = PAINTERLY_IDENTITY_3X3[i];
     }
   }
   else if (spiral_frame == SPIRAL_FRAME_WORLD) {
@@ -239,6 +235,7 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
       }
     }
     double temp[9];
+    /* M_s->cam's single definition is PAINTERLY_M_S_TO_CAM (camera.h). */
     painterly_matmul_3x3(r_cam_to_world, PAINTERLY_M_S_TO_CAM, temp);
     painterly_matmul_3x3(temp, rotation, frame);
   }
@@ -249,7 +246,7 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
       throw std::invalid_argument(
           "PainterlyScene::device_update: spiral_frame is object but no spiral object is set");
     }
-    painterly_matmul_3x3(spiral_object_rotation_, rotation, frame);
+    painterly_matmul_3x3(spiral_object_rotation_.data(), rotation, frame);
   }
   else {
     throw std::invalid_argument("PainterlyScene::device_update: unknown spiral_frame");

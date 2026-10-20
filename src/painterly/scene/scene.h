@@ -9,6 +9,7 @@
  * bridge to the kernel (docs/architecture.md, "Dependency direction"). The methods mirror the
  * _painterly.pyi Scene API, so the bindings (T3.15) are a thin conversion layer. */
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -21,6 +22,12 @@
 #include "painterly/scene/object.h"
 
 CCL_NAMESPACE_BEGIN
+
+/* The 3x3 identity, row-major. Its single definition: the spiral object's rotation starts here
+ * (spiral_object_rotation_), and the spiral frame `smallpaint` is F = I (SPEC §1). The 3x3
+ * identity is a mathematical definition (delta(r, c)), not a tuned value. */
+constexpr std::array<double, 9> PAINTERLY_IDENTITY_3X3 = {
+    1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
 
 class PainterlyDeviceScene;
 
@@ -101,7 +108,7 @@ class PainterlyScene {
   int next_object_id_ = 0;
   bool has_spiral_object_ = false;
   /* Row-major 3x3, the identity until set_spiral_object is called. */
-  double spiral_object_rotation_[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+  std::array<double, 9> spiral_object_rotation_ = PAINTERLY_IDENTITY_3X3;
 };
 
 CCL_NAMESPACE_END

@@ -7,13 +7,41 @@
  * the rotation M_s->cam^T of SPEC §1 with zero translation, so that spiral_frame `camera` gives
  * F = R(spiral_rotation) for it (D19); its rays use neither matrix (SPEC §7). */
 
+#include <array>
+
 #include "painterly/kernel/types.h"
+#include "painterly/util/math_double3.h"
 
 CCL_NAMESPACE_BEGIN
 
 /* SPEC §7: the image side the `jitter` socket's fraction is measured against (Blender
  * sensor_fit, resolved by the add-on). */
 enum class PainterlyCameraFit { FIT_HORIZONTAL, FIT_VERTICAL };
+
+/* SPEC §1: M_s->cam, the matrix with the columns (0,-1,0), (1,0,0), (0,0,1), row-major. This
+ * table is its single definition: the smallpaint camera's camera_to_world is its transpose with
+ * translation 0 (D19), derived below, and the spiral frame `camera` (device_scene.cpp) uses it
+ * directly. */
+constexpr double PAINTERLY_M_S_TO_CAM[9] = {0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+
+/* M_s->cam^T as the row-major 3x4 affine [M_s->cam^T | 0] that KernelPainterlyCamera::
+ * camera_to_world holds for the smallpaint camera (D19): entry (r, c) of the 3x3 part is
+ * M_s->cam[c][r] (the transpose), and the translation column is 0. Derived from the table above,
+ * never written out again. */
+constexpr std::array<double, 12> painterly_m_s_to_cam_transpose_3x4()
+{
+  std::array<double, 12> transpose{};
+  for (int r = 0; r < 3; r++) {
+    for (int c = 0; c < 3; c++) {
+      transpose[size_t(PAINTERLY_TRANSFORM_3X4_ROW_STRIDE * r + c)] =
+          PAINTERLY_M_S_TO_CAM[3 * c + r];
+    }
+  }
+  return transpose;
+}
+
+constexpr std::array<double, 12> PAINTERLY_M_S_TO_CAM_TRANSPOSE_3X4 =
+    painterly_m_s_to_cam_transpose_3x4();
 
 class PainterlyCamera {
  public:

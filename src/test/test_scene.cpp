@@ -10,8 +10,8 @@
 // Matrices are compared exactly where the card says exactly (e = 0, axis permutations: entries are
 // 0/±1) and with a derived binary32 bound for the one general nonzero e, because
 // euler_to_transform evaluates cosf/sinf in float (third_party/cycles/util/transform.h:236-260).
-// Jitter values are compared bitwise (memcmp, so -0.0 and +0.0 differ) with their defining
-// expressions.
+// Jitter values are compared bitwise (memcmp, so -0.0 and +0.0 differ) with a hex-float literal
+// whose bits a command in the comment computes.
 
 #include <doctest/doctest.h>
 
@@ -363,6 +363,38 @@ TEST_CASE("painterly integrator: device_update fills every kernel-consumed field
   CHECK(kernel.continue_after_emitter == 0);
   CHECK(kernel.ray_epsilon == double(0.125f));
   CHECK(kernel.two_sided == 0);
+
+  /* The same conversion on a non-dyadic value, whose binary32 and decimal forms differ: the
+   * values above are all dyadic (0.5f, 0.25f, 0.125f, 8.0f), so they cannot tell double(float)
+   * from a decimal round trip, while double(0.1f) is 0.10000000149011612..., not 0.1. The expected
+   * value is the bits of double(0.1f), as a hex-float literal. The command, and its output:
+   *
+   *   python3 -c 'import struct
+   *   f = struct.unpack("<f", struct.pack("<f", 0.1))[0]
+   *   print(f.hex(), struct.pack(">d", f).hex(), (0.1).hex())'
+   *   0x1.99999a0000000p-4 3fb99999a0000000 0x1.999999999999ap-4
+   *
+   * struct.pack("<f", 0.1) is the round-to-nearest-even binary32 of 0.1 (0x3dcccccd), so f is
+   * float32(0.1); widening a binary32 to binary64 is exact, and the 16 hex digits after "0x1." are
+   * the 52 bits of the binary64 significand. The second number is those bits as 16 hex digits; the
+   * third is decimal 0.1, a different binary64 value. */
+  constexpr float non_dyadic = 0.1f;
+  constexpr double non_dyadic_widened = 0x1.99999a0000000p-4;
+  /* The value is non-dyadic in the sense above: the nearest double to the decimal 0.1 differs. */
+  REQUIRE(non_dyadic_widened != 0.1);
+
+  PainterlyIntegrator non_dyadic_integrator;
+  non_dyadic_integrator.set_alpha(non_dyadic);
+  non_dyadic_integrator.set_diffuse_gain(non_dyadic);
+  non_dyadic_integrator.set_emission_gain(non_dyadic);
+  non_dyadic_integrator.set_ray_epsilon(non_dyadic);
+  KernelPainterlyIntegrator non_dyadic_kernel{};
+  non_dyadic_integrator.device_update(non_dyadic_kernel);
+  CHECK(same_bits(non_dyadic_kernel.alpha, non_dyadic_widened));
+  CHECK(same_bits(non_dyadic_kernel.diffuse_gain, non_dyadic_widened));
+  CHECK(same_bits(non_dyadic_kernel.emission_gain, non_dyadic_widened));
+  CHECK(same_bits(non_dyadic_kernel.ray_epsilon, non_dyadic_widened));
+
   /* device_update does not touch the spiral frame: PainterlyScene::device_update computes F. */
 }
 
@@ -994,8 +1026,18 @@ TEST_CASE("painterly camera: device_update stores the jitter in the units of SPE
     CHECK(kernel.height == 400);
     const double expected = 2.0 * jitter;
     CHECK(same_bits(kernel.jitter, expected));
-    /* The reference 1/700 image-plane units: 2 * float32(1/1400). */
-    CHECK(same_bits(kernel.jitter, 2.0 * double(1.0f / 1400.0f)));
+    /* The reference 1/700 image-plane units (SPEC §7), independent of `jitter` above: the bits of
+     * 2 * double(float32(1/1400)), as a hex-float literal. The command, and its output:
+     *
+     *   python3 -c 'import struct
+     *   f = struct.unpack("<f", struct.pack("<f", 1.0 / 1400.0))[0]
+     *   print((2.0 * f).hex(), struct.pack(">d", 2.0 * f).hex())'
+     *   0x1.767dce0000000p-10 3f5767dce0000000
+     *
+     * struct.pack("<f", ...) is the round-to-nearest-even binary32 of 1/1400, i.e.
+     * float32(1/1400); 2.0 * f is exact (a power of two), and the 16 hex digits after "0x1." are
+     * the 52 bits of the binary64 significand, so the literal below is those bits exactly. */
+    CHECK(same_bits(kernel.jitter, 0x1.767dce0000000p-10));
     /* The smallpaint camera stores M_s->cam^T with translation 0 (D19). */
     CHECK(std::memcmp(kernel.camera_to_world,
                       M_S_TO_CAM_TRANSPOSE_3X4,
