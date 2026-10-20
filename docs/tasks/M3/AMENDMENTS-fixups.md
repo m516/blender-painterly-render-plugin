@@ -2,10 +2,11 @@
 
 This file is the record M3-PROPAGATE's Outcome asks for: one entry per edit that carries a T3.19-T3.24 fix-up into a card that had not run yet. Each entry names the file, the old text and the new text, copied byte for byte from the diff that made the edit (the diff's `-`/`+` column removed), and the reason: the fix-up or decision the edit carries.
 
-Two sources, and every hunk of both appears here exactly once:
+Three sources, and every hunk of each appears here exactly once:
 
 - `git show fdc6357 -- docs/tasks` (M3-PROPAGATE, commit `fdc6357`, subject `t-propagate: M3-PROPAGATE: carry the fix-up renames into the cards not yet run`): T3.13, T3.14 and T3.15. Every entry below quotes the removed and added lines of that diff.
-- This item's T3.17 edit (the last entry): the normal-orientation line, applied by M3-PROPAGATE-b. Its old and new text are T3.21's "Edits for later cards" block 1, verbatim.
+- This item's T3.17 edit (entry 9): the normal-orientation line, applied by M3-PROPAGATE-b. Its old and new text are T3.21's "Edits for later cards" block 1, verbatim.
+- The Opus ruling of 2026-10-18 on M3-FIX-T3.13a (entries 10 and 11): the singular-`object_to_world` line and the `src/test/test_scene.cpp` bullet of T3.13.
 
 Where a fix-up card specifies an edit verbatim, the entry names that card and block: T3.21's "Edits for later cards" covers T3.13's read-first line, `device_update` and `test_scene.cpp` (blocks 1-3) and this item's T3.17 edit (block 1 under the T3.17 heading).
 
@@ -181,4 +182,40 @@ New text:
 
 ```text
   - Normal orientation: Embree's object-space Ng is `(v1 − v0) × (v2 − v0)` for the corners in index order (`painterly/bvh/embree.h`, T3.21). Order each triangle's corners counter-clockwise as seen from the side that smallpaint's `n` points to, so that Ng has the direction and sign of `n`. With no corner normals the shading normal is `normalize(Ng)`, and `two_sided = False` keeps smallpaint's plane normal semantics exactly.
+```
+
+## 10. `docs/tasks/M3/T3.13-scene.md` — the singular-transform line, T3.21's `device_update` bullet
+
+Reason: the Opus ruling of 2026-10-18 on M3-FIX-T3.13a. An object whose mesh has no triangles cannot be hit, so its `normal_to_world` stays zero and its `object_to_world` is not checked for singularity; `painterly_embree_scene_create` skips such an object in exactly the same way. The edit records the ruling in the card the code was written from.
+
+Old text:
+
+```text
+      function, so Ng and the corner normals share one matrix (T3.21). A singular `object_to_world` makes `device_update`
+      throw `std::invalid_argument`;
+```
+
+New text:
+
+```text
+      function, so Ng and the corner normals share one matrix (T3.21). A singular `object_to_world` makes `device_update`
+      throw `std::invalid_argument` when its mesh has triangles (an object whose mesh has none cannot be hit; its
+      `normal_to_world` stays zero and is not checked, as `painterly_embree_scene_create` skips it: Opus ruling,
+      2026-10-18);
+```
+
+## 11. `docs/tasks/M3/T3.13-scene.md` — `@@ -107,7 +109,7 @@`, the `src/test/test_scene.cpp` bullet
+
+Reason: the same Opus ruling of 2026-10-18. The test compares `normal_to_world` with `painterly_normal_matrix` only for an object whose mesh has triangles; an object on a mesh without triangles keeps a zero matrix by the ruling, so the unqualified phrase would demand a comparison the ruling rules out.
+
+Old text:
+
+```text
+- `src/test/test_scene.cpp`: socket defaults, the set/get round trip, the UI-info name-set equality, object-id auto-assignment, `device_update` array sizes (`tri_corner_normals`: `PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS` floats per triangle), `svm_offset == -1` for every material, `normal_to_world` of every object bitwise equal to `painterly_normal_matrix` of its `object_to_world`, invalid-mesh rejection, and a singular `object_to_world` rejected with `std::invalid_argument`.
+```
+
+New text:
+
+```text
+- `src/test/test_scene.cpp`: socket defaults, the set/get round trip, the UI-info name-set equality, object-id auto-assignment, `device_update` array sizes (`tri_corner_normals`: `PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS` floats per triangle), `svm_offset == -1` for every material, `normal_to_world` of every object whose mesh has triangles bitwise equal to `painterly_normal_matrix` of its `object_to_world`, invalid-mesh rejection, and a singular `object_to_world` rejected with `std::invalid_argument`.
 ```

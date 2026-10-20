@@ -33,8 +33,11 @@ struct PainterlyMaterial {
       {
         throw std::invalid_argument("PainterlyMaterial: unknown lobe kind");
       }
-      if (lobe.weight.x < 0.0 || lobe.weight.y < 0.0 || lobe.weight.z < 0.0) {
-        throw std::invalid_argument("PainterlyMaterial: negative lobe weight");
+      /* `!(w >= 0.0)` rather than `w < 0.0`: a NaN weight fails both comparisons, so only the
+       * negated form rejects it, as the ior check below does. A NaN weight would poison every
+       * radiance and the Rec.709 luminance the lobe choice divides by (SPEC §6). */
+      if (!(lobe.weight.x >= 0.0) || !(lobe.weight.y >= 0.0) || !(lobe.weight.z >= 0.0)) {
+        throw std::invalid_argument("PainterlyMaterial: negative or NaN lobe weight");
       }
       if (lobe.kind == LOBE_GLASS && !(lobe.ior > 0.0)) {
         throw std::invalid_argument("PainterlyMaterial: a glass lobe needs ior > 0");

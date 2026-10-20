@@ -4,7 +4,8 @@
 // Tests of painterly/scene/ (T3.13): the PainterlyIntegrator socket defaults and their round trip,
 // the UI info's name-set equality, object-id auto-assignment, the device_update arrays, the normal
 // matrix of every object, the mesh validation, the singular-transform rejection, the spiral frame
-// F of the four `spiral_frame` cases and the camera jitter of SPEC §7.
+// F of the four `spiral_frame` cases, the camera jitter and the background of SPEC §7, and the
+// strong exception guarantee of PainterlyScene::device_update.
 //
 // Matrices are compared exactly where the card says exactly (e = 0, axis permutations: entries are
 // 0/±1) and with a derived binary32 bound for the one general nonzero e, because
@@ -74,19 +75,37 @@ const double IDENTITY_3X4[12] = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.
 const float IDENTITY_3X4_FLOAT[12] = {
     1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
-/* Binary32 unit round-off: 2^-24. A binary32 significand has 24 bits, so a correctly rounded
- * binary32 result and a standard library cosf/sinf (within 1 ulp on this host) carry at most 2^-24
- * of relative error. */
-constexpr double F32_UNIT_ROUNDOFF = 0x1p-24;
-/* Absolute bound of one entry of R(e) against its binary64 evaluation. A product of three factors
- * carries at most 3 * F32_UNIT_ROUNDOFF of relative error (one per factor: cosf/sinf and each
- * float multiply), and the sum or difference of the two products adds one more rounding of
- * relative size F32_UNIT_ROUNDOFF on each term, so the entry's absolute error is at most 4 *
- * F32_UNIT_ROUNDOFF * (|a| + |b|), with a and b the two double-evaluated terms. This is the bound
- * the test applies; it is derived, not picked. Measured for e = (0.3f, 0.5f, 0.7f): the worst
- * entry uses 0.40 of its bound (a 9-entry probe of euler_to_transform against this reference,
- * built with g++ -std=c++20 -O2 -ffp-contract=off on this host). */
-constexpr double F32_SPIRAL_ENTRY_FACTOR = 4.0 * F32_UNIT_ROUNDOFF;
+/* Absolute bound of one entry of R(e) against its binary64 evaluation: |actual - reference| is at
+ * most F32_SPIRAL_ENTRY_FACTOR * (|t0| + |t1|), with t0 and t1 the two terms of that entry in the
+ * reference.
+ *
+ * Every rounding counted. euler_to_transform (third_party/cycles/util/transform.h:246-256)
+ * evaluates an entry as one add or subtract of two products: the 3-factor product sy*sx*cz (or
+ * sy*cx*cz) needs two multiplies, the 2-factor product cx*sz (or sx*sz) one. So one entry takes
+ * part in five library results (cosf/sinf) and four binary32 roundings -- two in the 3-factor
+ * product, one in the 2-factor product and one for the add -- not three. The reference below
+ * (reference_euler_rotation) performs the same four roundings in binary64 on the same library
+ * results. Assumed: each library result is within 1 ulp (relative error at most 2^-23 in binary32,
+ * 2^-52 in binary64), and each arithmetic operation is correctly rounded (at most 2^-24 and 2^-53
+ * of relative error). With
+ *   c32 = (1 + 2^-23)^5 (1 + 2^-24)^4 - 1   (the binary32 entry, against the exact entry)
+ *   c64 = (1 + 2^-52)^5 (1 + 2^-53)^4 - 1   (the binary64 reference, against the exact entry)
+ * and |t0| + |t1| >= (1 - c64)(|a| + |b|) for the exact terms a and b, the entry's error is at
+ * most (c32 + c64) / (1 - c64) times the reference's |t0| + |t1|. That factor, rounded up to
+ * binary64 so that the bound holds:
+ *
+ *   python3 -c 'import math
+ *   from fractions import Fraction as F
+ *   c = lambda ulp, u: (1 + F(1, ulp))**5 * (1 + F(1, u))**4 - 1
+ *   c32, c64 = c(2**23, 2**24), c(2**52, 2**53)
+ *   f = (c32 + c64) / (1 - c64)
+ *   x = float(f)
+ *   x = x if F(x) >= f else math.nextafter(x, math.inf)
+ *   print(x.hex(), repr(x * 2**23))'
+ *
+ * prints "0x1.c0000ace0026dp-21 7.000002576038793": the factor is 7.000002576038793 * 2^-23, the
+ * literal below. */
+constexpr double F32_SPIRAL_ENTRY_FACTOR = 0x1.c0000ace0026dp-21;
 
 /* R(e) for the XYZ Euler rotation e, evaluated in binary64, and its two product terms per entry.
  * euler_to_transform's assignment (util/transform.h:246-256) maps its row x to out[0..2], row y to
@@ -130,6 +149,41 @@ bool same_matrix_exact(const double a[9], const double b[9])
     }
   }
   return true;
+}
+
+/* Row-major 3x3 product `permutation * matrix`, for a permutation matrix: entries 0/±1, exactly
+ * one nonzero per row. Every entry of the result is one entry of `matrix` with its sign, so the
+ * product is exact and a reference's per-entry terms transform the same way (the overload below).
+ */
+void permute_rows(const double permutation[9], const double matrix[9], double out[9])
+{
+  for (int r = 0; r < 3; r++) {
+    for (int c = 0; c < 3; c++) {
+      double value = 0.0;
+      for (int k = 0; k < 3; k++) {
+        value += permutation[3 * r + k] * matrix[3 * k + c];
+      }
+      out[3 * r + c] = value;
+    }
+  }
+}
+
+/* The same product on a reference's per-entry terms: entry (r, c) of the result takes its two
+ * terms from the one row k of `terms` that the permutation selects. */
+void permute_rows(const double permutation[9], const double terms[9][2], double out[9][2])
+{
+  for (int r = 0; r < 3; r++) {
+    int source = 0;
+    for (int k = 0; k < 3; k++) {
+      if (permutation[3 * r + k] != 0.0) {
+        source = k;
+      }
+    }
+    for (int c = 0; c < 3; c++) {
+      out[3 * r + c][0] = terms[3 * source + c][0];
+      out[3 * r + c][1] = terms[3 * source + c][1];
+    }
+  }
 }
 
 /* True when every entry of `actual` is within the derived binary32 bound of `expected`, whose two
@@ -629,6 +683,295 @@ TEST_CASE("painterly scene: the spiral frame of a general nonzero rotation")
   scene.integrator.set_spiral_frame(SPIRAL_FRAME_OBJECT);
   scene.device_update(ds);
   CHECK(spiral_entry_within_bound(ds.data.integrator.spiral_frame, expected, terms));
+}
+
+/* The three rotation matrices the tests below use. Each is a signed permutation matrix, so every
+ * product with it is exact and R(e) keeps its reference bound (permute_rows). */
+/* M_s->cam as a 3x3 (SPEC §1): the matrix with the columns (0,-1,0), (1,0,0), (0,0,1). */
+const double *const CAMERA_FRAME_ROTATION = M_S_TO_CAM;
+/* The camera_to_world of the perspective camera below: rows (0,1,0), (0,0,1), (1,0,0), a cyclic
+ * axis permutation, so R_cam->world * M_s->cam is neither the identity nor a symmetric matrix and
+ * the order of the two factors of F = R_cam->world * M_s->cam * R(e) is observable. */
+const double CAMERA_TO_WORLD_3X4[12] = {
+    0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+const double CAMERA_TO_WORLD_3X3[9] = {0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0};
+/* The spiral object's rotation: the same cyclic axis permutation, so R_obj * R(e) differs from
+ * R(e) * R_obj (the cyclic permutation does not commute with a general rotation). */
+const double SPIRAL_OBJECT_ROTATION[9] = {0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0};
+
+TEST_CASE("painterly scene: the spiral frame of a nonzero rotation in every spiral_frame case")
+{
+  /* One general nonzero e, so that the factors of every product are distinguishable: with e = 0
+   * both orders of a product give the same matrix. R(e) is compared through the derived bound of
+   * the test above; every product with it is composed from permutation matrices (exact). */
+  const float3 euler = make_float3(0.3f, 0.5f, 0.7f);
+  double r[9];
+  double r_terms[9][2];
+  reference_euler_rotation(euler, r, r_terms);
+
+  double identity_4x4[16] = {0.0};
+  for (int i = 0; i < 4; i++) {
+    identity_4x4[4 * i + i] = 1.0;
+  }
+
+  PainterlyScene scene;
+  scene.add_material({diffuse_lobe()}, make_double3(0.0));
+  scene.add_plane(make_double3(0.0, 0.0, 1.0), 1.0, 0, -1);
+  scene.integrator.set_spiral_rotation(euler);
+  PainterlyDeviceScene ds;
+
+  /* smallpaint: F = I whatever e is (SPEC §1). e != 0, so F = R(e) would fail. */
+  scene.set_camera_smallpaint(8, 8);
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_SMALLPAINT);
+  scene.device_update(ds);
+  CHECK(same_matrix_exact(ds.data.integrator.spiral_frame, IDENTITY_3X3));
+
+  /* world: F = R(e). */
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_WORLD);
+  scene.device_update(ds);
+  CHECK(spiral_entry_within_bound(ds.data.integrator.spiral_frame, r, r_terms));
+
+  /* camera with the smallpaint camera: R_cam->world = M_s->cam^T, so F = M_s->cam^T * M_s->cam *
+   * R(e) = R(e) (D19). */
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_CAMERA);
+  scene.device_update(ds);
+  CHECK(spiral_entry_within_bound(ds.data.integrator.spiral_frame, r, r_terms));
+
+  /* camera with a cyclic-permutation camera_to_world: F = C * M_s->cam * R(e), in that order. The
+   * reverse order, C * R(e) * M_s->cam, is a different matrix. */
+  scene.set_camera_perspective(
+      8, 8, identity_4x4, CAMERA_TO_WORLD_3X4, PainterlyCameraFit::FIT_HORIZONTAL);
+  scene.device_update(ds);
+  /* M_s->cam * R(e) first, then C * that: the reference's per-entry terms follow the same two
+   * row permutations, whose signs leave |t0| + |t1| unchanged. */
+  double m_times_r[9];
+  double m_times_r_terms[9][2];
+  permute_rows(CAMERA_FRAME_ROTATION, r, m_times_r);
+  permute_rows(CAMERA_FRAME_ROTATION, r_terms, m_times_r_terms);
+  double camera_expected[9];
+  double camera_terms[9][2];
+  permute_rows(CAMERA_TO_WORLD_3X3, m_times_r, camera_expected);
+  permute_rows(CAMERA_TO_WORLD_3X3, m_times_r_terms, camera_terms);
+  CHECK(spiral_entry_within_bound(ds.data.integrator.spiral_frame, camera_expected, camera_terms));
+
+  /* object with the same cyclic rotation as R_obj: F = R_obj * R(e), in that order. R_obj * R(e)
+   * and R(e) * R_obj differ by more than the bound. */
+  scene.set_spiral_object(SPIRAL_OBJECT_ROTATION);
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_OBJECT);
+  scene.device_update(ds);
+  double object_expected[9];
+  double object_terms[9][2];
+  permute_rows(SPIRAL_OBJECT_ROTATION, r, object_expected);
+  permute_rows(SPIRAL_OBJECT_ROTATION, r_terms, object_terms);
+  CHECK(spiral_entry_within_bound(ds.data.integrator.spiral_frame, object_expected, object_terms));
+}
+
+TEST_CASE("painterly scene: device_update fills the camera, the integrator and the background")
+{
+  /* The scene-level fill: PainterlyScene::device_update must hand every field to the device scene,
+   * not only compute F. Each expected value is a defining expression of SPEC §7, §8 or §6, never a
+   * value read back from the device scene. */
+  double identity_4x4[16] = {0.0};
+  for (int i = 0; i < 4; i++) {
+    identity_4x4[4 * i + i] = 1.0;
+  }
+
+  PainterlyScene scene;
+  scene.add_material({diffuse_lobe()}, make_double3(0.0));
+  scene.add_plane(make_double3(0.0, 0.0, 1.0), 1.0, 0, -1);
+  /* Non-default values on every socket, so that a missing fill cannot coincide with a default. */
+  scene.integrator.set_chain(CHAIN_LANE);
+  scene.integrator.set_lane_length(5);
+  scene.integrator.set_seed(9u);
+  scene.integrator.set_u2_mode(U2_INDEPENDENT);
+  scene.integrator.set_k0_phase_lock_bits(3);
+  scene.integrator.set_alpha(0.5f);
+  scene.integrator.set_max_depth(4);
+  scene.integrator.set_diffuse_gain(0.25f);
+  scene.integrator.set_emission_gain(8.0f);
+  scene.integrator.set_continue_after_emitter(false);
+  scene.integrator.set_ray_epsilon(0.125f);
+  scene.integrator.set_two_sided(false);
+  scene.integrator.set_jitter(0.5f);
+  scene.set_camera_perspective(
+      320, 200, identity_4x4, CAMERA_TO_WORLD_3X4, PainterlyCameraFit::FIT_HORIZONTAL);
+  scene.set_background(make_double3(0.25, 0.5, 0.75));
+  scene.add_sun(make_double3(0.0, 0.0, 4.0), 0.5, make_double3(1.0, 2.0, 3.0));
+
+  PainterlyDeviceScene ds;
+  scene.device_update(ds);
+
+  /* The integrator's kernel fields (SPEC §8): the ones PainterlyIntegrator::device_update writes.
+   * Floats become doubles with double(float), exact for every float value. */
+  CHECK(ds.data.integrator.chain == CHAIN_LANE);
+  CHECK(ds.data.integrator.lane_length == 5);
+  CHECK(ds.data.integrator.seed == 9u);
+  CHECK(ds.data.integrator.u2_mode == U2_INDEPENDENT);
+  CHECK(ds.data.integrator.k0_phase_lock_bits == 3);
+  CHECK(ds.data.integrator.alpha == double(0.5f));
+  CHECK(ds.data.integrator.max_depth == 4);
+  CHECK(ds.data.integrator.diffuse_gain == double(0.25f));
+  CHECK(ds.data.integrator.emission_gain == double(8.0f));
+  CHECK(ds.data.integrator.continue_after_emitter == 0);
+  CHECK(ds.data.integrator.ray_epsilon == double(0.125f));
+  CHECK(ds.data.integrator.two_sided == 0);
+
+  /* The camera (SPEC §7): perspective with FIT_HORIZONTAL, so the jitter is jitter * width raster
+   * pixels. */
+  CHECK(ds.data.cam.type == PAINTERLY_CAMERA_PERSPECTIVE);
+  CHECK(ds.data.cam.width == 320);
+  CHECK(ds.data.cam.height == 200);
+  CHECK(same_bits(ds.data.cam.jitter, double(0.5f) * 320.0));
+  CHECK(std::memcmp(ds.data.cam.raster_to_camera, identity_4x4, sizeof(identity_4x4)) == 0);
+  CHECK(std::memcmp(
+            ds.data.cam.camera_to_world, CAMERA_TO_WORLD_3X4, sizeof(CAMERA_TO_WORLD_3X4)) == 0);
+
+  /* The background and its suns (SPEC §6). */
+  CHECK(same_vec(ds.data.background.radiance, make_double3(0.25, 0.5, 0.75)));
+  CHECK(ds.data.background.num_suns == 1);
+  REQUIRE(ds.suns.size() == 1u);
+  CHECK(same_vec(ds.suns[0].direction, make_double3(0.0, 0.0, 1.0)));
+  CHECK(same_bits(ds.suns[0].cos_half_angle, std::cos(0.25)));
+  CHECK(same_vec(ds.suns[0].radiance, make_double3(1.0, 2.0, 3.0)));
+
+  /* The globals view points at the suns array and counts it through the kernel background. */
+  CHECK(ds.globals().suns == ds.suns.data());
+}
+
+TEST_CASE("painterly material: a NaN lobe weight is rejected")
+{
+  /* The ior check's NaN-safe form: `!(w >= 0.0)`. `w < 0.0` is false for NaN, so that form would
+   * let a NaN weight through and poison the radiance and the Rec.709 luminance (SPEC §6). */
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double3 weights[3] = {
+      make_double3(nan, 1.0, 1.0), make_double3(1.0, nan, 1.0), make_double3(1.0, 1.0, nan)};
+  for (const double3 &weight : weights) {
+    KernelPainterlyLobe lobe{};
+    lobe.kind = LOBE_DIFFUSE;
+    lobe.weight = weight;
+    PainterlyMaterial material;
+    material.lobes = {lobe};
+    CHECK_THROWS_AS(material.validate(), std::invalid_argument);
+  }
+  /* A zero weight is still accepted: it is not negative. */
+  KernelPainterlyLobe zero_weight{};
+  zero_weight.kind = LOBE_DIFFUSE;
+  zero_weight.weight = make_double3(0.0);
+  PainterlyMaterial material;
+  material.lobes = {zero_weight};
+  CHECK_NOTHROW(material.validate());
+}
+
+TEST_CASE("painterly scene: device_update keeps the device scene on every throwing path")
+{
+  /* The strong guarantee: after a successful device_update, a throw leaves every array's size and
+   * contents, the kernel data and the pointers bind_globals() set exactly as they were. The kernel
+   * structs are plain-old-data with no operator==, so every array is compared as bytes (memcmp),
+   * which is the stronger test anyway. */
+  PainterlyScene scene;
+  const int material = scene.add_material({diffuse_lobe()}, make_double3(0.5, 0.25, 0.125));
+  scene.add_plane(make_double3(0.0, 0.0, 1.0), 1.0, material, -1);
+  int mesh = -1;
+  add_triangle_mesh(scene, true, material, mesh);
+  scene.add_object(mesh, IDENTITY_3X4_FLOAT, -1);
+  scene.set_background(make_double3(0.75));
+  scene.add_sun(make_double3(0.0, 0.0, 1.0), 0.25, make_double3(1.0, 1.0, 1.0));
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_WORLD);
+  scene.integrator.set_spiral_rotation(make_float3(0.3f, 0.5f, 0.7f));
+
+  PainterlyDeviceScene ds;
+  scene.device_update(ds);
+
+  /* The state every throwing path must leave untouched: copies of the arrays, so the comparison is
+   * against the earlier contents, never against the device scene itself. */
+  const std::vector<KernelPainterlyAnalytic> analytic = ds.analytic;
+  const std::vector<KernelPainterlyMaterial> materials = ds.materials;
+  const std::vector<KernelPainterlyLobe> lobes = ds.lobes;
+  const std::vector<KernelPainterlySun> suns = ds.suns;
+  const std::vector<KernelPainterlyObject> objects = ds.objects;
+  const std::vector<KernelPainterlyMesh> meshes = ds.meshes;
+  const std::vector<int> tri_material = ds.tri_material;
+  const std::vector<float> tri_corner_normals = ds.tri_corner_normals;
+  const KernelPainterlyData data = ds.data;
+  const void *const bvh = ds.globals().bvh;
+
+  /* True when every array, the kernel data, the BVH and the pointers bind_globals() set are still
+   * the earlier ones, and every pointer still points into the device scene's own arrays. */
+  const auto unchanged = [&]() {
+    const auto same_bytes = [](const auto &a, const auto &b) {
+      return a.size() == b.size() &&
+             (a.empty() || std::memcmp(a.data(), b.data(), a.size() * sizeof(a[0])) == 0);
+    };
+    CHECK(same_bytes(ds.analytic, analytic));
+    CHECK(same_bytes(ds.materials, materials));
+    CHECK(same_bytes(ds.lobes, lobes));
+    CHECK(same_bytes(ds.suns, suns));
+    CHECK(same_bytes(ds.objects, objects));
+    CHECK(same_bytes(ds.meshes, meshes));
+    CHECK(same_bytes(ds.tri_material, tri_material));
+    CHECK(same_bytes(ds.tri_corner_normals, tri_corner_normals));
+    CHECK(std::memcmp(&ds.data, &data, sizeof(data)) == 0);
+
+    const PainterlyGlobalsCPU now = ds.globals();
+    CHECK(now.data == &ds.data);
+    CHECK(now.analytic == ds.analytic.data());
+    CHECK(now.num_analytic == int(ds.analytic.size()));
+    CHECK(now.materials == ds.materials.data());
+    CHECK(now.num_materials == int(ds.materials.size()));
+    CHECK(now.lobes == ds.lobes.data());
+    CHECK(now.num_lobes == int(ds.lobes.size()));
+    CHECK(now.suns == ds.suns.data());
+    CHECK(now.objects == ds.objects.data());
+    CHECK(now.num_objects == int(ds.objects.size()));
+    CHECK(now.meshes == ds.meshes.data());
+    CHECK(now.num_meshes == int(ds.meshes.size()));
+    CHECK(now.tri_material == ds.tri_material.data());
+    CHECK(now.tri_corner_normals == ds.tri_corner_normals.data());
+    CHECK(now.bvh == bvh);
+    CHECK(now.bvh != nullptr);
+  };
+  unchanged();
+
+  /* An out-of-range mesh index on an object. */
+  scene.objects[0].mesh = 7;
+  CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
+  unchanged();
+  scene.objects[0].mesh = mesh;
+
+  /* A singular object_to_world on a mesh with triangles. */
+  {
+    const float singular[12] = {
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    const std::vector<float> saved(scene.objects[0].object_to_world,
+                                   scene.objects[0].object_to_world + 12);
+    for (int i = 0; i < 12; i++) {
+      scene.objects[0].object_to_world[i] = singular[i];
+    }
+    CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
+    unchanged();
+    for (int i = 0; i < 12; i++) {
+      scene.objects[0].object_to_world[i] = saved[size_t(i)];
+    }
+  }
+
+  /* spiral_frame `object` with no spiral object. */
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_OBJECT);
+  CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
+  unchanged();
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_WORLD);
+
+  /* An unknown spiral_frame. */
+  scene.integrator.set_spiral_frame(99);
+  CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
+  unchanged();
+  scene.integrator.set_spiral_frame(SPIRAL_FRAME_WORLD);
+
+  /* A successful device_update still replaces the device scene: the guarantee is not a refusal to
+   * update. */
+  scene.set_background(make_double3(0.5));
+  scene.device_update(ds);
+  CHECK(same_vec(ds.data.background.radiance, make_double3(0.5)));
+  CHECK(ds.globals().suns == ds.suns.data());
 }
 
 TEST_CASE("painterly camera: device_update stores the jitter in the units of SPEC §7")

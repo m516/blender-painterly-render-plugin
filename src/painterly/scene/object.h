@@ -7,6 +7,10 @@
  * Blender exports and that Embree receives (painterly/bvh/embree.h); the kernel reads the object's
  * normal matrix instead (painterly/kernel/globals.h). */
 
+/* CCL_NAMESPACE_BEGIN/END come from util/defines.h, through util/types.h as every other header of
+ * src/painterly/scene/ gets them; the struct itself needs no other header. */
+#include "util/types.h"
+
 CCL_NAMESPACE_BEGIN
 
 struct PainterlyObject {

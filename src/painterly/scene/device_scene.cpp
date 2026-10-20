@@ -3,6 +3,7 @@
 
 #include "painterly/scene/device_scene.h"
 
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -93,24 +94,39 @@ PainterlyGlobalsCPU PainterlyDeviceScene::globals() const
 
 void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
 {
+  /* The strong guarantee: every array and the Embree scene are built in locals below, and `ds` is
+   * written only by the commit at the end, after every check has passed. A throw therefore leaves
+   * the device scene exactly as it was: its arrays, its kernel data, the BVH and the pointers that
+   * bind_globals() set (they would otherwise dangle after a reallocation). */
+  std::vector<KernelPainterlyMaterial> new_materials;
+  std::vector<KernelPainterlyLobe> new_lobes;
+  std::vector<KernelPainterlyAnalytic> new_analytic;
+  std::vector<KernelPainterlyMesh> new_meshes;
+  std::vector<int> new_tri_material;
+  std::vector<float> new_tri_corner_normals;
+  std::vector<KernelPainterlyObject> new_objects;
+  std::vector<KernelPainterlySun> new_suns;
+  KernelPainterlyData new_data{};
+  /* Owns the new Embree scene until the device scene takes it, so a throw after the build frees
+   * it. */
+  std::unique_ptr<PainterlyEmbreeScene, decltype(&painterly_embree_scene_free)> new_bvh(
+      nullptr, painterly_embree_scene_free);
+
   /* --- Materials: flatten the lobes (SPEC §6). --- */
-  ds.materials.clear();
-  ds.lobes.clear();
   for (const PainterlyMaterial &material : materials) {
     material.validate();
     KernelPainterlyMaterial kernel_material{};
-    kernel_material.lobe_offset = int(ds.lobes.size());
+    kernel_material.lobe_offset = int(new_lobes.size());
     kernel_material.num_lobes = int(material.lobes.size());
     kernel_material.emission = material.emission;
     /* Constant lobes: no SVM program overrides them (painterly/kernel/types.h). */
     kernel_material.svm_offset = -1;
-    ds.lobes.insert(ds.lobes.end(), material.lobes.begin(), material.lobes.end());
-    ds.materials.push_back(kernel_material);
+    new_lobes.insert(new_lobes.end(), material.lobes.begin(), material.lobes.end());
+    new_materials.push_back(kernel_material);
   }
 
   /* --- Analytic primitives, in scene-list order (SPEC §5, §9). --- */
-  ds.analytic.clear();
-  ds.analytic.reserve(analytic.size());
+  new_analytic.reserve(analytic.size());
   for (const PainterlyAnalyticPrimitive &prim : analytic) {
     if (prim.material < 0 || size_t(prim.material) >= materials.size()) {
       throw std::invalid_argument("PainterlyScene::device_update: material index out of range");
@@ -123,7 +139,7 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
     kernel_prim.a = prim.a;
     kernel_prim.b = prim.b;
     kernel_prim.spot = prim.spot;
-    ds.analytic.push_back(kernel_prim);
+    new_analytic.push_back(kernel_prim);
   }
 
   /* --- Meshes: the triangle arrays the kernel reads. The vertices and the indices go to Embree
@@ -133,10 +149,7 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
     mesh.validate();
     any_corner_normals = any_corner_normals || mesh.has_corner_normals();
   }
-  ds.meshes.clear();
-  ds.meshes.reserve(meshes.size());
-  ds.tri_material.clear();
-  ds.tri_corner_normals.clear();
+  new_meshes.reserve(meshes.size());
   int tri_offset = 0;
   for (const PainterlyMesh &mesh : meshes) {
     const int num_tris = mesh.num_triangles();
@@ -149,20 +162,20 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
     kernel_mesh.tri_offset = tri_offset;
     kernel_mesh.num_tris = num_tris;
     kernel_mesh.has_corner_normals = mesh.has_corner_normals() ? 1 : 0;
-    ds.meshes.push_back(kernel_mesh);
-    ds.tri_material.insert(
-        ds.tri_material.end(), mesh.tri_material.begin(), mesh.tri_material.end());
+    new_meshes.push_back(kernel_mesh);
+    new_tri_material.insert(
+        new_tri_material.end(), mesh.tri_material.begin(), mesh.tri_material.end());
     if (any_corner_normals) {
       /* One block of PAINTERLY_TRIANGLE_CORNERS * PAINTERLY_POINT_FLOATS floats per triangle of
        * every mesh, zeros for a mesh without corner normals (painterly/kernel/globals.h). */
       const size_t block = size_t(num_tris) * size_t(PAINTERLY_TRIANGLE_CORNERS) *
                            size_t(PAINTERLY_POINT_FLOATS);
       if (mesh.has_corner_normals()) {
-        ds.tri_corner_normals.insert(
-            ds.tri_corner_normals.end(), mesh.corner_normals.begin(), mesh.corner_normals.end());
+        new_tri_corner_normals.insert(
+            new_tri_corner_normals.end(), mesh.corner_normals.begin(), mesh.corner_normals.end());
       }
       else {
-        ds.tri_corner_normals.insert(ds.tri_corner_normals.end(), block, 0.0f);
+        new_tri_corner_normals.insert(new_tri_corner_normals.end(), block, 0.0f);
       }
     }
     tri_offset += num_tris;
@@ -170,8 +183,7 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
 
   /* --- Objects: the mesh index, the object id and the normal matrix. Embree's Ng goes through the
    * same painterly_normal_matrix, so Ng and the corner normals share one matrix (T3.21). --- */
-  ds.objects.clear();
-  ds.objects.reserve(objects.size());
+  new_objects.reserve(objects.size());
   for (const PainterlyObject &object : objects) {
     if (object.mesh < 0 || size_t(object.mesh) >= meshes.size()) {
       throw std::invalid_argument("PainterlyScene::device_update: object mesh index out of range");
@@ -187,17 +199,17 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
     else {
       /* A mesh without triangles cannot be hit, so the kernel never reads this matrix; it stays
        * zero, exactly as painterly_embree_scene_create skips such an object before computing its
-       * own (T3.13 review finding, M3-fixups-reviews.json). */
+       * own (T3.13 review finding, M3-fixups-reviews.json; Opus ruling, 2026-10-18). */
       for (double &entry : kernel_object.normal_to_world) {
         entry = 0.0;
       }
     }
-    ds.objects.push_back(kernel_object);
+    new_objects.push_back(kernel_object);
   }
 
   /* --- Camera and integrator. --- */
-  integrator.device_update(ds.data.integrator);
-  camera.device_update(ds.data.cam, double(integrator.get_jitter()));
+  integrator.device_update(new_data.integrator);
+  camera.device_update(new_data.cam, double(integrator.get_jitter()));
 
   /* --- The spiral frame F (SPEC §1). --- */
   double rotation[9];
@@ -243,21 +255,18 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
     throw std::invalid_argument("PainterlyScene::device_update: unknown spiral_frame");
   }
   for (int i = 0; i < 9; i++) {
-    ds.data.integrator.spiral_frame[i] = frame[i];
+    new_data.integrator.spiral_frame[i] = frame[i];
   }
 
   /* --- Background and suns. --- */
-  background.device_update(ds.data.background, ds.suns);
+  background.device_update(new_data.background, new_suns);
 
   /* --- Embree, only when there are triangles. --- */
   int total_tris = 0;
   for (const PainterlyMesh &mesh : meshes) {
     total_tris += mesh.num_triangles();
   }
-  if (total_tris == 0) {
-    ds.clear_bvh();
-  }
-  else {
+  if (total_tris != 0) {
     std::vector<PainterlyEmbreeMeshInput> mesh_inputs;
     mesh_inputs.reserve(meshes.size());
     for (const PainterlyMesh &mesh : meshes) {
@@ -276,10 +285,24 @@ void PainterlyScene::device_update(PainterlyDeviceScene &ds) const
       input.object_to_world = object.object_to_world;
       object_inputs.push_back(input);
     }
-    ds.set_bvh(painterly_embree_scene_create(
+    new_bvh.reset(painterly_embree_scene_create(
         mesh_inputs.data(), mesh_inputs.size(), object_inputs.data(), object_inputs.size()));
   }
 
+  /* --- Commit. Nothing below throws: a vector move assignment is noexcept, set_bvh only swaps
+   * pointers and bind_globals only stores pointers and sizes. --- */
+  ds.materials = std::move(new_materials);
+  ds.lobes = std::move(new_lobes);
+  ds.analytic = std::move(new_analytic);
+  ds.meshes = std::move(new_meshes);
+  ds.tri_material = std::move(new_tri_material);
+  ds.tri_corner_normals = std::move(new_tri_corner_normals);
+  ds.objects = std::move(new_objects);
+  ds.suns = std::move(new_suns);
+  ds.data = new_data;
+  /* Takes ownership of the new Embree scene; releases the previous one, or none when the scene has
+   * no triangles. */
+  ds.set_bvh(new_bvh.release());
   ds.bind_globals();
 }
 
