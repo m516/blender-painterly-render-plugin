@@ -15,7 +15,8 @@ One record per leaf of the pair:
 - ``kind``: ``"number"`` when every side that has the leaf holds a JSON number, else ``"other"``
   (verdicts, rejected-key lists, strings, booleans, nulls, and containers the two documents
   disagree about).
-- ``identical``: the parsed values are exactly equal and both documents have the leaf.
+- ``identical``: the parsed values are exactly equal, both documents have the leaf, and both sides
+  have the same JSON type.
 - ``committed_present`` / ``new_present``: whether that document has the leaf.
 - ``committed`` / ``new``: the parsed values; ``null`` where that document has no leaf.
 - ``abs_diff`` and ``rel_diff``: number leaves only, and absent from an ``"other"`` record.
@@ -31,11 +32,22 @@ experiment beside the ``cmp`` verdict.
 
 Conventions:
 
-- Numbers are compared with ``==`` on the parsed values: ``1`` and ``1.0`` are identical, and a
-  ``NaN`` (which ``json`` accepts) is not identical to itself. Exactly equal values report
-  ``abs_diff`` 0 and ``rel_diff`` 0.0, including equal infinities, whose difference would be NaN.
-  A ``NaN`` leaf against a different value reports a ``NaN`` difference, since that is the
-  arithmetic difference; ``json.dumps`` writes it as the non-standard literal ``NaN``.
+- A leaf is identical only when both documents hold it, the two JSON values have the same type, and
+  the values are equal. The types are JSON's six (RFC 8259 §3): object, array, number, string,
+  boolean and null, and they are all distinct: ``true`` against ``1`` and ``false`` against ``0``
+  are differences, not matches, and a type change in a results file is visible to EXP-REPRO even
+  where the value would compare equal in Python.
+- ``1`` and ``1.0`` are identical, and the reason is that both are JSON numbers: JSON (RFC 8259
+  §6) gives a number one type and its grammar does not record whether the literal carried a
+  fraction, so ``json`` parses ``1`` as an ``int`` and ``1.0`` as a ``float`` without that being a
+  type change in the document. Both sides then have the same type and the same value, so the leaf
+  is identical and reports ``abs_diff`` 0 and ``rel_diff`` 0.0. A boolean, a string and null are
+  each distinct from a number and from each other, so none of them matches ``1`` or ``0``.
+- Numbers are compared with ``==`` on the parsed values, and a ``NaN`` (which ``json`` accepts) is
+  not identical to itself. Exactly equal values report ``abs_diff`` 0 and ``rel_diff`` 0.0,
+  including equal infinities, whose difference would be NaN. A ``NaN`` leaf against a different
+  value reports a ``NaN`` difference, since that is the arithmetic difference; ``json.dumps``
+  writes it as the non-standard literal ``NaN``.
 - A leaf that only one document has is one record at its own path; its subtree is not walked.
 - Two containers of the same kind (two mappings, or two sequences) are walked together; a mapping
   against a scalar, or a sequence against a mapping, is one leaf.
@@ -55,6 +67,20 @@ from pathlib import Path
 NUMBER_KIND = "number"
 # A leaf that holds anything else, or that the two documents disagree about.
 OTHER_KIND = "other"
+
+# The JSON types a leaf can hold, as json parses them. They are all distinct, so a leaf is identical
+# only when both sides have the same one: Python's own == would call True == 1 and False == 0, which
+# is why the comparison cannot be a bare ==. An int and a float are both JSON numbers (RFC 8259 §6:
+# a number is one type, and the literal's fraction is not part of it), so they share NUMBER_TYPE.
+BOOLEAN_TYPE = "boolean"
+STRING_TYPE = "string"
+NULL_TYPE = "null"
+NUMBER_TYPE = "number"
+# The two container types. They reach a leaf only where the two documents disagree about the
+# container (a mapping against a scalar, a sequence against a mapping), which is one leaf of kind
+# "other" by the module docstring; they are distinct from the scalar types and from each other.
+OBJECT_TYPE = "object"
+ARRAY_TYPE = "array"
 
 # Leaf paths are RFC 6901 JSON Pointers (RFC 6901 §3, §5): "" is the root, "/" separates reference
 # tokens, and a token escapes "~" as "~0" and "/" as "~1" so a key can hold either character.
@@ -140,6 +166,33 @@ def _is_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _json_type(value: object) -> str:
+    """The JSON type of a parsed leaf value: one of the module's *_TYPE names.
+
+    A boolean is checked before the numbers because Python's bool is an int subclass. An int and a
+    float are both NUMBER_TYPE: JSON has one number type. A container reaches here only where the
+    two documents disagree about it, which the module docstring makes one "other" leaf.
+    """
+    if isinstance(value, bool):
+        return BOOLEAN_TYPE
+    if isinstance(value, (int, float)):
+        return NUMBER_TYPE
+    if isinstance(value, str):
+        return STRING_TYPE
+    if value is None:
+        return NULL_TYPE
+    if isinstance(value, dict):
+        return OBJECT_TYPE
+    if isinstance(value, list):
+        return ARRAY_TYPE
+    raise TypeError(f"not a JSON value: {value!r}")
+
+
+def _same_value(committed: object, new: object) -> bool:
+    """True when both leaves have the same JSON type and an equal value (the docstring's rule)."""
+    return _json_type(committed) == _json_type(new) and committed == new
+
+
 def _pointer_token(token: str) -> str:
     """Escape one RFC 6901 reference token: "~" first, then "/" (RFC 6901 §3)."""
     return token.replace(POINTER_TILDE, POINTER_ESCAPE_TILDE).replace(
@@ -180,7 +233,7 @@ def _leaf(
         "path": path,
         "kind": NUMBER_KIND if all(_is_number(value) for value in present) else OTHER_KIND,
         "identical": committed_present == new_present
-        and (not committed_present or committed == new),
+        and (not committed_present or _same_value(committed, new)),
         "committed_present": committed_present,
         "new_present": new_present,
         "committed": committed if committed_present else None,

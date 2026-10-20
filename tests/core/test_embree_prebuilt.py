@@ -3,11 +3,17 @@
 The unit tests here run without cmake, without a compiler and without an Embree source tree: they
 exercise the tool's pure functions on canned ``compile_commands.json`` entries in the exact shape
 CMake writes (a ``directory`` and one ``command`` string). The two tests that do configure are
-marked slow and skip when the inputs they need are absent, so `make check` stays offline and quick.
+marked slow and take their prepared inputs from the environment variables
+``PAINTERLY_EMBREE_SOURCE``, ``PAINTERLY_DOCTEST_SOURCE`` and ``PAINTERLY_EMBREE_INSTALL``; each
+skips, naming the unset variable, only when one of them is unset, so `make check` stays offline and
+quick on a machine without them. No path of any one machine is written here.
 """
 
 import importlib.util
+import os
 import sys
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
@@ -129,6 +135,62 @@ def test_compare_units_reports_a_unit_only_one_side_compiles() -> None:
     assert embree_prebuilt.render_report(comparison).startswith("EMBREE FLAGS DIFFER")
 
 
+@pytest.mark.parametrize(
+    ("units_fetch", "units_install"),
+    [({}, {}), ({}, {"src/a.cpp": ("-O3",)}), ({"src/a.cpp": ("-O3",)}, {})],
+    ids=["neither-side-has-a-unit", "only-the-install-has-a-unit", "only-fetch-has-a-unit"],
+)
+def test_a_comparison_with_no_unit_on_a_side_is_not_identical(
+    units_fetch: dict[str, tuple[str, ...]], units_install: dict[str, tuple[str, ...]]
+) -> None:
+    """TQ.2 F3: "EMBREE FLAGS IDENTICAL: 0 units" cannot be printed - an empty side never passes."""
+    comparison = embree_prebuilt.compare_units(units_fetch, units_install)
+    assert not comparison.identical
+    report = embree_prebuilt.render_report(comparison)
+    assert report.startswith("EMBREE FLAGS DIFFER")
+    assert "IDENTICAL" not in report
+    # The report names how many units each side had, so the empty side is visible.
+    assert f"compiled {len(units_fetch)} units" in report
+    assert f"configure {len(units_install)}" in report
+
+
+def test_compare_flags_exits_non_zero_when_no_side_has_a_unit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """TQ.2 F3: compare-flags on an empty comparison exits 1 and says the empty side proves nothing.
+
+    The three configures are stubbed out (``configure`` does nothing, ``compile_commands`` returns
+    no entry), which is exactly what a configure that compiles no Embree source leaves behind, so
+    the test needs no cmake and no compiler. The inputs it does need are a source tree and an
+    install directory with the two files the subcommand checks for.
+    """
+    source = tmp_path / "embree"
+    source.mkdir()
+    (source / "CMakeLists.txt").write_text("", encoding="utf-8")
+    embree_dir = tmp_path / "install" / "lib" / f"cmake/embree-{embree_prebuilt.EMBREE_VERSION}"
+    embree_dir.mkdir(parents=True)
+    (embree_dir / "embree-config.cmake").write_text("", encoding="utf-8")
+    monkeypatch.setattr(embree_prebuilt, "configure", lambda *args, **kwargs: None)
+    monkeypatch.setattr(embree_prebuilt, "compile_commands", lambda build_dir: [])
+    result = embree_prebuilt.main(
+        [
+            "compare-flags",
+            "--source",
+            str(source),
+            "--embree-dir",
+            str(embree_dir),
+            "--keep",
+            str(tmp_path / "configure"),
+        ]
+    )
+    printed = capsys.readouterr().out
+    assert result == 1
+    assert "EMBREE FLAGS IDENTICAL" not in printed
+    assert "EMBREE FLAGS DIFFER: 0 units compared" in printed
+    assert "compiled 0 units" in printed
+    assert "not identical" in printed
+
+
 def test_config_file_holds_every_embree_option_and_the_shared_settings() -> None:
     """The shared file is the one source of truth: the options and the settings are in it."""
     text = embree_prebuilt.CONFIG_FILE.read_text(encoding="utf-8")
@@ -194,37 +256,61 @@ def test_embree_install_prefix_is_git_ignored() -> None:
     assert "build/" in gitignore
 
 
-# The prepared inputs on this host (AGENTS.md "Environment"). The two configure tests need both;
-# they skip when either is absent, so a clone without them still runs `make check`.
-EMBREE_SOURCE = Path(
-    "/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin"
-    "/.cache/src/embree"
+# The prepared inputs of the two configure tests, as environment variables: this file holds no path
+# of any one machine (AGENTS.md "Environment"; RULINGS S1). The first is the Embree v4.4.1 source
+# tree, the second the doctest source tree (the configure is offline, so FetchContent reads both
+# from disk), and the third is an install prefix made by `build` - the directory whose
+# lib/cmake/embree-4.4.1 an embree_DIR takes.
+EMBREE_SOURCE_VARIABLE = "PAINTERLY_EMBREE_SOURCE"
+DOCTEST_SOURCE_VARIABLE = "PAINTERLY_DOCTEST_SOURCE"
+EMBREE_INSTALL_VARIABLE = "PAINTERLY_EMBREE_INSTALL"
+PREPARED_INPUT_VARIABLES = (
+    EMBREE_SOURCE_VARIABLE,
+    DOCTEST_SOURCE_VARIABLE,
+    EMBREE_INSTALL_VARIABLE,
 )
-EMBREE_INSTALL = REPO_ROOT / "build" / "embree-install"
-EMBREE_DIR = EMBREE_INSTALL / "lib" / f"cmake/embree-{embree_prebuilt.EMBREE_VERSION}"
-# The configure is offline: Embree and doctest come from the prepared source trees, and the project
-# does not fetch anything. The two directory names are FetchContent's own.
-FETCHCONTENT_SOURCE_DIRS = {
-    "EMBREE": EMBREE_SOURCE,
-    "DOCTEST": Path(
-        "/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint"
-        "/blender-painterly-render-plugin/.cache/src/doctest"
-    ),
-}
 
 
-def _prebuilt_inputs_present() -> bool:
-    """True when the Embree source tree and a built install are both there."""
-    return (EMBREE_SOURCE / "CMakeLists.txt").is_file() and (
-        EMBREE_DIR / "embree-config.cmake"
-    ).is_file()
+@dataclass(frozen=True)
+class PreparedInputs:
+    """The prepared directories the two configure tests take, as absolute paths."""
+
+    embree_source: Path
+    doctest_source: Path
+    embree_install: Path
+
+    @property
+    def embree_dir(self) -> Path:
+        """The install's CMake package directory: the value ``embree_DIR`` takes."""
+        return self.embree_install / "lib" / f"cmake/embree-{embree_prebuilt.EMBREE_VERSION}"
+
+    @property
+    def fetchcontent_source_dirs(self) -> dict[str, Path]:
+        """FETCHCONTENT_SOURCE_DIR_<name> for both dependency source trees, names as CMake uses."""
+        return {"EMBREE": self.embree_source, "DOCTEST": self.doctest_source}
+
+
+def _prepared_inputs(environ: Mapping[str, str] | None = None) -> PreparedInputs:
+    """The prepared inputs named by the environment variables, or a skip naming the unset ones.
+
+    A variable that is set is taken as it is: the test then fails on a wrong directory rather than
+    skipping, so a mistyped path cannot turn the proof into a silent pass.
+    """
+    source = os.environ if environ is None else environ
+    unset = [name for name in PREPARED_INPUT_VARIABLES if not source.get(name)]
+    if unset:
+        pytest.skip(f"{' and '.join(unset)} unset: no prepared Embree inputs on this machine")
+    return PreparedInputs(
+        embree_source=Path(source[EMBREE_SOURCE_VARIABLE]),
+        doctest_source=Path(source[DOCTEST_SOURCE_VARIABLE]),
+        embree_install=Path(source[EMBREE_INSTALL_VARIABLE]),
+    )
 
 
 @pytest.mark.slow
 def test_prebuilt_install_is_not_rebuilt_by_the_project(tmp_path: Path) -> None:
     """A project configure with embree_DIR compiles no Embree source at all."""
-    if not _prebuilt_inputs_present():
-        pytest.skip(f"no prebuilt Embree install at {EMBREE_DIR}")
+    prepared = _prepared_inputs()
     build_dir = tmp_path / "prebuilt"
     definitions = {
         "PAINTERLY_BUILD_MODULE": "ON",
@@ -234,14 +320,14 @@ def test_prebuilt_install_is_not_rebuilt_by_the_project(tmp_path: Path) -> None:
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "Python_EXECUTABLE": sys.executable,
         "FETCHCONTENT_FULLY_DISCONNECTED": "ON",
-        "embree_DIR": str(EMBREE_DIR),
+        "embree_DIR": str(prepared.embree_dir),
     }
-    for name, path in FETCHCONTENT_SOURCE_DIRS.items():
+    for name, path in prepared.fetchcontent_source_dirs.items():
         definitions[f"FETCHCONTENT_SOURCE_DIR_{name}"] = str(path)
     embree_prebuilt.configure(build_dir, REPO_ROOT, definitions)
     entries = embree_prebuilt.compile_commands(build_dir)
     units = embree_prebuilt.embree_units(
-        entries, [EMBREE_SOURCE], build_dir / "_deps" / "embree-build", build_dir
+        entries, [prepared.embree_source], build_dir / "_deps" / "embree-build", build_dir
     )
     assert units == {}
 
@@ -249,15 +335,14 @@ def test_prebuilt_install_is_not_rebuilt_by_the_project(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_compare_flags_reports_identical_flags(tmp_path: Path) -> None:
     """compare-flags, run against the built install, prints EMBREE FLAGS IDENTICAL and exits 0."""
-    if not _prebuilt_inputs_present():
-        pytest.skip(f"no prebuilt Embree install at {EMBREE_DIR}")
+    prepared = _prepared_inputs()
     result = embree_prebuilt.main(
         [
             "compare-flags",
             "--source",
-            str(EMBREE_SOURCE),
+            str(prepared.embree_source),
             "--embree-dir",
-            str(EMBREE_DIR),
+            str(prepared.embree_dir),
             "--keep",
             str(tmp_path / "configure"),
         ]

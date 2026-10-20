@@ -184,6 +184,48 @@ def test_integer_and_float_with_the_same_value_are_identical() -> None:
     assert record["rel_diff"] == 0.0
 
 
+def test_true_against_one_is_not_identical() -> None:
+    """TQ.2 F5: a boolean is not a number, so Python's True == 1 must not count as identical."""
+    report = compare_results.compare_objects({"smoke": True}, {"smoke": 1})
+    assert report["identical"] is False
+    assert report["n_leaves_differing"] == 1
+    record = _record(report, "/smoke")
+    assert record["identical"] is False
+    assert record["committed"] is True
+    assert record["new"] == 1
+
+
+def test_false_against_zero_is_not_identical() -> None:
+    """TQ.2 F5: False == 0 in Python, and the two leaves are still a boolean against a number."""
+    report = compare_results.compare_objects({"smoke": False}, {"smoke": 0})
+    assert report["identical"] is False
+    record = _record(report, "/smoke")
+    assert record["identical"] is False
+    assert record["committed"] is False
+    assert record["new"] == 0
+
+
+@pytest.mark.parametrize(("committed", "new"), [(1, 1.0), (1.0, 1)])
+def test_integer_and_float_leaves_of_equal_value_are_identical(committed: float, new: int) -> None:
+    """1 and 1.0 match: both are JSON numbers (RFC 8259 §6), with one value and one difference.
+
+    This is the module's choice for ``1`` against ``1.0`` (TQ.2 F5). The type-aware comparison that
+    separates a boolean from a number must not separate an integer from a float, because JSON has
+    one number type and the literal's fraction is not part of it: both leaves have the module's
+    number type, so they stay identical and their record keeps the two numeric differences.
+    """
+    assert compare_results._json_type(committed) == compare_results.NUMBER_TYPE
+    assert compare_results._json_type(new) == compare_results.NUMBER_TYPE
+    report = compare_results.compare_objects({"passes": committed}, {"passes": new})
+    assert report["identical"] is True
+    assert report["non_numeric_identical"] is True
+    record = _record(report, "/passes")
+    assert record["kind"] == "number"
+    assert record["identical"] is True
+    assert record["abs_diff"] == 0
+    assert record["rel_diff"] == 0.0
+
+
 def test_key_present_in_only_one_file() -> None:
     committed = {"pairs": 8, "committed_only": 3.0}
     new = {"pairs": 8, "new_only": 4.0}

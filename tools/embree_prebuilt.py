@@ -29,7 +29,8 @@ It then compares the compile flags of every Embree translation unit of (1) and o
 absolute paths of the Embree source and build directories replaced by the placeholders
 ``<embree-src>`` and ``<embree-build>`` so that only genuine flag differences remain. It prints
 ``EMBREE FLAGS IDENTICAL: <n> units`` and exits 0 when every unit matches, and otherwise prints the
-differing units and exits 1.
+differing units and exits 1. A comparison in which either side compiled no Embree translation unit
+is never identical - ``0 units`` cannot pass - and its report says how many units each side had.
 
 Configure (3) is why this is a three-configure comparison and not the two the item names. A project
 configured against a prebuilt Embree compiles no Embree source -- that is the point of it -- so it
@@ -130,8 +131,19 @@ class FlagComparison:
 
     @property
     def identical(self) -> bool:
-        """True when both sides compile exactly the same units with exactly the same flags."""
-        return not self.only_fetch and not self.only_install and not self.differing
+        """True when both sides compile the same non-empty set of units with the same flags.
+
+        A comparison in which either side has no unit is not identical: it proves nothing about how
+        the install was compiled, and reporting it as a pass is the vacuous "0 units" verdict this
+        tool exists to avoid.
+        """
+        return (
+            bool(self.units_fetch)
+            and bool(self.units_install)
+            and not self.only_fetch
+            and not self.only_install
+            and not self.differing
+        )
 
 
 def _run(command: Sequence[str]) -> None:
@@ -288,7 +300,15 @@ def render_report(comparison: FlagComparison) -> str:
     """The report compare-flags prints: the EMBREE FLAGS IDENTICAL line, or the differences."""
     if comparison.identical:
         return f"EMBREE FLAGS IDENTICAL: {comparison.n_units} units\n"
-    lines = [f"EMBREE FLAGS DIFFER: {comparison.n_units} units compared"]
+    lines = [
+        f"EMBREE FLAGS DIFFER: {comparison.n_units} units compared",
+        f"the FetchContent configure compiled {len(comparison.units_fetch)} units, "
+        f"the install's configure {len(comparison.units_install)}",
+    ]
+    if not comparison.units_fetch or not comparison.units_install:
+        lines.append(
+            "an empty side proves nothing about the flags, so this comparison is not identical"
+        )
     if comparison.only_fetch:
         lines.append("compiled by the FetchContent configure only:")
         lines += [f"  {key}" for key in comparison.only_fetch]
