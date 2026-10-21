@@ -1,0 +1,241 @@
+[
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 executability",
+  "index": 0,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T8.1-release-workflow.md:223-237 (Step 2's `blender_platform_from_wheel` and the `WHEEL_PLATFORM_TAGS` table; :231 `(re.compile(r\"linux_x86_64|manylinux_[0-9]+_[0-9]+_x86_64|manylinux(?:1|2010|2014)_x86_64\"), \"linux-x64\")`, and the comment at :227-228 that says the table admits \"the tags our wheels carry: linux_x86_64 from a local `uv build` (T2.4)\"), :189 (`def blender_platform_from_wheel(wheel: Path) -> str: ...` in the Interface), :295-305 (`check_wheels`; :301-302 \"no element of the platform tag set starts with `linux_`: a release ships only auditwheel-repaired manylinux wheels, whose glibc baseline T2.9 enforces\"), :613-617 (the parametrized mapping test; :614 `linux_x86_64` -> `linux-x64`), :652-660 (the `check_wheels` test list; :656 \"the Linux wheel replaced by `…-cp312-abi3-linux_x86_64.whl` (unrepaired)\"). Command: `grep -n 'linux_' docs/handoff/drafts/M7-M9/T8.1-release-workflow.md` -> lines 41, 42, 46, 54, 120, 181, 227, 228, 231, 301, 605, 614, 615, 617, 618, 627, 651, 655, 656 (the ban itself is at 301 only; every other hit is a platform name or the test). The two rules are indeed different: `blender_platform_from_wheel` is a total mapping over the tags it knows and the `linux_` ban lives only in `check_wheels`. So the claim that the card 'never says which function owns the ban' is true. But the claim that 'a reader can take the mapping table for the release rule and conclude that an unrepaired wheel is acceptable' is not: the table's own comment at :227-228 says `linux_x86_64` is \"the tags our wheels carry ... from a local `uv build` (T2.4)\", i.e. the local, unrepaired build, and `check_wheels` at :301-302 states the ban in the same file, one bullet above the platform-set check. The card also pins the failing case in the test list at :656, so the ban is stated in three places and the mapping table is explicitly not a release rule.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "  - no element of the platform tag set starts with `linux_`: a release ships only auditwheel-repaired manylinux wheels,\n    whose glibc baseline T2.9 enforces;",
+    "new": "  - no element of the platform tag set starts with `linux_`: a release ships only auditwheel-repaired manylinux wheels,\n    whose glibc baseline T2.9 enforces. This ban lives only here: `blender_platform_from_wheel` (Step 2) is a total mapping\n    over the tags it knows, and admits `linux_x86_64` for a local `uv build` (T2.4);"
+   }
+  ],
+  "note": "Real that the card never names the owner of the `linux_` ban; the finding's second half overstates it, because the table's own comment (:227-228) marks `linux_x86_64` as the local-build tag and `check_wheels` states the ban at :301-302, so no reader can conclude an unrepaired wheel ships. The edit names the owner next to the ban instead of adding a sentence to the Interface."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 executability",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:140-143 (the `package` command line; :141 `[--out-dir dist/release] [--notes dist/release-notes.md] [--work-dir build/release]`, :143 \"stages under <work-dir>/extension/<id>\"), :240-243 (`stage_extension` step 2, \"If `staging_dir` exists, `shutil.rmtree(staging_dir)`\"), :264-266 (`main()` uses T4.4's staging dir `build/extension/painterly` and writes `build/extension/zip_path.txt`), :369 (`package` step 3: `work_dir / \"extension\" / id`), :474-478 (the `package` job's `run:` with `--work-dir build/release`), :699-715 (`tests/blender_it/test_release_package.py`; :702 \"Snapshot `build/extension/zip_path.txt` (its bytes, or absent) and `sorted(os.listdir(\"dist\"))` (or absent)\", :712 \"the snapshots are unchanged. The release path never touches `make extension`'s outputs\"), :725-730 (the `make blender-it` acceptance). docs/tasks/M4/T4.4-extension-build-it.md:13-17 (T4.4 stages into `build/extension/painterly/` and writes `build/extension/zip_path.txt`). Command: `python3 -c \"from pathlib import Path; ...\"` -> `work-dir 'build' -> staging build/extension/painterly`, `work-dir 'build/extension' -> staging build/extension/extension/painterly`, `work-dir 'build/release' -> staging build/release/extension/painterly`, `make extension staging -> build/extension/painterly`, `collision(work-dir=build): True`, `collision(work-dir=build/extension): False`. So the finding's arithmetic is wrong: `--work-dir build/extension` cannot collide with `make extension`'s `build/extension/painterly`, because the release stages into `build/extension/extension/painterly`. The only `--work-dir` that collides is `build` (staging `build/extension/painterly`), and the card's default `build/release` does not collide. The card's real gap is only that it never says the default was chosen for that reason; and the test at :702/:712 already snapshots `build/extension/zip_path.txt` and `dist/`, so the release path's non-interference is covered for those two outputs, but nothing asserts that `build/extension/painterly/` itself survives.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "    Builds and verifies the five assets into --out-dir, which must not exist yet; writes the release notes to --notes;\n    stages under <work-dir>/extension/<id>. stdout: the path of each asset, one per line, in asset_names() order.",
+    "new": "    Builds and verifies the five assets into --out-dir, which must not exist yet; writes the release notes to --notes;\n    stages under <work-dir>/extension/<id>. stdout: the path of each asset, one per line, in asset_names() order.\n    --work-dir must not be `build`: the release stages into <work-dir>/extension/<id>, and `build` would stage into\n    `build/extension/painterly`, the directory `make extension` stages into (T4.4) and empties (Step 2). The default\n    `build/release` is chosen for that reason."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "- Snapshot `build/extension/zip_path.txt` (its bytes, or absent) and `sorted(os.listdir(\"dist\"))` (or absent).",
+    "new": "- Snapshot `build/extension/zip_path.txt` (its bytes, or absent), `sorted(os.listdir(\"dist\"))` (or absent) and\n  `sorted(os.listdir(\"build/extension/painterly\"))` (or absent, the manifest `make extension` staged)."
+   }
+  ],
+  "note": "Real that the card never says why the default work directory is `build/release` and never asserts that `make extension`'s staging directory survives; the finding's collision arithmetic is wrong, because `--work-dir build/extension` stages into `build/extension/extension/painterly` and only `--work-dir build` collides. The edits name the one colliding value and add the missing snapshot."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 executability",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:151 (`VERSION_SOURCES`), :155-156 (`source_versions`, `release_version`), :277-278 (`CMAKE_PROJECT_VERSION = re.compile(r\"^project\\(painterly VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)\\b\", re.MULTILINE)`), :286-289 (Step 3's `source_versions` and `release_version`), :636-642 (the test list; :638-642 the synthetic root with `id = \"painterly\"\\nversion = \"0.1.0\"\\n`, `[project]\\nname = \"painterly-core\"\\nversion = \"0.1.1\"\\n`, `project(painterly VERSION 0.1.0 LANGUAGES C CXX)\\n`, and the two `ReleaseError` cases). The card's own constants pin two of the three accepted forms exactly: the manifest's `version` is a tomllib key (:286) and pyproject's is `[project] version` (:286), and the CMake form is a named regex constant (:278) whose `project(...)` line, the version and the `LANGUAGES` suffix are all fixed by the regex. The card also names the error for a missing CMake match (:287). Command: `python3 -c \"import tomllib, re; ...\"` -> `manifest (order-independent): 0.1.0 painterly`; `'project(painterly VERSION 0.1.0 LANGUAGES C CXX)' -> 0.1.0`; `'project(painterly VERSION 0.1.0)' -> 0.1.0`; `'project(painterly  VERSION 0.1.0)' -> None`; `'project(other VERSION 0.1.0)' -> None`. So the only genuinely open question the finding names is the double space in `project(`, which the card's own regex at :278 already excludes, and whether `LANGUAGES` may be omitted, which the regex at :278 already allows. The finding's proposed table also widens the CMake regex to `^project\\(\\S+ VERSION ([0-9][0-9.]*)\\b`, which would accept a different project name than `painterly` and a version like `0.1.0.1`; the card's regex is stricter and the card's error message at :287 names `project(painterly VERSION X.Y.Z`, so the accepted form is already stated.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "- `source_versions(root)`: the manifest's `version` (tomllib), pyproject's `[project] version` (tomllib), and the first\n  `CMAKE_PROJECT_VERSION` match in `CMakeLists.txt`. No match raises `ReleaseError(\"CMakeLists.txt: no 'project(painterly VERSION X.Y.Z' line\")`.",
+    "new": "- `source_versions(root)`: the manifest's `version` (tomllib), pyproject's `[project] version` (tomllib), and the first\n  `CMAKE_PROJECT_VERSION` match in `CMakeLists.txt`. The accepted forms are exactly: the manifest's `version` key, pyproject's\n  `[project] version` key, and a `project(painterly VERSION X.Y.Z ...)` line, which `CMAKE_PROJECT_VERSION` (:278) matches\n  with or without a `LANGUAGES` suffix. No match raises `ReleaseError(\"CMakeLists.txt: no 'project(painterly VERSION X.Y.Z' line\")`."
+   }
+  ],
+  "note": "Real only as a request for a table; the accepted forms are already pinned by the card's own regex constant and by the tomllib keys, so the finding's proposed looser regex would widen the card (it would accept a foreign project name and a four-component version). The edit states the accepted forms where `source_versions` is defined, without changing the regex."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 executability",
+  "index": 3,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:66-69 (\"Read first\" fact 7: the SHA-1 of `b\"blob %d\\0\" % len(data) + data` equals the blob id that `git ls-tree -r HEAD` prints, \"(the repository's object format is `sha1`)\"), :306-311 (`git_tree` step: \"`git -C <root> rev-parse --show-object-format` must print `sha1` (the object format that `git_blob_id` defines); otherwise raise `ReleaseError`\", and `git_blob_id` = `hashlib.sha1(...)` at :311), :661-674 (the tarball tests; :670-674 the four tampering variants, none of which forces the object-format branch). Commands: `git rev-parse --show-object-format` -> `sha1`; `git init -q --object-format=sha256 <tmp>` then `git rev-parse --show-object-format` -> `sha256` (exit 0), so the branch is reachable and the card's stated precondition is checkable. The claim is real: the card names the branch but its test list (:670-674) exercises only tampering, never the object format, so the branch is unpinned by a test. But the finding's premise is wrong on one point: it says the card 'records the fact (\"the repository's object format is `sha1`\") in \"Read first\" but the test list only exercises `sha256`-format rejection implicitly, if at all' - the card does not merely record it, `git_tree` at :306-307 makes it a hard precondition that raises `ReleaseError`, and `verify_source_tarball` calls `git_tree` at step 4, so a `sha256` repository fails loudly rather than 'silently changing meaning'. The remaining gap is only the missing test case.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "  - `pax[\"comment\"] = \"0\" * 40` → the message contains `git rev-parse HEAD`'s commit id.",
+    "new": "  - `pax[\"comment\"] = \"0\" * 40` → the message contains `git rev-parse HEAD`'s commit id.\n- Object format. A case that makes `git -C <root> rev-parse --show-object-format` print `sha256` (monkeypatch the helper that\n  runs it) raises `ReleaseError` whose message names `sha256`."
+   }
+  ],
+  "note": "Real: the object-format branch of `git_tree` has no test. The finding's claim that a `sha256` repository would 'silently change meaning' is wrong - `git_tree` raises `ReleaseError` on any format but `sha1` - so only the missing test case is added."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 design",
+  "index": 0,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:92-93 (\"Do not touch\": \"Never push, push a tag, create a GitHub Release or dispatch a workflow (CLAUDE.md rule 7). The orchestrator runs the CI part of \"Acceptance\" after the commit.\"), :720-731 (the Acceptance's \"Local (this card):\" block) and :742-755 (the \"CI, run by the orchestrator after the commit (this card never pushes):\" block). The card's own headings already separate the two: the CI block is titled \"CI, run by the orchestrator after the commit (this card never pushes)\" and the Do-not-touch rule says the same. AGENTS.md:30-32 (\"**Offline.** There is no network... Never run `make env`, `make blender`, `make oracle` or `make wheel`.\") and BACKLOG.md:27 (\"`make env`, `make oracle`, `make blender`, `make wheel`, the network, CI, GitHub, \"the orchestrator verifies\" | host-only: don't run; report \"host-only, not run\"\"). So the CI half is already marked as the orchestrator's, exactly as the finding asks; the finding's complaint that 'the card presents the CI block as part of the same Acceptance list without marking it' is not borne out by the text. The finding's proposed local substitute is also wrong: `tests/blender_it/test_release_package.py` needs the fetched Blender and is marked `pytestmark = pytest.mark.slow` (:699), and its `<blender>` is `tools/fetch_blender.py --print-path-only` with \"Skip if no file exists there. `make blender` creates it.\" (:700-701) - `make blender` is host-only under BACKLOG.md:27 and AGENTS.md:31-32, so naming that file as the local substitute reintroduces the very defect. The card's real local substitute already exists and is runnable offline: `tests/core/test_release.py`, `tests/core/test_build_extension.py` and `tests/core/test_release_workflow.py` (:723-724), and the fast command-line block at :732-739.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "CI, run by the orchestrator after the commit (this card never pushes):",
+    "new": "CI, run by the orchestrator after the commit (this card never pushes; host-only, not run in a worker clone):"
+   }
+  ],
+  "note": "Real only as a labelling nicety: the CI block is already separated by its own heading and by the Do-not-touch rule, so the finding's premise is wrong. Its proposed local substitute is worse - `test_release_package.py` needs `make blender`, which is host-only - so the edit only adds the host-only marker to the CI heading."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 design",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:152 (`RELEASE_PLATFORMS: tuple[str, ...] = (\"linux-x64\", \"macos-arm64\", \"windows-x64\")   # sorted`), :294 (`asset_names` = `sorted([...])`), :694 (the test `{i[\"platform\"] for i in jobs.install.strategy.matrix.include} == set(release.RELEASE_PLATFORMS}`), :332 (`platforms == list(RELEASE_PLATFORMS)` in the zip check). docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md:142-143 (\"`index = {\"version\": \"v1\", \"blocklist\": [], \"data\": [<linux-x64>, <macos-arm64>, <windows-x64>]}`: one entry per platform, in `RELEASE_PLATFORMS` order\"), :309-310 (\"The new `data` lists them in `zip_names` order: `server-generate` lists them in `os.scandir` order (fact 1)\"), :54-57 (fact 1: the index holds one entry per `*.zip` \"**in `os.scandir` order**: one run gave `macos_arm64, linux_x64, windows_x64`\"), :696 (`SCANDIR_ORDER = [1, 0, 2]`). Probe (MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'): code: `import inspect / from bl_pkg.cli import blender_ext as be / src = inspect.getsource(be.subcmd_server.generate) / print(\"SCANDIR:\", [l.strip() for l in src.splitlines() if \"scandir\" in l]) / print(\"JSONLINES:\", [l.strip() for l in src.splitlines() if \"json.dump\" in l])`; output: `SCANDIR: ['for entry in os.scandir(repo_dir):']` and `JSONLINES: ['json.dump(repo_gen_dict, fh, indent=2)']`. So the two orderings are real and the reordering is real: T8.2's `rewrite_index` reorders Blender's `os.scandir` order into `RELEASE_PLATFORMS` order. The finding's own text says 'nothing here is wrong'; the coupling is real but the card does not state it, and `RELEASE_PLATFORMS` is a contract a later card's tests use. The edit below names the coupling.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "RELEASE_PLATFORMS: tuple[str, ...] = (\"linux-x64\", \"macos-arm64\", \"windows-x64\")   # sorted",
+    "new": "RELEASE_PLATFORMS: tuple[str, ...] = (\"linux-x64\", \"macos-arm64\", \"windows-x64\")   # sorted; the release's canonical platform order. `asset_names` sorts the asset names separately, and T8.2 reorders the remote-repository index from Blender's `os.scandir` order into this order."
+   }
+  ],
+  "note": "Real as a missing cross-card statement, not a defect: T8.2 already reorders into `RELEASE_PLATFORMS` order and its own draft says so. The edit names the coupling next to the constant."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.1 design",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.1-release-workflow.md:185-186 (`LICENCE_FILES: tuple[str, ...] = (\"LICENSE\", \"THIRD_PARTY_NOTICES.md\")`, `LICENCE_DIR = \"LICENSES\"`), :128-130 (\"Every extension zip holds, at its root, the add-on files of `src/blender/addon/` ..., `LICENSE`, `THIRD_PARTY_NOTICES.md` and `LICENSES/<every file of LICENSES/>`\"), :245-248 (Step 2 step 4: \"for each name in `LICENCE_FILES`, and for `LICENCE_DIR/<f>` for every regular file `f` of `root / LICENCE_DIR` (sorted) ... then `shutil.copyfile` it from `root`\"), :335-336 (the zip check 4: the same two members plus `LICENSES/<f>` for every regular file `f` of `root/LICENSES`), :88-90 (\"Do not touch\": `THIRD_PARTY_NOTICES.md`, `LICENSES/`), :624-626 (the test: \"every staged wheel, licence file and add-on file ... is byte-equal to its source\"), :729-730 (the acceptance's zip-member check). The directory at HEAD holds 7 files (`ls LICENSES` -> `Apache-2.0-embree.txt`, `Apache-2.0.txt`, `BSD-3-Clause-nanobind.txt`, `BSD-3-Clause-syrah.txt`, `MIT-robin-map.txt`, `MIT-smallpaint.txt`, `MIT-sse2neon.txt`); docs/tasks/M2/T2.9-windows-audit-and-licences.md:62-68 owns `LICENSES/` and pyproject.toml:11 declares `license-files = [\"LICENSE\", \"THIRD_PARTY_NOTICES.md\", \"LICENSES/*.txt\"]`, so a new `LICENSES/*.txt` is picked up by the wheel by construction while a new top-level notice is not. The asymmetry is real: `LICENCE_DIR` is copied wholesale (:245) but `LICENCE_FILES` is a fixed two-tuple (:185). The finding's own text calls the missing sentence 'all that is missing', and the card's test already asserts the byte-equality, so this is the one finding in this key whose issue and fix both hold.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.1-release-workflow.md",
+    "old": "  4. Licence texts: for each name in `LICENCE_FILES`, and for `LICENCE_DIR/<f>` for every regular file `f` of\n     `root / LICENCE_DIR` (sorted), raise `FileExistsError` if the staged path already exists (the add-on is never\n     overwritten), then `shutil.copyfile` it from `root`. Comment why: the zip carries the add-on's own GPL licence, and the\n     Apache-2.0 texts that `get_panels()` (copied from Cycles, T4.2) and the statically linked Embree require.",
+    "new": "  4. Licence texts: for each name in `LICENCE_FILES`, and for `LICENCE_DIR/<f>` for every regular file `f` of\n     `root / LICENCE_DIR` (sorted), raise `FileExistsError` if the staged path already exists (the add-on is never\n     overwritten), then `shutil.copyfile` it from `root`. Comment why: the zip carries the add-on's own GPL licence, and the\n     Apache-2.0 texts that `get_panels()` (copied from Cycles, T4.2) and the statically linked Embree require. The rule:\n     every regular file of `LICENCES/` is staged, while `LICENCE_FILES` names the top-level notices, so a card that adds a\n     top-level notice must add it to `LICENCE_FILES` (T2.9 owns `LICENSES/`)."
+   }
+  ],
+  "note": "Real and correctly diagnosed: the directory is copied wholesale but the top-level notices are a fixed tuple, and the card never says which a later card must update. The edit states the rule where the staging happens."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 executability",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md:884 (\"- `git diff HEAD~1 --stat` lists exactly the seven files of Create and Modify.\"). AGENTS.md:93 (\"Never run `git commit`, `push`, `rebase` or `reset`. The queue turns your diff into the commit.\") and CLAUDE.md rule 7 (the same). Command: `git diff HEAD~1 --stat` -> ` docs/handoff/findings/M7-M9-panel-T7.3-T7.5.json | 234 +++++++++++++++++++++++` / ` 1 file changed, 234 insertions(+)`; `git log HEAD~1 -1 --oneline` -> `f05bb0b t-panel-b: PANEL-M7-M9-b: check the review findings on T7.2 (report only)`; `git status --porcelain` -> (empty). So in this clone `HEAD~1` names the previous card's commit and the check lists that card's file, exactly as the finding says; the same line appears in the earlier panel's scope at docs/handoff/findings/M7-M9-panel-T7.3-T7.5.json (object `review T7.4 executability` index 0), whose fix changed T7.4's line to `git status --porcelain` and whose note says \"T8.2:884 needs the same edit in PANEL-M7-M9-d\". The check's only purpose is scope, which `git status --porcelain` covers. The card's own \"Do not touch\" already forbids pushing (:124-125).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "- `git diff HEAD~1 --stat` lists exactly the seven files of Create and Modify.",
+    "new": "- `git status --porcelain` lists exactly the seven files of Create and Modify (the worker never commits: CLAUDE.md\n  rule 7, AGENTS.md \"Git\"; the queue's commit is not the worker's to inspect, so `HEAD~1` names the previous card)."
+   }
+  ],
+  "note": "Reproduced in this clone: `git diff HEAD~1 --stat` lists the previous card's file, not this card's seven, because the worker never commits. The same edit was already made to T7.4 by PANEL-M7-M9-c, whose note points here."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 executability",
+  "index": 1,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:867-873 (the Acceptance's local block; :871-872 \"`make blender && .venv/bin/python -m pytest tests/blender_it/test_repo_index_client.py -m slow -q -rs` reports every test passed and none skipped.\", :873 \"`make blender-it` passes. It runs every slow test under `tests/blender_it/`, this card's included.\"), :16-23 (the Goal's six-step slow test), :790-795 (Step 7's setup: \"`<blender>` is the stripped stdout of `[sys.executable, \"-I\", \"tools/fetch_blender.py\", \"--print-path-only\"]`, run from `REPO_ROOT`. Skip if no file exists there (`make blender` creates it).\"). AGENTS.md:30-32 (\"**Offline.** There is no network, and installing anything fails by design (`uv sync`, `pip`). Never run `make env`, `make blender`, `make oracle` or `make wheel`.\") and BACKLOG.md:27 (\"`make env`, `make oracle`, `make blender`, `make wheel`, the network, CI, GitHub, \"the orchestrator verifies\" | host-only: don't run; report \"host-only, not run\"\"). The card's own Goal (:16-23) makes the slow Blender test the only end-to-end proof of the index, and the two acceptance bullets that would run it need `make blender` and the built extension zip, both host-only. The card does not mark either bullet and gives no smaller substitute, exactly as the finding states. The card's fast substitute does exist and is named at :109 (`tests/core/test_repo_index.py`: Step 6 (fast; no Blender, no network, no git)) and its `file://` base URL is already used at :752, so the finding's suggested substitute is available in the card.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "- `make blender && .venv/bin/python -m pytest tests/blender_it/test_repo_index_client.py -m slow -q -rs` reports every\n  test passed and none skipped.\n- `make blender-it` passes. It runs every slow test under `tests/blender_it/`, this card's included.",
+    "new": "- `make blender && .venv/bin/python -m pytest tests/blender_it/test_repo_index_client.py -m slow -q -rs` reports every\n  test passed and none skipped. Host-only, not run in a worker clone: `make blender` fetches Blender (BACKLOG's table).\n- `make blender-it` passes. It runs every slow test under `tests/blender_it/`, this card's included. Host-only, not run in a\n  worker clone: it needs `make blender` and the built extension zip.\n- The local substitute for the two bullets above is `tests/core/test_repo_index.py` (fast; no Blender, no network, no git):\n  its `file://` base URL exercises `generate`, `rewrite_index`, `verify_index` and `check_urls` without Blender. Only the\n  Blender client path (`tests/blender_it/test_repo_index_client.py`) is the host's."
+   }
+  ],
+  "note": "Reproduced: both bullets need `make blender`, which AGENTS.md and BACKLOG's table make host-only, and the card's Goal makes that slow test its only end-to-end proof. The edit marks the two bullets host-only and names the fast substitute the card already contains."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 executability",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:30-31 (\"A fast test validates the index logic against synthetic zips\"), :109 (\"`tests/core/test_repo_index.py`: Step 6 (fast; no Blender, no network, no git)\"), :140-146 (the index's exact formatting: \"Exactly `json.dumps(index, indent=2) + \"\\n\"`, UTF-8\", and the entries in `RELEASE_PLATFORMS` order), :54-59 (fact 1: the file is `json.dump({\"version\": \"v1\", \"blocklist\": [], \"data\": [...]}, fh, indent=2)`, with no trailing newline, one entry per `*.zip` \"**in `os.scandir` order**\"), :60-63 (fact 2: the entry fields), :646-695 (Step 6's helpers, `write_split_zip`, `make_assets`, `blender_like_index`, the `GENERATED` table and the literal `[\"3\"]`), :696 (\"`SCANDIR_ORDER = [1, 0, 2]` (macOS, Linux, Windows: the order fact 1 observed)\"), :710-721 (the `rewrite_index` test on `blender_like_index(make_assets(tmp_path), SCANDIR_ORDER)`), :731-733 (the negative table, whose \"Linux and macOS entries swapped\" row expects `missing: [], unexpected: []`). Probe (MAIN/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python-expr '<code>'): code: `import inspect / from bl_pkg.cli import blender_ext as be / src = inspect.getsource(be.subcmd_server.generate) / print(\"SCANDIR:\", [l.strip() for l in src.splitlines() if \"scandir\" in l]) / print(\"JSONLINES:\", [l.strip() for l in src.splitlines() if \"json.dump\" in l])`; output: `SCANDIR: ['for entry in os.scandir(repo_dir):']` and `JSONLINES: ['json.dump(repo_gen_dict, fh, indent=2)']`. The finding's core observation is right: `generate` runs Blender, so the fast test cannot exercise the entry generation, and the synthetic index must imitate Blender's formatting. But the card does say where the synthetic index comes from: Step 6 gives the helpers verbatim (:646-695) and says they write \"an index laid out like `server-generate`'s (facts 1-2)\", with `blender_like_index` building the entries from the zips' own manifests and `SCANDIR_ORDER` giving the observed `os.scandir` order. The finding's own fix ('a synthetic `index.json` written by the test with `json.dumps({...}, indent=2)`') is also already what `write_index` does (:312). What is genuinely missing is only that Step 6 does not say in words that the fixture imitates Blender's `indent=2` formatting and its `os.scandir` order, and the reordering is exercised by `SCANDIR_ORDER` but never by a second, differently ordered input.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "Helpers, verbatim. They write zips laid out like Blender's split build (T8.1 fact 2) and an index laid out like\n`server-generate`'s (facts 1–2). The literal `[\"3\"]` is Blender's observed value, not the module constant:",
+    "new": "Helpers, verbatim. They write zips laid out like Blender's split build (T8.1 fact 2) and an index laid out like\n`server-generate`'s (facts 1–2): `blender_like_index` is the synthetic `index.json` that stands in for the file\n`server-generate` writes, in Blender's own formatting (`indent=2`, no trailing newline) and in the `os.scandir` order\n`SCANDIR_ORDER` names, so the test fixture imitates what the tool would read. The literal `[\"3\"]` is Blender's observed\nvalue, not the module constant:"
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "- `rewrite_index`, on `blender_like_index(make_assets(tmp_path), SCANDIR_ORDER)` with `BASE` and\n  `index_zip_names(ID, V)`:",
+    "new": "- `rewrite_index`, on `blender_like_index(make_assets(tmp_path), SCANDIR_ORDER)` with `BASE` and\n  `index_zip_names(ID, V)`. The same assertions hold for a second input order, `SCANDIR_ORDER` reversed, so the reorder\n  is exercised from more than one `os.scandir` order:"
+   }
+  ],
+  "note": "Real only in the wording: the card already gives the synthetic index's construction verbatim (`blender_like_index`, `SCANDIR_ORDER`) and the formatting is Blender's, so the finding's 'the fixture has to imitate' is already the card's design. The edits say so in words and add the second input order the finding asks for."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 executability",
+  "index": 3,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:902-910 (the \"Owner, once before the first release, and checked after it.\" list; :904 \"Settings -> Pages -> Build and deployment -> Source **GitHub Actions**.\", :905 \"If Settings -> Environments -> `github-pages` limits deployment branches and tags, add the tag rule `v*`.\", :906-908 \"After the release run, `pages` is green. `curl -fsS https://...` equals the run's `site` artifact byte for byte.\"), :416-419 (the `pages` job's header comment repeats the two one-time settings), :871-873 (the local block that cannot see the CI failure), :886-891 (the CI block, the orchestrator's). The claim is real: the list mixes two one-time repository settings with one per-release check, and it never says what a wrong Pages source looks like in the run log, so the failure is visible only in CI, which the card's executor cannot run. But the finding's proposed failure signatures ('Pages site not found' / 'not enabled') are not derived from anything in the tree or in Blender; they are the reviewer's own guess, and the card's own text at :907-908 already names the observable failure the owner must watch (the `curl` equality check, with the Pages cache delay). So the split is the real part; the error strings are not, and the fix below splits the list and names the observable the card already has instead of inventing error text.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "Owner, once before the first release, and checked after it. The first `v<V>` release is an owner decision, not part of\nthis card's gate:\n- Settings → Pages → Build and deployment → Source **GitHub Actions**.\n- If Settings → Environments → `github-pages` limits deployment branches and tags, add the tag rule `v*`.\n- After the release run, `pages` is green. `curl -fsS https://m516.github.io/blender-painterly-render-plugin/index.json`\n  equals the run's `site` artifact byte for byte. Pages may serve the previous index until its `Cache-Control` max-age\n  has passed, so retry after that.",
+    "new": "Owner, once before the first release. The first `v<V>` release is an owner decision, not part of this card's gate:\n- Settings → Pages → Build and deployment → Source **GitHub Actions**.\n- If Settings → Environments → `github-pages` limits deployment branches and tags, add the tag rule `v*`.\n\nOwner, after each release:\n- The `pages` run is green. A wrong one-time setting above shows up only here, so this is where it is caught.\n- `curl -fsS https://m516.github.io/blender-painterly-render-plugin/index.json`\n  equals the run's `site` artifact byte for byte. Pages may serve the previous index until its `Cache-Control` max-age\n  has passed, so retry after that."
+   }
+  ],
+  "note": "Real: the list mixes the one-time settings with the per-release check and says nothing about where a wrong setting shows. The finding's error strings are the reviewer's own guess, so the edit splits the list and names the observable the card already has (the green `pages` run and the `curl` equality)."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 design",
+  "index": 0,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:10-13 (the Goal: the `pages` job \"checks that the release is the Latest one, downloads every archive URL of the index from the published Release, and deploys\" the index), :126-129 (\"**Not in this card:** ... older releases in the index. The index lists the newest release only\"), :444-473 (the `pages` job's steps: \"Check that this release is the Latest\", \"Download the repository index\", \"Check the archive URLs against the published Release\" (:462-464, before the deploy), \"Upload the Pages artifact\", \"Deploy to GitHub Pages\" (:471-473)), :543 (\"The repository always lists the newest release, and only that one.\"), :550-551 (the guide's Pages cache bullet), :906-908 (the owner's `curl` equality check). The claim is real: `check-urls` runs before the deploy (:462-464), nothing in the workflow checks the deployed site afterwards, and the only after-deploy evidence is the owner's manual `curl` (:906-908). The finding's fix asks for \"a bounded retry loop whose wait is derived from GitHub Pages' documented `Cache-Control` max-age (state the source)\"; no such max-age value is in the tree (`grep -rn 'max-age' docs/` finds only the card's own :907 and the finding file), and the card itself says the owner must \"retry after that\" (:907-908) without naming a number. So the fix cannot be given the exact bound the finding asks for without a source the panel cannot consult offline; what the card can carry is the automatic post-deploy equality check, with the retry left to the owner's `curl` fallback the card already states.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "         - name: Deploy to GitHub Pages\n           id: deployment\n           uses: actions/deploy-pages@v4\n   ```",
+    "new": "         - name: Deploy to GitHub Pages\n           id: deployment\n           uses: actions/deploy-pages@v4\n\n         # The deployed index must equal the artifact this run uploaded. Pages may still serve the previous index until\n         # its cached copy expires, so the check retries for a bounded time and the owner's `curl` (Acceptance) stays the\n         # fallback.\n         - name: Check the deployed index\n           shell: bash\n           run: |\n             expected=\"$(sha256sum site/index.json | cut -d' ' -f1)\"\n             for attempt in 1 2 3 4 5 6 7 8 9 10; do\n               actual=\"$(curl -fsS \"$(python -I tools/repo_index.py pages-url --repository \"$GITHUB_REPOSITORY\")\" | sha256sum | cut -d' ' -f1)\"\n               test \"$actual\" = \"$expected\" && exit 0\n               sleep 60\n             done\n             echo \"the deployed index is not the artifact of this run\" >&2\n             exit 1\n   ```"
+   }
+  ],
+  "note": "Real: nothing checks the deployed site automatically, only the owner's manual `curl`. The finding's bound cannot be derived here (no `Cache-Control` max-age source is in the tree and the card does not name one), so the edit adds the automatic equality check with a named, fixed retry budget and keeps the owner's `curl` as the fallback."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 design",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:133-138 (the URL table; :136 \"Remote repository (users paste this) | `https://m516.github.io/blender-painterly-render-plugin/index.json` = `pages_index_url(CANONICAL_REPOSITORY)`\"), :243-245 (\"CANONICAL_REPOSITORY = \\\"m516/blender-painterly-render-plugin\\\"\" with the comment \"The repository this project is published from (docs/plan.md, Context). docs/install.md states its Pages URL.\"), :395-396 (the `package` job's `generate` step: `--repository \"$GITHUB_REPOSITORY\"`), :407-412 (the summary step: `pages-url --repository \"$GITHUB_REPOSITORY\"` and `base-url --repository \"$GITHUB_REPOSITORY\"`), :150-157 (the command line: `generate` takes `--repository OWNER/NAME` or `--base-url URL`), :296-302 (`release_base_url` and `pages_index_url`; `release_base_url` builds `https://github.com/{owner}/{name}/releases/download/v{version}/` from the argument, and `pages_index_url` builds `https://{owner.lower()}.github.io/{name}/index.json` from the same argument). The claim is real: the archive URLs and the Pages URL are both derived from the `--repository` argument, so a fork that runs the workflow produces an index whose archive URLs point at the fork and whose Pages URL also points at the fork - the two do not diverge, because both use the same argument. What the card does not say is that `CANONICAL_REPOSITORY` and `docs/install.md` keep naming the upstream repository while a fork's index names the fork, so a fork's own users must be told their own URL. The finding's fix ('`--repository` must equal `CANONICAL_REPOSITORY` unless `--allow-fork` is given') would forbid the fork's own release, and the card's own slow test at :824-826 relies on `--repository m516/blender-painterly-render-plugin` running beside a `--base-url` run, so a hard precondition is the wrong shape; naming the divergence is the correct one.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "CANONICAL_REPOSITORY = \"m516/blender-painterly-render-plugin\"",
+    "new": "CANONICAL_REPOSITORY = \"m516/blender-painterly-render-plugin\"  # the upstream repository; a fork that runs the\n# workflow with `--repository <fork>` publishes an index whose archive URLs and whose Pages URL both name the fork, so its\n# users need the fork's own `pages_index_url(<fork>)` and not the upstream one in docs/install.md"
+   }
+  ],
+  "note": "Real that the card never says what a fork's index points at, but the finding's premise is wrong: the archive URLs and the Pages URL are both derived from `--repository`, so they cannot diverge. The edit names the fork's behaviour instead of forbidding a fork with a new flag."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T8.2 design",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T8.2-repository-index-and-install-docs.md:112-117 (Modify: :117 \"`README.md`: the `## Install` section of Step 5, between `## Status` and `## Layout`\"), :504 (\"### 4. `docs/install.md`, exactly\"), :619-627 (Step 5, the `## Install` section of `README.md`), :543-551 (the guide's Updates section). docs/handoff/drafts/M7-M9/T7.5-artist-guide.md:85-92 (Modify: \"`README.md`: insert, between the `## Status` section and `## Layout`, the section `## Documentation`\", and \"Nothing else changes.\"). README.md at HEAD: `grep -n '^## ' README.md` -> `5:## Status`, `9:## Layout`, `31:## Development`, `37:## Credits`, `43:## Licence` (so neither card's section is in the tree yet). The two cards do insert into the same gap, and neither names the other in the ordering sense; the order comes from the dependency chain, not from naming: T8.2's header line reads \"Milestone: M8 · Depends on: T8.1 (and through it M4-M7)\" (T8.2:2) and T7.5's reads \"Milestone: M7 · Depends on: T7.4 (and through it T7.1-T7.3 and all of M3-M5)\" (T7.5:2), so T7.5 (M7) precedes T8.2 (M8). The finding's own note that 'the two cards are serialized (T8.2 depends on T8.1 which depends on M4-M7)' is the dependency argument, not a naming link, and the finding's premise that 'neither names the other' is true only in the narrow sense of the card bodies. What is real is that neither card says which of `docs/install.md` and the README's `## Install` section is normative, and neither says where `## Install` goes relative to T7.5's `## Documentation`; both insert into the same gap between `## Status` and `## Layout`, so the two edits collide in that gap.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "- `README.md`: the `## Install` section of Step 5, between `## Status` and `## Layout`.",
+    "new": "- `README.md`: the `## Install` section of Step 5, between `## Status` and `## Layout`, after T7.5's `## Documentation`\n  section (T7.5 inserts into the same gap). The README section is a short pointer; `docs/install.md` (Step 4) is the normative\n  install guide, and the two never differ in substance."
+   },
+   {
+    "file": "docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md",
+    "old": "### 5. `README.md`\nInsert this section between `## Status` (and its paragraph) and `## Layout`, exactly:",
+    "new": "### 5. `README.md`\nInsert this section between `## Status` (and its paragraph) and `## Layout`, after T7.5's `## Documentation`\nsection, exactly. This section is a pointer; `docs/install.md` (Step 4) is normative:"
+   }
+  ],
+  "note": "Real: neither card says which of the two texts is normative, and both insert into the same README gap, so the order of the two sections has to be named. The order argument is the dependency chain (T7.5 in M7, T8.2 in M8), not a naming link between the cards."
+ }
+]
