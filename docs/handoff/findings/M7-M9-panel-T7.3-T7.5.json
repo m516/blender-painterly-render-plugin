@@ -1,0 +1,234 @@
+[
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.3 executability",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "docs/handoff/findings/M7-M9-reviews.json holds only the keys `review T7.1 executability`, `review T7.1 design`, `review T7.2 executability` and `review T7.2 design` (`python3 -c \"import json; print(list(json.load(open('docs/handoff/findings/M7-M9-reviews.json'))))\"` -> those four keys), so this source contributes no T7.3-T7.5 finding. Read at HEAD: docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md:563 (`build/dev/src/test/painterly_tests -tc=\"lane*\"` reports 6 test cases, 6 passed, 0 failed) and :571 (a second literal `build/dev` in the socket print). BACKLOG.md:21 (`| `build/dev` | `build/q` |`) is the translation table entry R2 cites. `grep -n 'TEST_CASE(' docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md` -> `906:TEST_CASE(`, `930:TEST_CASE(\"lane grid: stagger 0 is the SPEC v1 grid, ...\")`, `969:TEST_CASE(\"lane grid: CHAIN_ROW and CHAIN_IMAGE are one lane per row for any stagger\")`, `998:TEST_CASE(`, `1019:TEST_CASE(\"lane scheduler with lane_stagger: identities and effect\")`, `1047:TEST_CASE(\"lane scheduler: a negative lane_stagger is rejected for CHAIN_LANE\")`; the two multi-line cases name `lane grid: sampler.h equals the column walk of SPEC §3 ...` (:907) and `lane scheduler with lane_stagger: equals the serial SPEC §3 render ...` (:999). All six names begin `lane`. `grep -h 'TEST_CASE(\"' src/test/*.cpp | grep -c '^lane'` -> `0`, so no existing case begins with `lane`; the only existing case containing it is `ghost spheres, exact spheres and planes are bitwise smallpaint's and the oracle's` (src/test/test_analytic.cpp:184). doctest matches a case name against a wildcard: MAIN/.cache/src/doctest/doctest/doctest.h:4113 `int wildcmp(const char* str, const char* wild, bool caseSensitive)`, :4150 `bool matchesAny(...)`, :6623 `parseCommaSepArgs(argc, argv, DOCTEST_CONFIG_OPTIONS_PREFIX \"tc=\", p->filters[4]);`, :6930-6931 `if(!matchesAny(tc.m_name, p->filters[4], true, p->case_sensitive)) skip_me = true;`. So `lane*` selects exactly the six Appendix C cases.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md",
+    "old": "- `build/dev/src/test/painterly_tests -tc=\"lane*\"` reports 6 test cases, 6 passed, 0 failed (doctest's summary line).",
+    "new": "- `build/q/src/test/painterly_tests -tc=\"lane*\"` reports 6 test cases, 6 passed, 0 failed (doctest's summary line;\n  BACKLOG's table rewrites the card's `build/dev` to `build/q`, R2, and the filter selects the six Appendix C cases by\n  their `lane` prefix: no case at HEAD begins with `lane`)."
+   }
+  ],
+  "note": "The stale build directory is real and R2's translation is the fix; the filter claim reproduces. The same literal `build/dev` also stands at :571, outside this fix."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.3 executability",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.3-lane-stagger.md:564-565 (`.venv/bin/python -m pytest tests/core/test_lane_stagger.py tests/core/test_oracle_parity.py -q` passes, including the slow 400 px parity test (T3.16); `test_lane_stagger.py` contributes 12 passed) and :1185-1235 (Appendix D: `test_socket`, `test_ui_text` x3, `test_precondition`, 5 x `test_parity_where_the_lane_grid_is_the_oracles`, `test_a_stagger_moves_the_lanes`, `test_staggered_render_is_deterministic` = 12; `grep -c 'def test_'` -> 6 definitions, one parametrized 3x and one 5x). `git ls-files | grep -E 'scenes.py|test_oracle_parity'` prints nothing: tests/core/test_oracle_parity.py does not exist at HEAD, because its card (docs/tasks/M3/T3.16-oracle-parity.md) has not landed (BACKLOG.md:516 is still an item). The oracle is not host-only: CMakeLists.txt:13 `option(PAINTERLY_BUILD_ORACLE \"Build the smallpaint_oracle reference CLI\" ON)` and src/CMakeLists.txt:16 `add_subdirectory(app)`, so `make build` builds `<build>/src/app/smallpaint_oracle`. analysis/painterly_analysis/oracle.py:21-31 resolves it from `$PAINTERLY_BUILD_DIR` (default `build/dev`), which the acceptance command does not set, while the Makefile exports `PAINTERLY_BUILD_DIR = $(abspath $(BUILD_DIR))` (Makefile:8) only to make-invoked processes. The 48 px, 3 passes cases of test_lane_stagger.py (`SIZE = 48`, `PASSES = 3`, :1090-1091) are far below the 10 s mark of CLAUDE.md rule 6, so marking them `slow` would be wrong, and the 400 px case is T3.16's, already marked slow (docs/tasks/M3/T3.16-oracle-parity.md:43).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md",
+    "old": "- `.venv/bin/python -m pytest tests/core/test_lane_stagger.py tests/core/test_oracle_parity.py -q` passes, including the\n  slow 400 px parity test (T3.16); `test_lane_stagger.py` contributes 12 passed.",
+    "new": "- `PAINTERLY_BUILD_DIR=\"$PWD/build/q\" .venv/bin/python -m pytest tests/core/test_lane_stagger.py tests/core/test_oracle_parity.py -q`\n  passes, including the slow 400 px parity test (T3.16); `test_lane_stagger.py` contributes 12 passed. `make build`\n  builds that oracle (CMakeLists.txt:13, src/CMakeLists.txt:16), so the step is not host-only; its own cases run at 48 px\n  and 3 passes and need no `slow` mark."
+   }
+  ],
+  "note": "Real: the acceptance never points `PAINTERLY_BUILD_DIR` at the build that holds the oracle, and it names a file whose card (T3.16) has not landed. Wrong: the oracle is built by `make build`, so the step is not host-only, and the 48 px cases are fast, so `slow` marks are not the fix."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.3 design",
+  "index": 0,
+  "verdict": "disputed",
+  "evidence": "Read at HEAD: T7.3-lane-stagger.md:32-33 (`The default stays 0 in every outcome of experiment NNN.` ... `The experiment decides what SPEC §3 and the artist guide say about the knob.`), :62-63 (`## SPEC change (Opus)` / `Proposed text for `docs/spec.md`. Opus applies it; the agent never edits the SPEC.`), :75-97 (the proposed §3 bullet: the knob definition, the lane-grid algebra, and `experiment NNN measures the seam-column amplitude with and without it`), :99-101 (the §8 row, whose justification is `0 is the aligned grid of experiment 003, bit for bit`), :103-104 (`When experiment NNN is final, Opus replaces \"experiment NNN measures the seam-column amplitude with and without it\" with its result`) and :496-507 (the pre-registered per-outcome SPEC text, including `H2 refuted: the knob stays, documented as moving the lane starts without removing the seam columns`). docs/plan.md:343 (`Opus finalizes experiment conclusions before any defaults are changed.`) concerns defaults; the proposed text changes none (SPEC §8's default stays 0, T7.3:32). The sentence the finding calls a recommendation, :92 `g = 1 spreads them evenly over all L classes`, is arithmetic about the seam lattice (`g = gcd(S mod L, L)`, :90-91), not an experiment claim. docs/spec.md:78 is the current §3 bullet the change replaces, and its `It is not part of this SPEC` sentence about `lane_stagger` is what the card's own §3 text replaces.",
+  "duplicate_of": null,
+  "fix": null,
+  "note": "Not a defect as stated: the proposed text is definitional (the geometry the code implements and the unchanged default 0), the `g = 1` sentence is arithmetic about seam classes, the measured claim is a placeholder, and :103-104 plus :504 already pre-register its replacement. Splitting the SPEC change is an Opus decision (CLAUDE.md rule 1), not a card defect."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.3 design",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.3-lane-stagger.md:437-444 (H1, `positive control`, test `E_col_r(lane16_s0)` against `E_col_r(row)`, `Decision: supported iff r4 is in R1 and the mean of `E_col_r4(lane16_s0)` exceeds that of `row`. Refuted otherwise. Inconclusive if r4 is not measured.`), :366-376 (the pilot table, `| r4 back wall | +0.449 ± 0.045 | +0.022 ± 0.042 | 1.55e-4 |`), :384-387 (the core equals the oracle where the lane grid is the oracle's, `It is not the same realization`), :446-494 (H2-H4, whose decisions do not mention H1) and :496-507 (`What each outcome means`, whose bullets start at H2; none covers a refuted H1). So H1 does have a refuted verdict (:443), but no pre-registered consequence: H2's `Decision: supported iff (a) and (b)` (:457) and H4's (:493) are read even when the control did not fire.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md",
+    "old": "- In every outcome the default of `lane_stagger` stays 0 (card T7.3, Opus decision 5).",
+    "new": "- In every outcome the default of `lane_stagger` stays 0 (card T7.3, Opus decision 5).\n- H1 refuted: the seam-column statistic did not replicate on the native path, so the report says so and H2, H3 and H4 are\n  reported as inconclusive, with their means, differences and p-values, and no verdict is read."
+   }
+  ],
+  "note": "Real: the control's own verdict exists, but its consequence for H2-H4 is missing. The finding's `no pre-registered reading` overstates it, and the pilot values it asks for are already at :373."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 executability",
+  "index": 0,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:529 (`- `git diff --stat HEAD~1` lists only the files of Step 11.`) and :516-518 (Step 11 lists the files to commit). AGENTS.md:93 (`Never run `git commit`, `push`, `rebase` or `reset`. The queue turns your diff into the commit.`) and CLAUDE.md rule 7 (`Never run `git commit``). In this clone `git log --oneline -1` prints `f05bb0b t-panel-b: PANEL-M7-M9-b: check the review findings on T7.2 (report only)`: HEAD is the previous card's commit, so `HEAD~1` names a commit two cards back and the check would list both cards' files. T8.2-repository-index-and-install-docs.md:884 repeats the line (`git diff HEAD~1 --stat` lists exactly the seven files); that card is PANEL-M7-M9-d's scope, not this panel's.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.4-exp-animation.md",
+    "old": "- `git diff --stat HEAD~1` lists only the files of Step 11.",
+    "new": "- `git status --porcelain` lists only the files of Step 11 (the worker never commits: CLAUDE.md rule 7, AGENTS.md\n  \"Git\"; the queue's commit is not the worker's to inspect, so `HEAD~1` names the previous card)."
+   }
+  ],
+  "note": "Real and not runnable before the queue's commit; the working-tree check states the same intent. T8.2:884 needs the same edit in PANEL-M7-M9-d."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 executability",
+  "index": 1,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:105-109 (`Sequence k (0…15) of configuration c (0…5, table order) has base seed `(16·c + k) · 18`; ... The stride 18 = 17 + 1`), :406 (`SIZE, PASSES, PAIRS = 400, 64, 8`), :410-411 (`DRIFT_STEPS = 16`, `FRAME_END = FRAME_START + DRIFT_STEPS`), :423 (`SEED_STRIDE = FRAME_END + 1`) and :437 (`def base_seed(config_index: int, sequence: int) -> int  # (2 * PAIRS * config_index + sequence) * SEED_STRIDE`). `2 * PAIRS = 16` and `SEED_STRIDE = 18` are the only reasons the two agree; the pre-registration is frozen (`Keep the definitions, rules and numbers exactly`, :50). Design check 6 (:256-257) asserts only that `the engine seeds of all renders (576 at full scale) are unique`, which holds for any stride >= FRAME_END + 1, so a change to PAIRS or FRAME_END would not fail any check while the README's `(16·c + k) · 18` went stale.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.4-exp-animation.md",
+    "old": "  6. The two sequences of every pair differ at every frame (not `np.array_equal`), and the engine seeds of all renders\n     (576 at full scale) are unique: the replicates are independent.",
+    "new": "  6. The two sequences of every pair differ at every frame (not `np.array_equal`); the engine seeds of all renders\n     (576 at full scale) are unique; and every (configuration c, sequence k) has the base seed\n     `(2 * PAIRS * c + k) * SEED_STRIDE` with `SEED_STRIDE == FRAME_END + 1`, equal to the README's Configurations table:\n     the replicates are independent, and a change to `PAIRS` or `FRAME_END` fails here rather than drifting from the\n     frozen prose."
+   }
+  ],
+  "note": "Real: the prose and `design.base_seed` are two sources of one number and no check compares them; extending check 6 keeps the numbering the Acceptance cites."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 executability",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:232-235 (the command block `make env build blender extension reference-blend`, then `run.py --budget 540`, then `analyze.py`) and :502 (`4. `make env build blender extension reference-blend`. Then `make lint test``). AGENTS.md:31-32 (`Never run `make env`, `make blender`, `make oracle` or `make wheel`.`) and BACKLOG.md:27 (the table row that maps those targets to `host-only: don't run`). The Blender-dependent part is not host-only, though: `make blender` is only `tools/fetch_blender.py` (Makefile:42-43), the executable is the `BLENDER` knob (Makefile:13), `make extension` is a plain build target (docs/tasks/M4/T4.4-extension-build-it.md:42: `extension: blender` -> `tools/build_extension.py`), and `make build` needs `VENV`/`BUILD_DIR`/`CMAKE_ARGS` (Makefile:1-2, 45-47, BACKLOG.md:11). So the 576 renders can run in a worker clone once those knobs are given; only `make env` and `make blender` are forbidden.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.4-exp-animation.md",
+    "old": "  make env build blender extension reference-blend",
+    "new": "  make build extension reference-blend   # VENV=<venv> BUILD_DIR=build/q and the BACKLOG KNOBS; `make env` and\n                                        # `make blender` are host-only (R1): never run them, and report them \"host-only, not run\""
+   }
+  ],
+  "note": "Real: the command block and Step 4 ask for two forbidden targets. Wrong: the renders are not host-only, since BLENDER, VENV and BUILD_DIR are knobs; the corrected line keeps the build and marks only `make env`/`make blender` host-only."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 design",
+  "index": 0,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:149-164 (H1: `Separating contrast: the truck's back wall (r4), where q(p) − p is the exact integer shift (0, τ), so neither reading is helped by interpolation. Per pair, `d = r4.rho_image − r4.rho_scene`.`, the sign-flip test and `Reading: scene-locked iff \"mean d < 0\" is Holm-rejected in both; ...`, then `Estimation (no verdict): ... the same keys for the other regions of the truck (bilinear reprojection) and for the pan.`), :254-255 (design check 5 reports `max |q(p) − p − (0, τ)|` over the truck's back-wall pixels), :122 (`I_r(t, t′) = E_r(t′) ∩ E_r(t)`; bilinear sampling of `w(f)`) and :88-90 (1/200 of the side per frame, `the back wall ... z = −5.5`). 006's rule that a mechanism hypothesis gets the contrast that separates its readings is experiments/006-2026-10-09-jitter-units/README.md:575 (`A mechanism hypothesis gets the contrast that separates its readings.`), and r4 is that contrast. Read-only probe (code and output quoted verbatim): `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender -b --factory-startup --python .ds-scratch/probe1.py`, where the script builds a 400 x 400, 18 mm/36 mm AUTO camera at the origin with `calc_matrix_camera(dg, x=400, y=400, scale_x=1.0, scale_y=1.0)` and projects (0,0,-5.5) before and after moving the camera 0.055 along +y; output: `PROBE projection row0 [1.0, 0.0, 0.0, 0.0]`, `PROBE back wall before (200.0, 200.0)`, `PROBE back wall after  (200.0, 197.99999985843897)`, `PROBE shift px (0.0, -2.0000001415610313)`. So the truck's back-wall shift is the exact integer 2 px at 400 px, as the card states.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.4-exp-animation.md",
+    "old": "- Estimation (no verdict): per configuration, mean ± sd of `r4.rho_scene`, `r4.rho_image`, `r4.slag_x` and d; the same keys\n  for the other regions of the truck (bilinear reprojection) and for the pan.",
+    "new": "- Estimation (no verdict): per configuration, mean ± sd of `r4.rho_scene`, `r4.rho_image`, `r4.slag_x` and d; the same keys\n  for the other regions of the truck (bilinear reprojection) and for the pan. Both readings predict the same sign of d\n  there as on r4, attenuated by the same bilinear kernel; the report states for each of those regions whether its sign\n  agrees with r4 and lists any that disagrees."
+   }
+  ],
+  "note": "Real that no reading is pre-registered for a disagreement between r4 and the four interpolated regions; but deciding on r4 is 006 Decision 4's separating contrast, not a defect, and changing H1's verdict rule is an Opus decision (R4), so the corrected edit adds the direction prediction and the report line only."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 design",
+  "index": 1,
+  "verdict": "disputed",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:17-20 (`two decisions, `seed_per_frame` and `spiral_frame` for animation, ... **This card changes no default and no SPEC text.** Opus finalizes the Conclusion and then applies the mapping`), :221 (`#### Mapping of the decisions to defaults (applied by Opus after the final Conclusion; not by this card)`) and :222-225 (the table, whose D1 `R selects X` cell reads `SPEC §8 and the `PainterlyIntegrator` socket default become `true` (an Opus card edits ...)` and whose D2 cell reads `An Opus card adds the operator `PAINTERLY_OT_freeze_spiral_frame``). `grep -rn 'freeze_spiral_frame' BACKLOG.md docs/handoff/drafts/` prints only T7.4:225, so no follow-up card exists yet - which is what docs/plan.md:343 orders (`Opus finalizes experiment conclusions before any defaults are changed.`). The finding's premise that the card both says it changes no default and changes one does not hold: the table is explicitly the mapping Opus applies after the Conclusion, and D2's own text keeps the socket default `camera`.",
+  "duplicate_of": null,
+  "fix": null,
+  "note": "Not a defect: the table is a hand-off Opus applies after the Conclusion (:221, docs/plan.md:343), so this card changes no default; a follow-up card cannot exist before the Conclusion. The finding's edit is a harmless clarification Opus may still take."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.4 design",
+  "index": 2,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.4-exp-animation.md:202-219 (rule R: step 2 `report.directional_pair_test(..., 0.01)` and `Holm ... separately for the \"better\" and the \"worse\" p-values (first threshold 0.01/30 = 3.33e-4 ≥ 7.77e-5)`; step 3 `Δ` = the median of g over the cells ... Its 99% percentile bootstrap interval`; step 4 `X replaces D iff (a) the interval lies entirely above 0, (b) at least one cell is Holm-better, and (c) no cell is Holm-worse.`; then `- Why no threshold is needed: 0.01 is the family-wise level every experiment uses, and the interval level is 1 − 0.01.`) and :143-147 (the exact tests: two-sample permutation, sign-flip, Holm). experiments/006-2026-10-09-jitter-units/README.md:117-120 is the precedent the card cites: `Estimation only: 95% percentile bootstrap intervals ... The resample count sets only the Monte Carlo precision of the interval. No decision depends on the intervals`, i.e. 006 kept the interval out of the decision. analysis/painterly_analysis/ensemble.py:164-177 is `holm(pvalues, alpha)`, the only level-based procedure there; no bootstrap coverage helper exists. So a percentile interval of a median over 30 dependent cells has nominal 99% coverage, not a 0.01 family-wise error rate, and the card's sentence names the wrong quantity.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.4-exp-animation.md",
+    "old": "- Why no threshold is needed: 0.01 is the family-wise level every experiment uses, and the interval level is 1 − 0.01. No\n  minimum effect size is set. (a) requires the typical cell to improve beyond the replicate noise, which the interval\n  carries (the noise floor);",
+    "new": "- Why no threshold is needed: 0.01 is the family-wise level of the Holm tests of (b) and (c). Step (a)'s 99% percentile\n  interval has nominal 99% coverage of the median of g under the resampling scheme, which is not a family-wise test\n  level. No minimum effect size is set. (a) requires the typical cell to improve beyond the replicate noise, which the\n  interval carries (the noise floor);"
+   }
+  ],
+  "note": "Real: the justification sentence labels a 99% coverage interval as a 0.01 test level, and 006 used such intervals for estimation only. The finding's own fix deletes decision criterion (a), which changes a pre-registered decision rule (R4, Opus), so the corrected edit fixes the sentence and keeps the rule."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 executability",
+  "index": 0,
+  "verdict": "disputed",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:291-299 (Step 9, whose command line already carries the comment `# until exit 0`: `.venv/bin/python tools/make_artist_guide.py figures --out-dir \"$SCRATCH/figures\" --native-cache-dir \"$SCRATCH/native\"   # until exit 0`, and `The loop prints nothing: all 16 files are byte-identical.`), :107-112 (the Interface: `figures  # repeat until exit 0; 3 = renders remain`), :113-121 (`while `m > 0` it exits 3 and writes no figure`) and :251-252 (`the 19 native renders took 7 to 10 minutes on 4 cores ... so expect two calls`). The re-render is the point of the step (`Render everything a second time into a scratch directory, the native renders included`, :291): the native cache key is per directory (:1468-1469 `self.native_cache / native_key(source, self.digest)`), and `compose` records no wall seconds (:1609-1621: `title`, `section`, `knob`, `view`, `columns`, `clip_fraction`, `width`, `height`, `bytes`, `sha256`, `panels`), so the bytes can be compared.",
+  "duplicate_of": null,
+  "fix": null,
+  "note": "Not a defect: Step 9 already says `# until exit 0` on the command line and the Interface says `repeat until exit 0`, and the fresh native cache is deliberate - the step exists to re-render everything and compare bytes, with the 7-10 minutes already stated at :251-252."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 executability",
+  "index": 1,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:245-247 (`the nine figures made only of experiment renders are byte-identical to the ones this card was checked with (`sha256sum` values in Acceptance). A difference means that the cached renders or the composition differ: stop and report the differing names`), :309-321 (the nine pinned `sha256sum` values), :96-99 (`.cache/renders` `only gains renders that are missing, through `painterly_analysis.experiment.run_jobs``) and :113-118 (`--oracle-build-dir` default `.cache/oracle-build`, experiment cache `$PAINTERLY_CACHE/renders`, or `.cache/renders`). The nine figures are fig_look, fig_ingredients, fig_chain, fig_passes, fig_alpha, fig_emitter, fig_ghost_lights, fig_resolution and fig_light_power (:156-169): fig_look and fig_passes read `tests/data/reference/` (:669, :724), fig_ghost_lights and fig_light_power carry `clip_fraction=True` (:808, :861), whose value `metrics.clip_fraction` computes from the panel image (:1598). The clone has no cache: `ls -d .cache .cache/renders` -> `ls: cannot access '.cache': No such file or directory` (twice), while `du -sh MAIN/.cache/renders` -> `13G`, and analysis/painterly_analysis/experiment.py:117-126 makes `$PAINTERLY_CACHE` (or `<repo>/.cache`) the cache root. So a worker clone cannot reproduce the nine hashes without pointing `PAINTERLY_CACHE` at that read-only cache (R7, S2), which the card never says.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.5-artist-guide.md",
+    "old": "   - the nine figures made only of experiment renders are byte-identical to the ones this card was checked with\n     (`sha256sum` values in Acceptance). A difference means that the cached renders or the composition differ: stop\n     and report the differing names;",
+    "new": "   - the nine figures made only of experiment renders are byte-identical to the ones this card was checked with\n     (`sha256sum` values in Acceptance). Their experiment panels come from the shared cache `MAIN/.cache/renders`\n     (read-only, R7), and the cache is keyed by the oracle binary's sha256, so set `PAINTERLY_CACHE` to that directory for\n     this step and report the step \"host-only, not run\" when it is absent: the hashes are evidence, not a target. A\n     difference means that the cached renders or the composition differ: stop and report the differing names;"
+   }
+  ],
+  "note": "Real: the nine hashes are reproducible only against the shared experiment cache (or after re-rendering every experiment panel), and the card never names the cache a worker clone must point at; the fix adds that, as evidence rather than a target."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 executability",
+  "index": 2,
+  "verdict": "confirmed",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:219-221 (`- `.cache/oracle-build/src/app/smallpaint_oracle` exists. If it does not, run `make oracle` once and say so in the final report: the 47 experiment renders are then rendered again`), :96-99 (`Do not run `make oracle` while `.cache/oracle-build/src/app/smallpaint_oracle` exists`) and :1657-1662 (the script's own message `is missing: run `make oracle`, or pass --oracle-build-dir`). AGENTS.md:31-32 (`Never run `make env`, `make blender`, `make oracle` or `make wheel`.`) and BACKLOG.md:27 (the host-only row). R7 makes the oracle binary and `.cache/renders` host-only and read-only for workers. So the precondition asks for a command the worker is forbidden to run, and a rebuild would orphan every cached render anyway (experiments/README.md:24-26: `The render cache is keyed by that binary's sha256. Rebuilding it orphans every cached render.`).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.5-artist-guide.md",
+    "old": "   - `.cache/oracle-build/src/app/smallpaint_oracle` exists. If it does not, run `make oracle` once and say so in the\n     final report: the 47 experiment renders are then rendered again (about an hour of CPU; deterministic, so Step 4's\n     checks still hold).",
+    "new": "   - `.cache/oracle-build/src/app/smallpaint_oracle` exists. If it does not, stop and report it: the oracle and\n     `.cache/renders` are host-only and read-only (R7, R1), and `make oracle` is never run (AGENTS.md)."
+   }
+  ],
+  "note": "Real and self-contradictory with the same file's `Do not touch` and with AGENTS.md; the fix removes the forbidden command and keeps the precondition a stop-and-report."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 design",
+  "index": 0,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:46-50 (Opus decision 5: `Prose quotes numbers only from final experiments ... For one that is not final, the prose uses a fixed sentence (Step 7). The structure check rejects a prose link to a non-final experiment.`), :547-562 (the `EVIDENCE` tuple: `oracle-reproduction`, `ingredient-ablation`, `lane-length`, `jitter-units`, `cpu-throughput`, `noise-locking`, `jitter-dose-response`, `scale-limits`, `lane-stagger`, `camera-motion`), :281-286 (the two fixed sentences) and :1128-1140 (`evidence_table()` emits one row per slug with `not run` or the index status). experiments/README.md:16-18 lists 007 `noise-locking`, 008 `jitter-dose-response` and 009 `scale-limits`, all `draft`; `ls -d experiments/*/` shows only 001-009, so `cpu-throughput`, `lane-stagger` and `camera-motion` do not exist. Six of the ten slugs are therefore not final, as the finding says. What the finding overstates is the silence: the generated `evidence` block (`TABLE_SECTIONS`, :542-543) already prints each slug's status and question in the guide's Evidence section, and the prose's fixed sentences name the experiment and say no claim is made (:284-286).",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.5-artist-guide.md",
+    "old": "- Render time: if the cpu-throughput experiment is final, its projected time for 1920 x 1080 at 1024 passes and the\n  machine it was measured on; otherwise the fixed sentence of Step 7 with <what> = \"render time\".",
+    "new": "- Not yet measured: one sentence that names every `EVIDENCE` slug whose status is not `final` and the knob or limit each\n  one will decide (the generated Evidence table carries the statuses), so the reader sees what the guide does not yet\n  know.\n- Render time: if the cpu-throughput experiment is final, its projected time for 1920 x 1080 at 1024 passes and the\n  machine it was measured on; otherwise the fixed sentence of Step 7 with <what> = \"render time\"."
+   }
+  ],
+  "note": "Real that six of ten slugs are not final; overstated that the guide is silent, since the generated Evidence table lists every status and the fixed sentences name each experiment. The corrected edit adds the consolidated list as prose, because a generated block would change Appendix A and Appendix B, outside a fix."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 design",
+  "index": 1,
+  "verdict": "partly",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:26-35 (Opus decision 1: `Two image sources, no Blender renders.` ... `The stand-in for a Blender scene is the built-in scene with only the light ghosted (`ghost=\"lights\"`) ... Figures rendered through Blender would need the installed extension and minutes per frame (T7.4).`), :153-170 (the 15 figures; every `source` cell is `reference`, an experiment pair or `native, built-in`), :64-65 (`T7.4 (experiment camera-motion; results.json key decisions)`), :333-334 (`Not in this card: Figures rendered through Blender ... T7.4's experiment figures stay in its own directory`) and :1900 (`project's experiment renders and from the native core (last section). -->`). docs/plan.md:356 is the manual check (`apply the \"Smallpaint Reference\" preset, and press F12`). T7.4-exp-animation.md:496 names its two Blender-rendered figures (`fig_truck_crop.png`, `fig_pan_crop.png`). So no guide figure is a Blender render, as the finding says, but that is a fixed Opus decision and listed as out of scope, not an omission.",
+  "duplicate_of": null,
+  "fix": [
+   {
+    "file": "docs/handoff/drafts/M7-M9/T7.5-artist-guide.md",
+    "old": "project's experiment renders and from the native core (last section). -->",
+    "new": "project's experiment renders and from the native core (last section). Say that no panel is a Blender render: every\none is the native core or the oracle, and the project's Blender-rendered frames are the camera-motion experiment's two\nfigures (T7.4), whose status the Evidence table shows. -->"
+   }
+  ],
+  "note": "Real observation, but the absence is Opus decision 1 and `Not in this card`, so it is not a defect; the caption sentence the finding asks for is compatible with that decision and is the corrected edit."
+ },
+ {
+  "source": "M7-M9-review-2.json",
+  "key": "review T7.5 design",
+  "index": 2,
+  "verdict": "disputed",
+  "evidence": "Read at HEAD: T7.5-artist-guide.md:263-280 (the writing rules; :269-270 `Never state a socket default or range, and never copy a tooltip`, :272-275 `Every number carries its unit and its source: `SPEC §n`, \"experiment 002 (H4)\" for experiments 001-006, a run-time experiment by its slug ... Take numbers only from the source the comment names and only from final experiments`), :279-280 (`For a knob that no experiment measured, say \"in this figure\" and make no general claim.`), :46-47 (Opus decision 5: `Prose quotes numbers only from final experiments (index status `final`; their Results and Conclusion) and from the SPEC.`), :161-162 (the two figures `fig_spiral_rotation.png`, `fig_phase_lock.png`) and :2078-2082 (the `spiral_frame` PROSE comment, which itself says `(SPEC §1, §4)`, `World: fixed in the scene; at Spiral Rotation 0 the spiral's axis then points along world +Z (up), not toward the camera, so the look changes (SPEC §1)`). So the SPEC is already a permitted source, both in the card's decision 5 and in the writing rule the finding quotes, and the two spiral comments already instruct the writer to cite SPEC §1 and §4.",
+  "duplicate_of": null,
+  "fix": null,
+  "note": "Not a defect: the card already allows the SPEC as a source (:46-47, :272-273), and the spiral PROSE comments already cite SPEC §1 and §4, so no new permission is needed."
+ }
+]
