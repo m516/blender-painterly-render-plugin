@@ -607,6 +607,40 @@ Outcome:
   `git diff HEAD~1 -- analysis/tests | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -vE '^\+\s*#'` prints nothing.
 allowedPaths: `analysis/tests/test_scale_metrics.py`, `analysis/tests/test_report.py`
 
+## M3-FIX-TQ2-REPRO: a committed generator rebuilds REPRO.json and REPRO.md byte for byte (TQ.2 F9)
+Card: none; this item is the specification.
+Why:
+- TQ.2 F9 (`docs/audits/TQ.2.md`, row F9): `docs/handoff/repro/REPRO.json` and `REPRO.md` were written by a generator
+  that lived in the EXP-REPRO worker's git-ignored `.tmp/`, so they cannot be regenerated, and R17's exact checks
+  (RULINGS S2) rest on them.
+- REPRO.md's "Largest difference" table names one path where several leaves tie: 002 `max_abs_diff` (2 leaves), 003
+  `max_rel_diff` (2) and 006 `max_abs_diff` (3). The rule that picked it is written nowhere.
+- The inputs are in the tree: the committed files in `experiments/<NNN>-*/`, and this machine's analysis outputs as
+  R17 recorded them. Those are `docs/handoff/repro/host/<NNN>/results.json`, plus the figures, which EXP-REPRO-HOST
+  found byte-identical to the committed ones.
+Do:
+- Write `tools/repro_report.py`, a CLI in the style of `tools/compare_results.py`. Its input is `--outputs <dir>`, with
+  one directory per experiment (`<dir>/<NNN>/` holds the files an `analyze.py --out-dir` run writes). It writes
+  `REPRO.json` and `REPRO.md` to `--out <dir>`:
+  - per experiment and per output file, `identical`: the file equals the committed file of the same name in
+    `experiments/<NNN>-*/`, byte for byte (what EXP-REPRO did with `cmp`);
+  - for each `results.json` that is not identical, the report of `compare_objects` from `tools/compare_results.py`
+    (import it; don't copy it) and `non_numeric_identical`;
+  - `all_identical`, and REPRO.md's tables and text, in the committed files' layout.
+- Name the rule for tied leaves in the docstring, choosing one that reproduces all three committed choices. If no rule
+  does, call `report_blocked` with the tied paths.
+- `tests/core/test_repro_report.py`, on synthetic inputs under `tmp_path`: an identical and a differing figure, a
+  `results.json` with one numeric difference, two tied leaves (the named rule decides), and `all_identical` true and
+  false. Each test must fail when the code it covers changes. Name one such mutation per test in your answer, for
+  example the tie rule reversed.
+- Never edit `docs/handoff/repro/` or `tools/compare_results.py`, and never run an analysis.
+Outcome:
+- `CHECK` exits 0.
+- Built from the recorded inputs (each committed `fig_*.png` and the host `results.json`, copied to
+  `.cache/repro-gen/in/<NNN>/`), the tool's `REPRO.json` and `REPRO.md` equal the committed files byte for byte (`cmp`).
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && PYTHONPATH="$PWD/analysis" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q tests/core/test_repro_report.py && rm -rf .cache/repro-gen && for n in 001 002 003 004 006; do mkdir -p .cache/repro-gen/in/$n && cp experiments/$n-*/fig_*.png docs/handoff/repro/host/$n/results.json .cache/repro-gen/in/$n/ || exit 1; done && PYTHONPATH="$PWD/analysis" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python tools/repro_report.py --outputs .cache/repro-gen/in --out .cache/repro-gen/out && cmp .cache/repro-gen/out/REPRO.json docs/handoff/repro/REPRO.json && cmp .cache/repro-gen/out/REPRO.md docs/handoff/repro/REPRO.md`
+allowedPaths: `tools/repro_report.py`, `tests/core/test_repro_report.py`
+
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
 - Re-pointed on 2026-10-22: T4.1 needs T3.17's triangle path and nothing from experiment X-throughput.
