@@ -29,9 +29,10 @@ ENSEMBLE_PAIRS = 8
 # converged (P_ref >~ 9e3 passes, unreachable here); 32 passes already separate every negative
 # control at the smallest attainable p (experiments/001-2026-10-08-oracle-reproduction).
 ENSEMBLE_PASSES = 32
-# Significance level of the decisions, Holm-corrected across the negative controls. This is the
-# test's own level, not the oracle's ``alpha`` knob (the ``normalized`` control's exponent).
-ALPHA = 0.01
+# Significance level of the decisions, Holm-corrected across the negative controls: the analysis
+# convention ensemble.DEFAULT_ALPHA (0.01). This is the test's own level, not the oracle's
+# ``alpha`` knob (the ``normalized`` control's exponent).
+ALPHA = ensemble.DEFAULT_ALPHA
 IMAGE_SIZE = 400
 
 # The positive configuration is the SPEC reference mode. Each negative control removes one SPEC

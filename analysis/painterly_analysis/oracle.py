@@ -7,6 +7,7 @@ become dashes, and a boolean becomes ``yes`` or ``no``: ``continue_after_emitter
 
 import os
 import subprocess
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,12 @@ def oracle_binary() -> Path:
     return build_dir / "src" / "app" / "smallpaint_oracle"
 
 
-def _option_flags(options: dict[str, Any]) -> list[str]:
+def option_flags(options: Mapping[str, Any]) -> list[str]:
+    """The oracle CLI arguments for ``options``, two per option, in the mapping's order.
+
+    Each option becomes ``--<name>`` and its value as text, with the mapping of the module
+    docstring: underscores become dashes, and a boolean becomes ``yes`` or ``no``.
+    """
     args: list[str] = []
     for key, value in options.items():
         text = ("yes" if value else "no") if isinstance(value, bool) else str(value)
@@ -38,20 +44,30 @@ def _option_flags(options: dict[str, Any]) -> list[str]:
     return args
 
 
-def run_oracle(out_dir: str | Path, **options: Any) -> OracleRender:
-    """Render with ``smallpaint_oracle --out out_dir`` plus one flag per option, then load it."""
+def run_oracle_process(out_dir: str | Path, options: Mapping[str, Any]) -> None:
+    """Run ``smallpaint_oracle`` with ``option_flags(options)`` and ``--out out_dir``.
+
+    ``out_dir`` is created first (with its parents) and passed as an absolute path. Nothing is
+    read back. Raises TypeError when ``options`` holds ``out``, and RuntimeError with the command
+    line and the oracle's stderr when the oracle exits with a non-zero status.
+    """
     if "out" in options:
         raise TypeError("pass the output directory as out_dir, not as out=")
     out = Path(out_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    cmd = [str(oracle_binary()), *_option_flags(options), "--out", str(out)]
+    cmd = [str(oracle_binary()), *option_flags(options), "--out", str(out)]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         raise RuntimeError(
             f"smallpaint_oracle exited with status {proc.returncode}: {' '.join(cmd)}\n"
             f"{proc.stderr}"
         )
-    return read_oracle(out)
+
+
+def run_oracle(out_dir: str | Path, **options: Any) -> OracleRender:
+    """Render with ``smallpaint_oracle --out out_dir`` plus one flag per option, then load it."""
+    run_oracle_process(out_dir, options)
+    return read_oracle(Path(out_dir).resolve())
 
 
 def run_many(jobs: list[tuple[Path, dict]], workers: int | None = None) -> list[OracleRender]:

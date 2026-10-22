@@ -1,4 +1,5 @@
-"""Experiment harness: job keys, cached runs, the time budget and the PNG writer (T1.4)."""
+"""Experiment harness: job keys, cached runs, the time budget and the PNG writer (T1.4); the
+oracle runner it shares with ``oracle.run_oracle`` (T3.26)."""
 
 import hashlib
 import json
@@ -11,7 +12,7 @@ import pytest
 from painterly_analysis import experiment
 from painterly_analysis.experiment import Job, job_key, load, run_jobs
 from painterly_analysis.io import write_png
-from painterly_analysis.oracle import oracle_binary
+from painterly_analysis.oracle import option_flags, oracle_binary, run_oracle_process
 
 
 @pytest.fixture
@@ -92,11 +93,36 @@ def test_failing_job_does_not_prevent_successful_siblings_from_done_markers(cach
     # The invalid job goes first, so the run must carry on after its failure.
     bad = Job.make("bad", 0, size=32, passes=1, chain="no-such-chain")
     good = Job.make("good", 1, size=32, passes=1)
-    with pytest.raises(RuntimeError, match="'bad'"):
+    with pytest.raises(RuntimeError, match="'bad'") as failure:
         run_jobs([bad, good], workers=1)
+    # The cause is run_oracle_process's error, prefixed with the job name by _render. The oracle
+    # rejects the chain with its usage-error status 2, and the message carries its stderr.
+    cause = str(failure.value.__cause__)
+    assert cause.startswith("job 'bad': smallpaint_oracle exited with status 2: ")
+    assert "invalid value 'no-such-chain' for --chain" in cause
     assert load(good).sum.shape == (32, 32, 3)
     with pytest.raises(FileNotFoundError):
         load(bad)
+
+
+def test_option_flags_maps_names_values_and_booleans() -> None:
+    options = {"chain": "lane:16", "continue_after_emitter": False, "max_depth": 20}
+    assert option_flags(options) == [
+        "--chain",
+        "lane:16",
+        "--continue-after-emitter",
+        "no",
+        "--max-depth",
+        "20",
+    ]
+    assert option_flags({"continue_after_emitter": True}) == ["--continue-after-emitter", "yes"]
+
+
+def test_run_oracle_process_rejects_out_option(tmp_path: Path) -> None:
+    with pytest.raises(TypeError, match="out_dir"):
+        run_oracle_process(tmp_path / "render", {"size": 32, "out": str(tmp_path)})
+    # The check runs before anything is created.
+    assert not (tmp_path / "render").exists()
 
 
 def _png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:

@@ -17,6 +17,13 @@ from .io import smallpaint_display
 LUMA_REC709 = (0.2126, 0.7152, 0.0722)  # ITU-R BT.709 luma coefficients (definition)
 # the plan's acceptance metrics: 9×9-box high-pass luminance
 HIGHPASS_SIZE = 9
+# the plan's acceptance metrics: 25-pixel block RMSE
+BLOCK_RMSE_SIZE = 25
+# radial_spectral_slope's default upper radius is f_max = min(H, W) // SPECTRAL_DEFAULT_DIVISOR.
+# The divisor is the T1.2 card's default (docs/tasks/M1/T1.2-analysis-metrics.md), a convention,
+# not a fitted value. With 4, f_max is at most half the Nyquist radius min(H, W) / 2 of the
+# shorter axis, so the band holds only wavelengths of at least 4 pixels.
+SPECTRAL_DEFAULT_DIVISOR = 4
 
 # SPEC §9 object ids of type diffuse, excluding the light (id 9). The scene-list order is the
 # object id (painterly.cpp:252-262).
@@ -229,12 +236,12 @@ def lag1_autocorrelation(x, mask, axis: int) -> Array:
     return pearson(a, b, pair)
 
 
-def block_rmse(img, ref, block: int = 25) -> Array:
+def block_rmse(img, ref, block: int = BLOCK_RMSE_SIZE) -> Array:
     """RMSE between block-averaged images. Units: display bytes.
 
     The images are cropped to whole ``block`` x ``block`` blocks, and each channel is averaged
     over every block. The result is the RMSE over all blocks and channels. ``block`` is a knob
-    whose default of 25 is the value in the plan's acceptance metrics.
+    whose default ``BLOCK_RMSE_SIZE`` (25) is the value in the plan's acceptance metrics.
     """
     if block < 1:
         raise ValueError("block must be >= 1")
@@ -267,15 +274,16 @@ def radial_spectral_slope(x, mask=None, f_min: int = 2, f_max: int | None = None
     2. Apply a separable 2-D Hann window (``jnp.hanning`` on each axis) and take ``|FFT|**2``.
     3. Assign each frequency bin to the integer radius ``rint(sqrt(fy**2 + fx**2))``. Average the
        power over each integer radius in ``[f_min, f_max]``, where ``f_max`` defaults to
-       ``min(H, W) // 4``.
+       ``min(H, W) // SPECTRAL_DEFAULT_DIVISOR`` (``min(H, W) // 4``).
     4. Return the least-squares slope of log power against log radius.
 
-    ``f_min`` is a knob. Its default of 2 excludes the DC term and the first frequency.
+    ``f_min`` and ``f_max`` are knobs. The default ``f_min`` of 2 excludes the DC term and the
+    first frequency. ``SPECTRAL_DEFAULT_DIVISOR`` documents the default ``f_max``.
     """
     a = _f64(x)
     h, w = a.shape[0], a.shape[1]
     if f_max is None:
-        f_max = min(h, w) // 4
+        f_max = min(h, w) // SPECTRAL_DEFAULT_DIVISOR
     if not 1 <= f_min <= f_max:
         raise ValueError("need 1 <= f_min <= f_max")
     if mask is not None:
@@ -306,7 +314,7 @@ def measure(
     *,
     highpass_size: int = HIGHPASS_SIZE,
     erosion_radius: int | None = None,
-    block: int = 25,
+    block: int = BLOCK_RMSE_SIZE,
 ) -> dict[str, float]:
     """All look metrics for two independent half renders and a reference image.
 

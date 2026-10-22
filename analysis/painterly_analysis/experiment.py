@@ -19,7 +19,6 @@ import importlib.util
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -29,7 +28,7 @@ from types import ModuleType
 from typing import Any
 
 from .io import OracleRender, read_oracle
-from .oracle import REPO_ROOT, _option_flags, oracle_binary
+from .oracle import REPO_ROOT, oracle_binary, run_oracle_process
 
 # meta.json "oracle_version" that write_meta() in src/app/smallpaint_oracle.cpp writes: the C++
 # constant ORACLE_VERSION (src/app/CHANGES.md items 17 and 23). Version "2" records the T3.4 knobs
@@ -142,18 +141,15 @@ def _mark_done(directory: Path, job: Job) -> None:
 def _render(job: Job, directory: Path) -> None:
     """Run ``smallpaint_oracle`` for ``job`` into ``directory``, with one oracle thread.
 
-    Unlike ``oracle.run_oracle``, the outputs are not read back. ``load`` reads them when they are
-    needed, so a run never holds render arrays in memory. A non-zero exit raises RuntimeError.
+    The command is ``oracle.run_oracle_process``, the one ``oracle.run_oracle`` runs, but the
+    outputs are not read back. ``load`` reads them when they are needed, so a run never holds
+    render arrays in memory. A non-zero exit raises RuntimeError, prefixed with the job name.
     """
-    directory.mkdir(parents=True, exist_ok=True)
     options = {**dict(job.options), "seed": job.seed, "threads": 1}
-    cmd = [str(oracle_binary()), *_option_flags(options), "--out", str(directory.resolve())]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"smallpaint_oracle exited with status {proc.returncode} for job {job.name!r}: "
-            f"{' '.join(cmd)}\n{proc.stderr}"
-        )
+    try:
+        run_oracle_process(directory, options)
+    except RuntimeError as error:
+        raise RuntimeError(f"job {job.name!r}: {error}") from error
 
 
 def _on_render_done(key: str, job: Job, future: Future) -> None:

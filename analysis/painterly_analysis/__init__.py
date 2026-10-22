@@ -6,6 +6,8 @@ import jax
 jax.config.update("jax_enable_x64", True)
 
 from .ensemble import (  # noqa: E402
+    DEFAULT_ALPHA,
+    SIGN_FLIP_RESAMPLES,
     Comparison,
     compare_ensembles,
     effect_summary,
@@ -27,9 +29,11 @@ from .io import (  # noqa: E402
     write_ppm,
 )
 from .metrics import (  # noqa: E402
+    BLOCK_RMSE_SIZE,
     DIFFUSE_REGION_IDS,
     HIGHPASS_SIZE,
     LUMA_REC709,
+    SPECTRAL_DEFAULT_DIVISOR,
     block_rmse,
     box_blur,
     clip_fraction,
@@ -48,12 +52,22 @@ from .metrics import (  # noqa: E402
     region_mean_rgb,
     structure_std,
 )
-from .oracle import oracle_binary, run_many, run_oracle  # noqa: E402
+from .oracle import (  # noqa: E402
+    option_flags,
+    oracle_binary,
+    run_many,
+    run_oracle,
+    run_oracle_process,
+)
 
 __all__ = [
+    "BLOCK_RMSE_SIZE",
+    "DEFAULT_ALPHA",
     "DIFFUSE_REGION_IDS",
     "HIGHPASS_SIZE",
     "LUMA_REC709",
+    "SIGN_FLIP_RESAMPLES",
+    "SPECTRAL_DEFAULT_DIVISOR",
     "Comparison",
     "OracleRender",
     "block_rmse",
@@ -71,6 +85,7 @@ __all__ = [
     "measure",
     "min_attainable_pvalue",
     "noise_corrected_lag",
+    "option_flags",
     "oracle_binary",
     "pearson",
     "permutation_pvalue",
@@ -83,6 +98,7 @@ __all__ = [
     "region_mean_rgb",
     "run_many",
     "run_oracle",
+    "run_oracle_process",
     "separated",
     "sign_flip_pvalue",
     "smallpaint_display",

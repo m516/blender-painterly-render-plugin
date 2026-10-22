@@ -1,9 +1,9 @@
 """Statistics for deciding look fidelity without hand-picked thresholds (JAX).
 
 ``alpha`` is a *knob*: the family-wise error rate of a decision, Holm-corrected across the keys
-of a comparison. The default of 0.01 is a convention, not a fitted value. Every p-value here is a
-permutation or sign-flip p-value, so no distributional assumption is made. The Student-t
-functions are needed only for prediction intervals.
+of a comparison. Its default, ``DEFAULT_ALPHA = 0.01``, is a convention, not a fitted value.
+Every p-value here is a permutation or sign-flip p-value, so no distributional assumption is
+made. The Student-t functions are needed only for prediction intervals.
 """
 
 import itertools
@@ -27,6 +27,12 @@ _SIGN_FLIP_BLOCK = 2**16
 # Otherwise it draws PERMUTATION_RESAMPLES random permutations.
 PERMUTATION_MAX_EXACT = 100_000
 PERMUTATION_RESAMPLES = 100_000
+# sign_flip_pvalue draws SIGN_FLIP_RESAMPLES Rademacher patterns when n > SIGN_FLIP_EXACT_MAX_N.
+# The same Monte Carlo size as PERMUTATION_RESAMPLES. The smallest p-value of that branch is
+# 1 / (SIGN_FLIP_RESAMPLES + 1).
+SIGN_FLIP_RESAMPLES = 100_000
+# Default significance level alpha of compare_ensembles and separated (module docstring).
+DEFAULT_ALPHA = 0.01
 
 
 def _check_alternative(alternative: str) -> None:
@@ -114,7 +120,7 @@ def permutation_pvalue(
     return (count + 1) / (n_resamples + 1)
 
 
-def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = 100_000) -> float:
+def sign_flip_pvalue(x, alternative: str, *, n_resamples: int = SIGN_FLIP_RESAMPLES) -> float:
     """One-sample sign-flip p-value for the statistic ``mean(x)`` under the null of mean 0.
 
     Under the null each value's sign is equally likely to be + or -. The test is exact over all
@@ -275,7 +281,7 @@ class Comparison:
 
 
 def compare_ensembles(
-    a: list[dict], b: list[dict], keys: Iterable[str], alpha: float = 0.01
+    a: list[dict], b: list[dict], keys: Iterable[str], alpha: float = DEFAULT_ALPHA
 ) -> Comparison:
     """Compare two ensembles of metric dicts key by key.
 
@@ -361,6 +367,8 @@ def effect_summary(a: list[dict], b: list[dict], keys: Iterable[str]) -> dict[st
     return summary
 
 
-def separated(pos: list[float], neg: list[float], alternative: str, alpha: float = 0.01) -> bool:
+def separated(
+    pos: list[float], neg: list[float], alternative: str, alpha: float = DEFAULT_ALPHA
+) -> bool:
     """True when the permutation p-value of ``pos`` against ``neg`` is at most ``alpha``."""
     return permutation_pvalue(pos, neg, alternative) <= alpha

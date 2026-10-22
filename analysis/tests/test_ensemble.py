@@ -3,15 +3,19 @@
 The expected values are exact. The only tolerance is the bisection's xtol.
 """
 
+import inspect
 import math
 
 import pytest
 from painterly_analysis import (
+    DEFAULT_ALPHA,
+    SIGN_FLIP_RESAMPLES,
     compare_ensembles,
     diffuse_key_family,
     holm,
     min_attainable_pvalue,
     permutation_pvalue,
+    separated,
     sign_flip_pvalue,
     student_t_ppf,
 )
@@ -215,3 +219,13 @@ def test_diffuse_key_family() -> None:
         "r8.structure_std",
         "all.spectral_slope",
     ]
+
+
+def test_named_defaults_keep_their_values() -> None:
+    # T3.26 named these defaults (TQ.1 F27) without changing them.
+    assert DEFAULT_ALPHA == 0.01
+    assert SIGN_FLIP_RESAMPLES == 100_000
+    assert inspect.signature(compare_ensembles).parameters["alpha"].default == DEFAULT_ALPHA
+    assert inspect.signature(separated).parameters["alpha"].default == DEFAULT_ALPHA
+    n_resamples = inspect.signature(sign_flip_pvalue).parameters["n_resamples"].default
+    assert n_resamples == SIGN_FLIP_RESAMPLES

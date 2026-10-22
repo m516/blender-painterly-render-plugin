@@ -1,11 +1,16 @@
 """Look metrics on synthetic images (T1.2)."""
 
+import inspect
+
 import numpy as np
 import pytest
 from painterly_analysis import (
+    BLOCK_RMSE_SIZE,
+    SPECTRAL_DEFAULT_DIVISOR,
     block_rmse,
     erode,
     highpass,
+    measure,
     pearson,
     radial_spectral_slope,
     realization_free_key_family,
@@ -78,10 +83,10 @@ def _radial_profile(x: np.ndarray, f_min: int = 2) -> tuple[np.ndarray, np.ndarr
     """(log_r, log_p) of the windowed radial power profile, as radial_spectral_slope defines it.
 
     The profile uses a Hann window, |FFT|^2 and integer radii rint(r) averaged over
-    [f_min, min(H, W) // 4].
+    [f_min, min(H, W) // SPECTRAL_DEFAULT_DIVISOR].
     """
     h, w = x.shape
-    f_max = min(h, w) // 4
+    f_max = min(h, w) // SPECTRAL_DEFAULT_DIVISOR
     window = np.outer(np.hanning(h), np.hanning(w))
     power = np.abs(np.fft.fft2(x * window)) ** 2
     ky = np.rint(np.fft.fftfreq(h) * h)
@@ -153,3 +158,15 @@ def test_realization_free_key_family_drops_reference_realization_keys() -> None:
         "all.clip_fraction",
         "all.spectral_slope",
     ]
+
+
+def test_named_defaults_keep_their_values() -> None:
+    # T3.26 named these defaults (TQ.1 F27) without changing them.
+    assert BLOCK_RMSE_SIZE == 25
+    assert SPECTRAL_DEFAULT_DIVISOR == 4
+    assert inspect.signature(block_rmse).parameters["block"].default == BLOCK_RMSE_SIZE
+    assert inspect.signature(measure).parameters["block"].default == BLOCK_RMSE_SIZE
+    # The default f_max of a 48 x 64 field is 48 // 4 = 12, from the shorter axis. Both calls run
+    # the same float64 arithmetic, so the slopes are equal bit for bit.
+    x = np.random.default_rng(0).normal(size=(48, 64))
+    assert float(radial_spectral_slope(x)) == float(radial_spectral_slope(x, f_max=48 // 4))
