@@ -11,11 +11,15 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from painterly_analysis import report
+from painterly_analysis import ensemble, report
 from painterly_analysis.experiment import Job, ensemble_jobs
 
 SEPARATED = 2 / math.comb(16, 8)  # two-sided minimum for fully separated 8 vs 8
 ONE_SIDED = 1 / math.comb(16, 8)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+# Experiment 006's analysis, whose _draw_line and _paint report.draw_line and report.paint must
+# reproduce pixel for pixel. 006 keeps its local copies, because its outputs are final.
+ANALYZE_006 = REPO_ROOT / "experiments" / "006-2026-10-09-jitter-units" / "analyze.py"
 
 
 def _runs(columns: dict[str, list[float]]) -> list[dict[str, float]]:
@@ -440,3 +444,138 @@ def test_check_seed_reuse_rejects_seeds_with_two_option_sets_across_experiments(
     ensembles = {"mine": _jobs("mine", (4, 5), chain="image", size=8)}
     with pytest.raises(RuntimeError, match="two option sets"):
         report.check_seed_reuse(ensembles, earlier, {})
+
+
+def test_largest_abs_diff_uses_the_diff_field() -> None:
+    summary = {
+        "a": {"rel_diff": 0.1, "diff": -0.5},
+        "b": {"rel_diff": 9.0, "diff": 0.5},
+        "c": {"rel_diff": 0.2, "diff": None},
+    }
+    # |a| and |b| tie at 0.5, and the larger key name wins. c is skipped.
+    assert report.largest_abs_diff(summary) == {"key": "b", "value": 0.5}
+    assert report.largest_abs_diff({"x": {"diff": None}}) is None
+
+
+def test_box_downsample_sum_keeps_a_constant_array_constant() -> None:
+    values = np.full((4, 6, 3), 7.0)
+    down = report.box_downsample_sum(values, 2)
+    assert down.shape == (2, 3, 3)
+    np.testing.assert_array_equal(down, np.full((2, 3, 3), 7.0))
+
+
+def test_box_downsample_sum_of_one_block_is_its_exact_mean() -> None:
+    # The single 2 x 2 block holds 1, 2, 3 and 4, whose mean is 2.5, exact in float64.
+    values = np.arange(1, 5, dtype=np.float64).reshape(2, 2, 1)
+    down = report.box_downsample_sum(values, 2)
+    assert down.shape == (1, 1, 1)
+    assert down[0, 0, 0] == 2.5
+    # A block of integers whose mean is an integer stays exact too.
+    values = np.array([[[1.0], [3.0]], [[5.0], [7.0]]])
+    assert report.box_downsample_sum(values, 2)[0, 0, 0] == 4.0
+
+
+def test_box_downsample_sum_rejects_a_side_that_is_not_a_multiple_of_the_factor() -> None:
+    with pytest.raises(ValueError, match="multiple of 3"):
+        report.box_downsample_sum(np.zeros((6, 8, 3)), 3)
+    with pytest.raises(ValueError, match="factor"):
+        report.box_downsample_sum(np.zeros((6, 8, 3)), 0)
+
+
+def test_box_downsample_sum_with_factor_one_is_the_identity() -> None:
+    values = np.arange(12, dtype=np.float64).reshape(3, 4, 1)
+    np.testing.assert_array_equal(report.box_downsample_sum(values, 1), values)
+
+
+def test_draw_line_paints_exactly_the_pixels_of_experiment_006() -> None:
+    # 006's _draw_line and report.draw_line must paint the same pixels for the same arguments,
+    # so 006's figure is reproducible with the shared helper.
+    analyze_006 = report.load_jobs_module(ANALYZE_006)
+    for dashed in (False, True):
+        theirs = np.zeros((60, 80, 3), dtype=np.uint8)
+        ours = np.zeros((60, 80, 3), dtype=np.uint8)
+        analyze_006._draw_line(theirs, 3.0, 4.0, 50.0, 30.0, (10, 20, 30), dashed)
+        report.draw_line(ours, 3.0, 4.0, 50.0, 30.0, (10, 20, 30), dashed)
+        assert np.array_equal(theirs, ours)
+
+
+def test_draw_line_has_experiment_006_s_dash_defaults() -> None:
+    analyze_006 = report.load_jobs_module(ANALYZE_006)
+    assert report.DASH_PERIOD_PX == analyze_006.DASH_PERIOD_PX
+    assert report.DASH_ON_PX == analyze_006.DASH_ON_PX
+
+
+def test_draw_line_skips_points_outside_the_canvas() -> None:
+    canvas = np.zeros((10, 10, 3), dtype=np.uint8)
+    report.draw_line(canvas, -5.0, 5.0, 14.0, 5.0, (200, 100, 50))
+    # Every painted pixel is inside the canvas, and the line's interior pixels are painted.
+    painted = np.argwhere(np.any(canvas != 0, axis=-1))
+    assert painted[:, 0].min() >= 0 and painted[:, 0].max() < 10
+    assert painted[:, 1].min() >= 0 and painted[:, 1].max() < 10
+    assert np.any(canvas[5, 4] == (200, 100, 50))
+
+
+def test_paint_skips_points_outside_the_canvas() -> None:
+    canvas = np.zeros((4, 4, 3), dtype=np.uint8)
+    report.paint(canvas, np.array([0, 3, -1, 4]), np.array([0, 3, 0, 0]), (1, 2, 3))
+    assert np.array_equal(canvas[0, 0], (1, 2, 3))
+    assert np.array_equal(canvas[3, 3], (1, 2, 3))
+    assert np.count_nonzero(canvas) == 6  # two pixels, three channels each
+
+
+def _bootstrap_groups() -> tuple[list[dict], list[dict]]:
+    """Two ensembles of per-pair key values, with two keys each."""
+    rng = np.random.default_rng(11)
+    keys = ("k1", "k2")
+    a = [
+        {key: float(value) for key, value in zip(keys, row, strict=True)}
+        for row in rng.normal(size=(6, 2))
+    ]
+    b = [
+        {key: float(value) for key, value in zip(keys, row, strict=True)}
+        for row in rng.normal(size=(5, 2))
+    ]
+    return a, b
+
+
+def test_bootstrap_cohen_d_on_the_identity_draw_is_effect_summary() -> None:
+    a, b = _bootstrap_groups()
+    keys = ("k1", "k2")
+    matrix_a = np.array([[run[key] for key in keys] for run in a])
+    matrix_b = np.array([[run[key] for key in keys] for run in b])
+    draws_a = np.arange(matrix_a.shape[0])[None, :]
+    draws_b = np.arange(matrix_b.shape[0])[None, :]
+    got = np.asarray(report.bootstrap_cohen_d(matrix_a, matrix_b, draws_a, draws_b))
+    expected = ensemble.effect_summary(a, b, list(keys))
+    # The identity draw evaluates the same formula as effect_summary, so the difference is the
+    # float64 round-off of the same arithmetic.
+    for index, key in enumerate(keys):
+        assert got[0, index] == pytest.approx(expected[key]["cohen_d"], rel=1e-12, abs=0.0)
+
+
+def test_bootstrap_cohen_d_rows_are_effect_summary_of_the_resampled_runs() -> None:
+    a, b = _bootstrap_groups()
+    keys = ("k1", "k2")
+    matrix_a = np.array([[run[key] for key in keys] for run in a])
+    matrix_b = np.array([[run[key] for key in keys] for run in b])
+    rng = np.random.default_rng(12)
+    draws_a = rng.integers(0, matrix_a.shape[0], size=(4, matrix_a.shape[0]))
+    draws_b = rng.integers(0, matrix_b.shape[0], size=(4, matrix_b.shape[0]))
+    got = np.asarray(report.bootstrap_cohen_d(matrix_a, matrix_b, draws_a, draws_b))
+    for row in range(draws_a.shape[0]):
+        resampled_a = [a[index] for index in draws_a[row]]
+        resampled_b = [b[index] for index in draws_b[row]]
+        expected = ensemble.effect_summary(resampled_a, resampled_b, list(keys))
+        for index, key in enumerate(keys):
+            assert got[row, index] == pytest.approx(expected[key]["cohen_d"], rel=1e-12, abs=0.0)
+
+
+def test_bootstrap_cohen_d_rejects_a_draw_that_repeats_one_pair() -> None:
+    # A draw that repeats the same pair in both groups has a pooled sd of 0, so Cohen's d is
+    # undefined.
+    matrix_a = np.array([[1.0, 2.0], [3.0, 4.0]])
+    matrix_b = np.array([[5.0, 6.0], [7.0, 8.0]])
+    draws_a = np.array([[0, 0]])
+    draws_b = np.array([[1, 1]])
+    with pytest.raises(ValueError, match="pooled sd"):
+        report.bootstrap_cohen_d(matrix_a, matrix_b, draws_a, draws_b)

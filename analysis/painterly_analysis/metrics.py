@@ -106,6 +106,40 @@ def gaussian_highpass(x, sigma: float) -> Array:
     return x - low
 
 
+def gaussian_highpass_axis(x, sigma: float, axis: int) -> Array:
+    """``x - G_sigma * x`` along one axis of a 2-D field (H, W). Units of ``x``.
+
+    ``axis=1`` blurs each row (the x direction) and ``axis=0`` each column (the y direction).
+    The blur acts on the half-sample-symmetric extension along that axis only (for ``axis=1``,
+    each row followed by its mirror image, 2W points), so no wrap-around enters at the border;
+    the result is cropped back to H x W. In the frequency domain the transfer of ``G_sigma`` at
+    frequency ``nu`` (cycles per pixel of the extended axis) is ``exp(-2 pi^2 sigma^2 nu^2)``,
+    the Fourier transform of a Gaussian of standard deviation ``sigma`` (a definition, not a
+    tuned value). Its value at ``nu = 0`` is 1, so a field that is constant along the axis has
+    no high-pass.
+
+    Raises ValueError for a field that is not 2-D, for ``sigma < 0`` and for an ``axis`` other
+    than 0 or 1.
+    """
+    x = _f64(x)
+    if x.ndim != 2:
+        raise ValueError("x must be a 2-D field")
+    if sigma < 0:
+        raise ValueError("sigma must be >= 0")
+    if axis not in (0, 1):
+        raise ValueError("axis must be 0 or 1")
+    if axis == 0:
+        # The same filter along the last axis of the transposed field, so both axes share one
+        # code path and one set of frequencies.
+        return gaussian_highpass_axis(x.T, sigma, 1).T
+    _, w = x.shape
+    ext = jnp.concatenate([x, x[:, ::-1]], axis=1)
+    nu = jnp.fft.rfftfreq(2 * w)
+    transfer = jnp.exp(-2.0 * jnp.pi**2 * sigma**2 * nu**2)
+    low = jnp.fft.irfft(jnp.fft.rfft(ext, axis=1) * transfer, n=2 * w, axis=1)[:, :w]
+    return x - low
+
+
 def erode(mask, radius: int) -> Array:
     """Morphological erosion with a (2r+1) x (2r+1) square.
 

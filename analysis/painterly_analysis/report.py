@@ -16,7 +16,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import jax.numpy as jnp
 import numpy as np
+from jax import Array
 
 from . import ensemble, metrics
 from .experiment import Job, load
@@ -54,6 +56,18 @@ def largest_abs_cohen_d(summary: Mapping[str, Mapping[str, Any]]) -> dict[str, A
     to the larger key name. Entries whose ``cohen_d`` is None (a pooled sd of 0) are skipped.
     """
     return _largest_abs(summary, "cohen_d")
+
+
+def largest_abs_diff(summary: Mapping[str, Mapping[str, Any]]) -> dict[str, Any] | None:
+    """The entry of an ``ensemble.effect_summary`` with the largest |difference|.
+
+    The same as ``largest_abs_rel_diff``, on the field ``diff``. It serves the keys whose means
+    can be near 0, such as the ``nlag.x`` keys, whose relative difference is then meaningless.
+
+    Returns ``{"key": ..., "value": ...}``, or None when no entry has a defined ``diff``. Ties go
+    to the larger key name.
+    """
+    return _largest_abs(summary, "diff")
 
 
 def pair_test(
@@ -410,6 +424,69 @@ def block_preview(img8: np.ndarray, factor: int) -> np.ndarray:
     return np.round(blocks.mean(axis=(1, 3))).astype(np.uint8)
 
 
+def box_downsample_sum(sum_: np.ndarray, factor: int) -> np.ndarray:
+    """Each ``factor`` x ``factor`` block of a sum array replaced by its mean.
+
+    This is experiment 004's ``_box_down`` generalised to any factor. 004 is final, so it keeps its
+    own copy. ``sum_`` is an (H, W, C) array of per-pixel sums; the result has the shape
+    (H / factor, W / factor, C) and keeps the units of a native sum (per pixel, summed over
+    passes), so ``io.smallpaint_display`` applies unchanged. Both sides must be multiples of
+    ``factor``, or ValueError is raised.
+    """
+    if factor < 1:
+        raise ValueError("factor must be >= 1")
+    s = np.asarray(sum_, dtype=np.float64)
+    if s.ndim < 2:
+        raise ValueError("sum array must have at least two axes")
+    h, w = s.shape[0], s.shape[1]
+    if h % factor or w % factor:
+        raise ValueError(f"side must be a multiple of {factor}, got {h} x {w}")
+    return s.reshape(h // factor, factor, w // factor, factor, *s.shape[2:]).mean(axis=(1, 3))
+
+
+def bootstrap_cohen_d(
+    a: np.ndarray, b: np.ndarray, draws_a: np.ndarray, draws_b: np.ndarray
+) -> Array:
+    """Cohen's d of every bootstrap resample of two groups, at once.
+
+    ``a`` is an (n_a, k) matrix of per-pair key values and ``b`` an (n_b, k) matrix.
+    ``draws_a`` is an (R, n_a) matrix of integer indices into ``a`` and ``draws_b`` an (R, n_b)
+    matrix of indices into ``b``: row r of ``draws_a`` selects the n_a values of the r-th resample
+    of ``a``, with replacement. The result is the (R, k) matrix of Cohen's d of every resample,
+    ``(mean_a - mean_b) / s_p``, with ``ensemble.effect_summary``'s pooled sd
+    ``s_p = sqrt(((n_a - 1) sd_a**2 + (n_b - 1) sd_b**2) / (n_a + n_b - 2))`` and sample sds
+    (ddof 1) of the resampled values.
+
+    This is the bootstrap form of ``ensemble.effect_summary``'s formula, so it is not a forbidden
+    copy of it. The computation is vectorised with ``jax.numpy``: no Python loop over the
+    resamples. Raises ValueError if any resample has ``s_p = 0`` for any key.
+    """
+    a = jnp.asarray(a, dtype=jnp.float64)
+    b = jnp.asarray(b, dtype=jnp.float64)
+    draws_a = jnp.asarray(draws_a, dtype=jnp.int64)
+    draws_b = jnp.asarray(draws_b, dtype=jnp.int64)
+    if a.ndim != 2 or b.ndim != 2:
+        raise ValueError("a and b must be 2-D matrices of per-pair key values")
+    if a.shape[1] != b.shape[1]:
+        raise ValueError("a and b must have the same number of keys")
+    n_a, n_b = a.shape[0], b.shape[0]
+    if draws_a.shape[1] != n_a or draws_b.shape[1] != n_b:
+        raise ValueError("each draw row must have one index per pair")
+    if n_a < 2 or n_b < 2:
+        raise ValueError("need at least two pairs in each group")
+
+    resampled_a = a[draws_a]  # (R, n_a, k)
+    resampled_b = b[draws_b]  # (R, n_b, k)
+    mean_a = jnp.mean(resampled_a, axis=1)
+    mean_b = jnp.mean(resampled_b, axis=1)
+    sd_a = jnp.std(resampled_a, axis=1, ddof=1)
+    sd_b = jnp.std(resampled_b, axis=1, ddof=1)
+    pooled = jnp.sqrt(((n_a - 1) * sd_a**2 + (n_b - 1) * sd_b**2) / (n_a + n_b - 2))
+    if bool(jnp.any(pooled == 0.0)):
+        raise ValueError("a resample has a pooled sd of 0: Cohen's d is undefined")
+    return (mean_a - mean_b) / pooled
+
+
 def mosaic(previews: Sequence[np.ndarray], columns: int) -> np.ndarray:
     """A mosaic of equal-size previews, laid out row-major in the sequence's order.
 
@@ -433,3 +510,54 @@ def mosaic(previews: Sequence[np.ndarray], columns: int) -> np.ndarray:
         row, col = divmod(index, columns)
         grid[row * tile_h : (row + 1) * tile_h, col * tile_w : (col + 1) * tile_w] = tile
     return grid
+
+
+# Dash knobs of ``draw_line``, in pixels. They are experiment 006's DASH_PERIOD_PX and DASH_ON_PX
+# (006 analyze.py), which draw_line must reproduce pixel for pixel.
+DASH_PERIOD_PX = 10
+DASH_ON_PX = 6
+# The 2-px stroke of ``draw_line``: the offsets of the painted pixels from the sampled point. They
+# are experiment 006's stroke (006 analyze.py, _draw_line).
+STROKE_OFFSETS = ((0, 0), (1, 0), (0, 1))
+
+
+def paint(canvas: np.ndarray, xs: np.ndarray, ys: np.ndarray, color: tuple[int, int, int]) -> None:
+    """Paint the pixels ``(xs[i], ys[i])`` of ``canvas`` in ``color``.
+
+    Points outside the canvas are skipped, so a line can run off the canvas. ``xs`` and ``ys`` are
+    integer pixel coordinates, ``xs`` the column and ``ys`` the row. This is experiment 006's
+    ``_paint``, which 006 keeps as a local copy because its outputs are final.
+    """
+    height, width = canvas.shape[:2]
+    keep = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+    canvas[ys[keep], xs[keep]] = color
+
+
+def draw_line(
+    canvas: np.ndarray,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    color: tuple[int, int, int],
+    dashed: bool = False,
+    dash_period: int = DASH_PERIOD_PX,
+    dash_on: int = DASH_ON_PX,
+) -> None:
+    """A 2-px line, sampled at one-pixel steps. A dashed line keeps ``dash_on`` of every
+    ``dash_period`` samples.
+
+    The defaults ``dash_period`` and ``dash_on`` are experiment 006's DASH_PERIOD_PX and DASH_ON_PX
+    (006 analyze.py), and the stroke is 006's 2-px stroke (the offsets (0, 0), (1, 0), (0, 1)), so
+    for the same arguments this paints exactly the pixels of 006's ``_draw_line``. 006 keeps its
+    local copy, because its outputs are final.
+    """
+    steps = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+    t = np.linspace(0.0, 1.0, steps)
+    xs = np.rint(x0 + t * (x1 - x0)).astype(np.int64)
+    ys = np.rint(y0 + t * (y1 - y0)).astype(np.int64)
+    if dashed:
+        keep = (np.arange(steps) % dash_period) < dash_on
+        xs, ys = xs[keep], ys[keep]
+    for dx, dy in STROKE_OFFSETS:
+        paint(canvas, xs + dx, ys + dy, color)
