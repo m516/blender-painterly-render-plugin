@@ -539,11 +539,12 @@ Evidence (Opus, 2026-10-22, a fresh clone of T3.17's commit; the card's slow tes
 blocks fixed before any run):
 - Block 68, the committed block, passes, but with `r6.mean.R` p = 6.2e-4 and `r7.mean.B` p = 4.7e-4 against Holm's first
   threshold 0.01/25 = 4e-4.
-- Of the fresh blocks 69-73, four reject: 69 (`r6.mean.R/G/B`), 70 (`r6.mean.B`), 71 (`r7.mean.G`) and 73
-  (`r7.mean.G`, `r7.mean.B`); 72 passes. Under the card's claim a block rejects with probability at most 0.01.
+- Of the ten fresh blocks 69-78, seven reject: 69 (`r6.mean.R/G/B`), 70 (`r6.mean.B`), 71 (`r7.mean.G`), 73
+  (`r7.mean.G/B`), 74 (`r7.mean.B`), 77 (`r3.mean.R/B`, `r6.mean.R/G/B`, `r7.mean.G/B`) and 78 (`r7.mean.G`); 72, 75
+  and 76 pass. Under the card's claim a block rejects with probability at most 0.01.
 - At block 70, `r6.mean.R` is 28.2922 in the triangle scene against the oracle's 28.3592 (-0.24%, Cohen's d -2.6), and
   `r7.mean.B` is 75.3262 against 75.2006 (+0.17%). The triangle scene draws 1 332 185 743 samples against the oracle's
-  1 333 088 459 (-0.07%); every block shows the same shortfall.
+  1 333 088 459 (-0.07%); all 11 blocks show the same shortfall, 0.06-0.07%.
 Do:
 - Measure before you change anything. On the same rays (same seed and jitter) in `build_smallpaint_scene` and
   `build_smallpaint_scene_triangles`, report for both scenes, per bounce: the rays that hit nothing (the box is closed,
@@ -991,6 +992,9 @@ Card: `experiments/007-2026-10-15-noise-locking/PLAN.md`, with every amendment i
 - Use `PAINTERLY_BUILD_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/oracle-build`
   and `PAINTERLY_CACHE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache`.
 - The Conclusion is a DRAFT.
+- Hold (Opus, 2026-10-22): plan no new task for this item. t-exp007-run's worker finished, and its proposal is kept for
+  a re-audit, which waits for a ds-queue fix (50-web-framework, round 51). A new attempt would redo about 5 hours of
+  runs and meet the same audit-size limit. Opus requeues t-exp007-run for the re-audit.
 Depends on: M3-FIX-T3.26.
 Outcome: PLAN.md's Acceptance, translated, including the second full run being byte-identical; and `make lint` with
 the KNOBS passes.
