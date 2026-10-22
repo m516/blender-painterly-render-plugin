@@ -532,8 +532,35 @@ Card: `docs/tasks/M3/T3.18-exp-throughput.md`. Depends on: M3-T3.17.
 - Its Conclusion is a DRAFT.
 Outcome: the card's Acceptance, translated; `CHECK` exits 0; and the README has exactly the five sections.
 
+## M3-FIX-T3.15a: set_integrator raises ValueError for every bad knob, and a failed call sets nothing
+Card: `docs/tasks/M3/T3.15-bindings.md`, the `Scene.set_integrator` bullet (lines 18-27). Depends on: M3-T3.15.
+Why:
+- t-m3-15c (accepted 2026-10-22) raises `TypeError` for a wrong type at seven sites on the set_integrator path of
+  `src/blender/python.cpp` (`as_real`, `as_integer`, the boolean, enum and vector cases, and the default branch).
+- `tests/core/test_api_contract.py` asserts `TypeError` for `chain=1`, `lane_length="16"`, `two_sided=1`, `alpha="0.5"`
+  and `spiral_rotation=(0.0, 0.0)`.
+- Card line 24 says set_integrator "raises `ValueError` on unknown names, wrong types, enum identifiers that are not in the
+  socket's items, and values that break a kernel precondition". The CONTRACT `src/blender/_painterly.pyi:125` says
+  "unknown names or bad values raise ValueError", and never names TypeError.
+- set_integrator also sets each knob as it goes, so a call that raises leaves the knobs before the bad one set.
+Do:
+- Every failure on the set_integrator path raises `ValueError`, keeping today's messages: unknown name, wrong type,
+  unknown enum identifier, out of range, and the three kernel preconditions. Don't change the array checks of the other
+  Scene methods (card line 30 allows `TypeError` there).
+- Look up and convert every knob before setting any, so a call that raises changes nothing.
+- `tests/core/test_api_contract.py`: the five wrong-type cases expect `ValueError` (Opus ruling R44, 2026-10-22;
+  provenance: card line 24 and `_painterly.pyi:125`). Add one test: a call with a good knob and then a bad one raises,
+  and `get_integrator()` is unchanged.
+Outcome:
+- `CHECK` exits 0.
+- Each changed or new test fails against HEAD; name it and quote the failure.
+- In `src/blender/python.cpp`, no `nb::type_error` is reachable from set_integrator; list the remaining `type_error` lines
+  and the method each belongs to.
+allowedPaths: `src/blender/python.cpp`, `tests/core/test_api_contract.py`
+
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
-Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.18.
+Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
+- Re-pointed on 2026-10-22: T4.1 needs T3.17's triangle path and nothing from experiment X-throughput.
 Outcome: the card's Acceptance, translated, with Blender at the `BLENDER` path; and `CHECK` exits 0.
 
 ## M4-T4.2: properties from core reflection; panels, presets, operators
@@ -570,6 +597,8 @@ Card: `docs/handoff/drafts/M6a/T6.1-vendor-kernel-types.md`. Vendoring runs only
 the card says.
 Depends on: M3-FIX-T3.28.
 Outcome: the card's Acceptance, translated; `CHECK` exits 0; and `make vendor-check` passes.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles kernel*' | grep -qE '^\[doctest\] test cases: +4 \| +4 passed \| +0 failed \|'`
 
 ## M6a-T6.2: fragment extraction and the generated SVM switch
 Card: `docs/handoff/drafts/M6a/T6.2-fragment-extraction.md`. Depends on: M6a-T6.1.
@@ -581,18 +610,24 @@ Card: `docs/handoff/drafts/M6a/T6.3-svm-stack-nodes.md`. Depends on: M6a-T6.2.
 - Create it as the next free experiment number at run time, with today's date, following
   `docs/tasks/M1/_experiment_protocol.md`. Its Conclusion is a DRAFT.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles svm stack nodes:*' | grep -qE '^\[doctest\] test cases: +7 \| +7 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm stack nodes:*' | grep -qE '^\[doctest\] assertions: +131 \| +131 passed \| +0 failed \|'`
 
 ## M6a-T6.4: vendored shader graph, constant folding, core shader nodes, cycles_scene
 Card: `docs/handoff/drafts/M6a/T6.4-shader-graph.md`. Depends on: M6a-T6.3.
 - Skip the card's decision 6 (defining `NOMINMAX`). T2.11 already defines it PUBLIC on `cycles_util`, so don't add it
   again.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles shader graph*' | grep -qE '^\[doctest\] test cases: +7 \| +7 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles shader graph: links use UI names; parameters use member names' | grep -qE '^\[doctest\] test cases: +1 \| +1 passed \| +0 failed \|'`
 
 ## M6a-T6.5: the SVM compiler, PainterlyShaderManager, graph → byte code → evaluation
 Card: `docs/handoff/drafts/M6a/T6.5-svm-compiler.md`. Depends on: M6a-T6.4.
 - The card's "experiment 007 part 2" (gate G2-svm) belongs to the experiment M6a-T6.3 created. Use that directory and
   number.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles svm compiler:*' | grep -qE '^\[doctest\] test cases: +6 \| +6 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm compiler:*' | grep -qE '^\[doctest\] assertions: +85 \| +85 passed \| +0 failed \|'`
 
 ## M6a-T6.6: texture and texture-coordinate SVM nodes
 Card: `docs/handoff/drafts/M6a/T6.6-svm-textures.md`.
@@ -600,6 +635,8 @@ Review findings: `docs/handoff/findings/M6a-reviews.json`, keys `review T6.6 exe
 `review T6.6 verbatim-vendoring`, field `latest`.
 Depends on: M6a-T6.5.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles svm textures:*' | grep -qE '^\[doctest\] test cases: +12 \| +12 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm textures:*' | grep -qE '^\[doctest\] assertions: +36 \| +36 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles texture nodes:*' | grep -qE '^\[doctest\] test cases: +4 \| +4 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles texture nodes:*' | grep -qE '^\[doctest\] assertions: +85 \| +85 passed \| +0 failed \|'`
 
 ## M6a-T6.7: closure SVM nodes and BSDF lookup tables
 Card: `docs/handoff/drafts/M6a/T6.7-svm-closures.md`.
@@ -607,6 +644,8 @@ Review findings: `docs/handoff/findings/M6a-reviews.json`, keys `review T6.7 exe
 `review T6.7 verbatim-vendoring`, field `latest`.
 Depends on: M6a-T6.6.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles svm closures:*' | grep -qE '^\[doctest\] test cases: +12 \| +12 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm closures:*' | grep -qE '^\[doctest\] assertions: +163 \| +163 passed \| +0 failed \|'`
 
 ## M6a-T6.8: image texture SVM nodes on the CPU and an in-memory ImageManager
 Card: `docs/handoff/drafts/M6a/T6.8-svm-images.md`.
@@ -614,6 +653,8 @@ Review findings: `docs/handoff/findings/M6a-reviews.json`, keys `review T6.8 exe
 `review T6.8 verbatim-vendoring`, field `latest`.
 Depends on: M6a-T6.7.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+- The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && build/q/src/test/painterly_tests --test-case='cycles svm images:*' | grep -qE '^\[doctest\] test cases: +8 \| +8 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm images:*' | grep -qE '^\[doctest\] assertions: +122 \| +122 passed \| +0 failed \|'`
 
 ## REVIEW-M7-M9: report-only review of the drafted M7-M9 cards
 Why: cards T7.1-T9.3 (`docs/handoff/drafts/M7-M9/`) are drafted, but only T7.1 and T7.2 have been reviewed
