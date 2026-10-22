@@ -11,7 +11,11 @@ find_package(nanobind CONFIG REQUIRED)
 # only python.cpp and selftest.cpp (nanobind's headers are not -Wshadow clean).
 nanobind_add_module(_painterly STABLE_ABI NB_STATIC NB_DOMAIN painterly NOMINSIZE NB_SUPPRESS_WARNINGS python.cpp selftest.cpp)
 target_compile_definitions(_painterly PRIVATE PAINTERLY_VERSION="${PROJECT_VERSION}")
-target_link_libraries(_painterly PRIVATE painterly_embree cycles_util)
+# The selftest's ray goes through painterly_bvh, which painterly_kernel (the header-only kernel INTERFACE target,
+# TQ.1 F13) links together with cycles_util (T3.22). The RTC_DEVICE_PROPERTY_TASKING_SYSTEM probe keeps its one
+# rtcNewDevice(nullptr) and reads RTC_VERSION_STRING, so painterly_embree stays linked for it. painterly_session
+# brings painterly_scene and painterly_integrator (the Python Scene and Session).
+target_link_libraries(_painterly PRIVATE painterly_session painterly_kernel painterly_embree)
 painterly_target_warnings(_painterly)
 
 # Linux and macOS export only PyInit__painterly. Hidden visibility (root CMakeLists) covers most symbols; the version
