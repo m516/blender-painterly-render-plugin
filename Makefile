@@ -29,7 +29,7 @@ define PAINTERLY_STAGE_READONLY_SOURCES
 set -e; set --; for a in $(CMAKE_ARGS); do case "$$a" in -DFETCHCONTENT_SOURCE_DIR_*=*) n=$${a#-DFETCHCONTENT_SOURCE_DIR_}; n=$${n%%=*}; d=$${a#*=}; if [ -d "$$d" ] && [ ! -w "$$d" ]; then s="$(1)/_deps-src/$$n"; if [ ! -e "$$s" ]; then mkdir -p "$$(dirname "$$s")"; cp -a "$$d" "$$s"; chmod -R u+w "$$s"; fi; a="-DFETCHCONTENT_SOURCE_DIR_$$n=$$s"; fi;; esac; set -- "$$@" "$$a"; done
 endef
 
-.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow lint format audit vendor-check check clean
+.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow test-blender lint format audit vendor-check check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -67,6 +67,11 @@ test: test-cpp test-py
 
 test-slow: build
 	$(VENV)/bin/python -m pytest -q
+
+# The Blender add-on tests. They import bpy, which only `make env-blender` installs, and the built _painterly
+# module that `build` provides.
+test-blender: build
+	$(VENV)/bin/python -m pytest tests/blender -q
 
 lint:
 	$(VENV)/bin/ruff check .

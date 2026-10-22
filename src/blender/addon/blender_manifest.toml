@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 The Painterly Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Blender 5.2 extension manifest (schema 1.0.0). `blender --command extension validate src/blender/addon`
+# checks it; see docs.blender.org, "Advanced > Extensions > Getting Started".
+
+schema_version = "1.0.0"
+
+id = "painterly"
+version = "0.1.0"
+name = "Painterly"
+
+tagline = "Painterly path tracing from smallpaint's beautiful Halton bug"
+
+maintainer = "Micah <micah112358@proton.me>"
+type = "add-on"
+tags = ["Render"]
+
+blender_version_min = "5.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+copyright = [
+  "2014-2020 Károly Zsolnai-Fehér",
+  "2017-2018 Michael Oppitz",
+  "2011-2026 Blender Foundation",
+  "2026 The Painterly Authors",
+]
+
+# `platforms` and `wheels` are written by tools/build_extension.py (T4.4), which rewrites the staged copy of this
+# manifest to `wheels = ["./wheels/<painterly-core wheel>"]` and `platforms = [<that wheel's platform>]`. Both depend
+# on the wheel that is built, so neither is written here. Blender reads an omitted `platforms` as "every platform"
+# and an omitted `wheels` as "no bundled Python modules".
+
+[build]
+# Keep byte-compiled caches out of the zip, and the add-on's own tests with them: Blender loads the add-on's modules,
+# while the tests belong to the repository (`make test-blender`), not to the extension.
+paths_exclude_pattern = ["__pycache__/", "/tests/"]
