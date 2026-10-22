@@ -147,6 +147,98 @@ def build_smallpaint_scene(
     scene.set_integrator(**apply_reference_knobs())
 
 
+#: The default half-size of a plane's quad, in smallpaint units. Any value large enough that the
+#: quads cover the box's visible faces works; the box spans at most 6 units (z from -5.5 to 0.5,
+#: SPEC §9), so 50 covers every face with a wide margin.
+PLANE_EXTENT = 50.0
+
+
+def _plane_quad(normal: tuple[float, float, float], offset: float, extent: float) -> np.ndarray:
+    """The four corners of the quad of one SPEC §9 plane, as a (4, 3) float64 array.
+
+    The plane is ``n.p + d = 0``, so its foot point (the point of the plane nearest the origin) is
+    ``-d * n``. The quad is centred there and spans ``+-extent`` along two orthonormal in-plane
+    axes.
+
+    The corners are ordered counter-clockwise as seen from the side that ``n`` points to, so that
+    Embree's geometric normal ``(v1 - v0) x (v2 - v0)`` has the direction and sign of ``n``
+    (``painterly/bvh/embree.h``, T3.21). With no corner normals the shading normal is
+    ``normalize(Ng)``, so the quad shades exactly like smallpaint's plane.
+
+    The in-plane axes are built from the world axis least aligned with ``n``, so that for the
+    scene's axis-aligned normals both axes and every corner are exact in float32: the quad then
+    lies in the analytic plane without any rounding of its own.
+    """
+    n = np.asarray(normal, dtype=np.float64)
+    # The foot point of the plane n.p + d = 0 is the point of the plane nearest the origin.
+    centre = -offset * n / float(np.dot(n, n))
+    helper = np.zeros(3, dtype=np.float64)
+    helper[int(np.argmin(np.abs(n)))] = 1.0
+    u = np.cross(helper, n)
+    u = u / np.linalg.norm(u)
+    v = np.cross(n, u)
+    corners = np.array(
+        [
+            centre - extent * u - extent * v,
+            centre + extent * u - extent * v,
+            centre + extent * u + extent * v,
+            centre - extent * u + extent * v,
+        ]
+    )
+    return corners
+
+
+def build_smallpaint_scene_triangles(
+    scene: Scene,
+    *,
+    size: int,
+    plane_extent: float = PLANE_EXTENT,
+    ghost: str = "all",
+    ior: float = 1.5,
+) -> None:
+    """Build SPEC §9 in ``scene`` with every plane replaced by one quad mesh (T3.17).
+
+    Same as ``build_smallpaint_scene``, except that the six planes become triangle meshes: one
+    quad of two triangles per plane, with no corner normals. The spheres stay analytic, so both
+    scenes keep the same objects and the same object ids (the SPEC §9 list positions).
+
+    ``size`` is the image side in pixels, ``plane_extent`` the half-size of a quad in smallpaint
+    units (see ``PLANE_EXTENT``), ``ghost`` the ghost policy of SPEC §5 and ``ior`` the index of
+    refraction of the glass sphere, dimensionless.
+
+    The integrator socket ``two_sided`` is set to False, so the quad keeps smallpaint's plane
+    normal semantics: the shading normal is the plane's own normal, not one flipped towards the
+    incoming ray.
+    """
+    if ghost not in GHOST_POLICIES:
+        raise ValueError(f"ghost must be one of {GHOST_POLICIES}, not {ghost!r}")
+    sphere_intersection = "ghost" if ghost == "all" else "exact"
+    light_intersection = "ghost" if ghost in ("all", "lights") else "exact"
+
+    identity = np.eye(4, dtype=np.float32)
+    for object_id, (kind, geometry, values, colour, material_kind) in enumerate(REFERENCE_SCENE):
+        material = _material(scene, material_kind, colour, ior)
+        if kind == "sphere":
+            centre, (radius,) = geometry, values
+            intersection = light_intersection if material_kind == "light" else sphere_intersection
+            scene.add_sphere(centre, radius, material, intersection, object_id)
+        else:
+            normal, (offset,) = geometry, values
+            corners = _plane_quad(normal, offset, plane_extent)
+            vertices = np.ascontiguousarray(corners, dtype=np.float32)
+            # Two triangles of the quad, in the order of _plane_quad's corners.
+            triangles = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.uint32)
+            tri_material = np.array([material, material], dtype=np.int32)
+            mesh = scene.add_mesh(vertices, triangles, tri_material, None)
+            scene.add_object(mesh, identity, object_id)
+
+    # SPEC §7: the smallpaint camera of the reference image.
+    scene.set_camera_smallpaint(size, size)
+    # The reference knobs, and no other knob: every socket not in the dict keeps its default.
+    # two_sided = False keeps the quads' plane normal semantics (the card's normal orientation).
+    scene.set_integrator(**apply_reference_knobs(), two_sided=False)
+
+
 def oracle_jitter(scene: Scene) -> float:
     """The oracle's ``--jitter`` value for ``scene``, in image-plane units.
 
