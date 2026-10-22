@@ -532,6 +532,37 @@ Card: `docs/tasks/M3/T3.18-exp-throughput.md`. Depends on: M3-T3.17.
 - Its Conclusion is a DRAFT.
 Outcome: the card's Acceptance, translated; `CHECK` exits 0; and the README has exactly the five sections.
 
+## M3-FIX-T3.17a: the triangle scene differs from the oracle in regions r6 and r7 (find the cause, fix it)
+Card: `docs/tasks/M3/T3.17-triangle-path.md`; its Goal is the specification: replacing smallpaint's six planes with quads
+leaves the look statistically indistinguishable from the oracle. Depends on: M3-T3.17.
+Evidence (Opus, 2026-10-22, a fresh clone of T3.17's commit; the card's slow test with only `SEED_BLOCK` changed, the
+blocks fixed before any run):
+- Block 68, the committed block, passes, but with `r6.mean.R` p = 6.2e-4 and `r7.mean.B` p = 4.7e-4 against Holm's first
+  threshold 0.01/25 = 4e-4.
+- Of the fresh blocks 69-73, four reject: 69 (`r6.mean.R/G/B`), 70 (`r6.mean.B`), 71 (`r7.mean.G`) and 73
+  (`r7.mean.G`, `r7.mean.B`); 72 passes. Under the card's claim a block rejects with probability at most 0.01.
+- At block 70, `r6.mean.R` is 28.2922 in the triangle scene against the oracle's 28.3592 (-0.24%, Cohen's d -2.6), and
+  `r7.mean.B` is 75.3262 against 75.2006 (+0.17%). The triangle scene draws 1 332 185 743 samples against the oracle's
+  1 333 088 459 (-0.07%); every block shows the same shortfall.
+Do:
+- Measure before you change anything. On the same rays (same seed and jitter) in `build_smallpaint_scene` and
+  `build_smallpaint_scene_triangles`, report for both scenes, per bounce: the rays that hit nothing (the box is closed,
+  so the analytic scene should have none), the hits closer than `ray_epsilon`, the hits whose shading normal faces away
+  from the incoming ray, the bounce at which the two scenes' paths first hit different objects, and the mean path
+  length. A 64 px render is enough. Name the harness, and keep it if it becomes the test below.
+- Fix the cause where it is: the core's mesh path or `build_smallpaint_scene_triangles`. Never change the card's
+  decision rule, its key family, `ALPHA`, `SEED_BLOCK = 68`, `SLOW_PAIRS` or `PLANE_EXTENT`. If the cause is in the
+  test's design rather than in the code it tests, call report_blocked with the numbers.
+- Add a test that pins the cause: it fails at HEAD and passes after the fix. Quote both runs.
+Outcome:
+- `CHECK` exits 0, and the card's slow test passes at block 68.
+- On your committed tree, the same slow test at blocks 69-78 rejects at most 1 of the 10: for each block change only
+  `SEED_BLOCK`, in place, run the slow test, then restore the file with `git checkout -- tests/core/test_triangle_path.py`.
+  Report each block's rejected keys, or "passed". These ten blocks are fixed now; don't add, drop or replace any.
+allowedPaths: `src/painterly/bvh/**`, `src/painterly/kernel/**`, `src/painterly/scene/**`, `src/test/**`, `tests/core/scenes.py`, `tests/core/test_triangle_path.py`
+resources: `mem=6G cpus=4 time=6h`
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py`
+
 ## M3-FIX-T3.15a: set_integrator raises ValueError for every bad knob, and a failed call sets nothing
 Card: `docs/tasks/M3/T3.15-bindings.md`, the `Scene.set_integrator` bullet (lines 18-27). Depends on: M3-T3.15.
 Why:
@@ -557,6 +588,23 @@ Outcome:
 - In `src/blender/python.cpp`, no `nb::type_error` is reachable from set_integrator; list the remaining `type_error` lines
   and the method each belongs to.
 allowedPaths: `src/blender/python.cpp`, `tests/core/test_api_contract.py`
+
+## M3-FIX-TOL-a: comments that derive two analysis-test tolerances (landing review F1)
+Card: none; this item is the specification. CLAUDE.md golden rule 2 lets a unit test of numerical code use a tolerance
+only with a comment that justifies it, and `experiments/007-2026-10-15-noise-locking/PLAN.md` (lines 84-85 and 119-121)
+asks the same of EXP-007's library tests. Two of them have no such comment:
+- `analysis/tests/test_scale_metrics.py:157-159`:
+  `assert_allclose(along_columns, along_rows, rtol=1e-12, atol=1e-12 * float(np.max(np.abs(field))))`;
+- `analysis/tests/test_report.py:570`: `pytest.approx(..., rel=1e-12, abs=0.0)`.
+Do:
+- Above each, add a comment that derives the bound as rule 2 allows: name the identity the test checks, the float64
+  arithmetic the code under test does, and why that round-off stays within the bound (and its `atol` term).
+- Never change a value or a line of code. If a tolerance can't be derived that way, call report_blocked and say why.
+Outcome:
+- `CHECK` exits 0.
+- The commit adds comment lines only:
+  `git diff HEAD~1 -- analysis/tests | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -vE '^\+\s*#'` prints nothing.
+allowedPaths: `analysis/tests/test_scale_metrics.py`, `analysis/tests/test_report.py`
 
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
