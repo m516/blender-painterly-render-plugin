@@ -1,0 +1,20 @@
+# Cases of the generated svm_eval_nodes() switch (tools/gen_svm_switch.py, card T6.2).
+# Each case NODE_X needs the fragment "kernel/svm/svm_h/svm_case/NODE_X" in third_party/cycles/VENDORED.toml:
+#   tools/vendor_sync.py add-fragment kernel/svm/svm.h svm_case NODE_X
+# The generator emits the cases in upstream order, whatever their order here, and the includes in this order.
+# The first four includes are kernel/svm/svm.h:28-32. The fifth, kernel/svm/node_types.h, defines (:25-49)
+# SVMNodeShaderJump, SVMNodeJumpIfZero and SVMNodeJumpIfOne, which the frame (svm.h:112) and the cases (:122, :179,
+# :187) use. Upstream reaches node_types.h only through the node headers of svm.h:36-80.
+includes = [
+  "kernel/globals.h",
+  "kernel/types.h",
+  "kernel/svm/types.h",
+  "kernel/svm/util.h",
+  "kernel/svm/node_types.h",
+]
+cases = [
+  "NODE_END",
+  "NODE_SHADER_JUMP",
+  "NODE_JUMP_IF_ZERO",
+  "NODE_JUMP_IF_ONE",
+]

@@ -621,3 +621,72 @@ dest = "kernel/globals.h"
 upstream_sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1205"
 sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1205"
 patched = false
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_END"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_END"
+upstream_lines = [118, 119]
+sha256 = "6333d42a50d11a297ac5a91d999a44962a2101b5a94c328311be26620a6804aa"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_SHADER_JUMP"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_SHADER_JUMP"
+upstream_lines = [120, 136]
+sha256 = "5a829a9e23d3886088f906099d78218f5b124653fadd0af6e6cd4390351e9fe7"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_JUMP_IF_ZERO"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_JUMP_IF_ZERO"
+upstream_lines = [177, 184]
+sha256 = "85d51420e11c80b818c12fc8fdf34edd4e1bc492818d99de25e6ccc87546c651"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_JUMP_IF_ONE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_JUMP_IF_ONE"
+upstream_lines = [185, 192]
+sha256 = "e7bc1d00cd5b5eb326aa29679d3153c530819f8df8429aafb2c7b81b48bf043a"
+
+[[fragment]]
+name = "kernel/svm/svm_h/span/svm_case_macro"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "span"
+id = "svm_case_macro"
+begin = "#ifdef __KERNEL_USE_DATA_CONSTANTS__"
+end = "#endif"
+upstream_lines = [91, 98]
+sha256 = "0d3c5c590b566ba98fa649102efc591d38e26fc2e67d699ca0b4dac27cd66212"
+
+[[fragment]]
+name = "kernel/svm/svm_h/span/svm_eval_nodes_head"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "span"
+id = "svm_eval_nodes_head"
+begin = "/* Main Interpreter Loop */"
+end = "    switch (node_type) {"
+upstream_lines = [100, 117]
+sha256 = "d2b819a6227ad1fc2b0ec6e8269f1465a9092fd23b60d536afdfb09ce3d749f5"
+
+[[fragment]]
+name = "kernel/svm/svm_h/span/svm_eval_nodes_tail"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "span"
+id = "svm_eval_nodes_tail"
+begin = "      default:"
+end = "}"
+upstream_lines = [617, 622]
+sha256 = "4309298f1b8090ed6ccdb34b4efb4c9fe5566d0a3e392952148f6ed628a53238"
