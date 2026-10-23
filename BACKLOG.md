@@ -1020,6 +1020,146 @@ Outcome:
 allowedPaths: `docs/handoff/findings/M7-M9-panel-M9.json`
 Depends on: PANEL-M7-M9-d.
 
+## REVISE-M7-a: apply the checked review findings to the T7.1 draft
+Why: `docs/handoff/queue.md` §8 revises the M7-M9 drafts from their review findings before they become cards. The
+panel checked every finding, Sonnet checked the panel, and Opus ruled: `docs/handoff/findings/M7-M9-rulings.md`.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md` as `M7-M9-rulings.md` says under "How to apply them,
+  per card". Use the T7.1 objects of `docs/handoff/findings/M7-M9-panel-check-M7a.json`, each with its fix in
+  `M7-M9-panel-T7.1.json`. Then apply the cross-cutting rulings X1 and C4, and the M7a section. C4 is
+  `RESEARCH_SOCKETS`; its mechanism is in the M9 section, under T9.1 design#0.
+- Keep the draft's style and structure. Change nothing the rulings don't ask for.
+- Answer with one line per panel object (source, key, index, ruling, and the draft lines you changed, or "no edit"),
+  then one line per cross-cutting ruling you applied.
+Outcome: the pinned verify prints `REVISE-OK 11`. It checks two things, whitespace aside:
+- the new text of every `apply` fix that overlaps no other fix is in the draft;
+- the draft names `RESEARCH_SOCKETS`.
+The cross-check item and Opus's approval read the rest.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T7.1-panels-and-overrides.md']));W=[('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 executability',0),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 executability',1),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 executability',2),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 executability',3),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',3),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',4),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',5),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',6),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',8),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',10),('M7-M9-panel-T7.1.json','M7-M9-reviews.json','review T7.1 design',11)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'RESEARCH_SOCKETS' in t,'extra 0';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md`
+Depends on: PANEL-M7-M9-c.
+
+## REVISE-M7-b: apply the checked review findings to the T7.2 draft
+Why: as REVISE-M7-a, for T7.2.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T7.2-presets.md` as `docs/handoff/findings/M7-M9-rulings.md` says under "How to
+  apply them, per card". Use the T7.2 objects of `M7-M9-panel-check-M7a.json`, each with its fix in
+  `M7-M9-panel-T7.2.json`. Then apply the cross-cutting rulings X1 and J1, and the M7a section, which gives the
+  resolutions of T7.2's eleven overlapping pairs.
+- Keep the draft's style and structure. Change nothing the rulings don't ask for.
+- Answer as REVISE-M7-a does.
+Outcome: the pinned verify prints `REVISE-OK 2`: the new text of every `apply` fix that overlaps no other fix is in
+the draft, whitespace aside.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T7.2-presets.md']));W=[('M7-M9-panel-T7.2.json','M7-M9-reviews.json','review T7.2 executability',3),('M7-M9-panel-T7.2.json','M7-M9-review-2.json','review T7.2 executability',2)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T7.2-presets.md`
+Depends on: PANEL-M7-M9-c.
+
+## REVISE-M7-c: apply the checked review findings to the T7.3 and T7.4 drafts
+Why: as REVISE-M7-a, for T7.3 and T7.4.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md` and `T7.4-exp-animation.md` as
+  `docs/handoff/findings/M7-M9-rulings.md` says under "How to apply them, per card". Use the T7.3 and T7.4 objects of
+  `M7-M9-panel-check-M7b.json`, each with its fix in `M7-M9-panel-T7.3-T7.5.json`. Then apply:
+  - the cross-cutting rulings X1 and X2;
+  - C1 and C2, which build on T7.1's revised text: read the revised T7.1 draft for it;
+  - the M7b section: T7.3's outcome bullet for a refuted H1, and T7.4's rule R(a).
+- Keep the drafts' style and structure. Change nothing the rulings don't ask for. No pre-registered rule changes except
+  the one the M7b section states.
+- Answer as REVISE-M7-a does.
+Outcome: the pinned verify prints `REVISE-OK 1`. It checks, whitespace aside:
+- the one clean `apply` fix's new text is in the drafts;
+- no "DRAFT (Haiku)" is left;
+- "DRAFT (DeepSeek)" is present.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T7.3-lane-stagger.md', 'T7.4-exp-animation.md']));W=[('M7-M9-panel-T7.3-T7.5.json','M7-M9-review-2.json','review T7.4 design',2)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'DRAFT (Haiku)' not in t,'extra 0';assert 'DRAFT (DeepSeek)' in t,'extra 1';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T7.3-lane-stagger.md`, `docs/handoff/drafts/M7-M9/T7.4-exp-animation.md`
+Depends on: REVISE-M7-a.
+
+## REVISE-M7-d: apply the checked review findings to the T7.5 draft
+Why: as REVISE-M7-a, for T7.5, after T7.1's and T7.2's revisions, which it follows.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T7.5-artist-guide.md` as `docs/handoff/findings/M7-M9-rulings.md` says under "How
+  to apply them, per card". Use the T7.5 objects of `M7-M9-panel-check-M7b.json`, each with its fix in
+  `M7-M9-panel-T7.3-T7.5.json`. Then apply:
+  - the cross-cutting ruling X1;
+  - C3: the presets as T7.2's revised draft has them, so Soft strokes is gone;
+  - C4: `expected_knob_headings` exempts T7.1's `RESEARCH_SOCKETS`, named as in T7.1's revised draft.
+- Keep the draft's style and structure. Change nothing the rulings don't ask for.
+- Answer as REVISE-M7-a does.
+Outcome: the pinned verify prints `REVISE-OK 0` (this card has no clean `apply` fix) after checking that the draft
+names `RESEARCH_SOCKETS`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T7.5-artist-guide.md']));W=[];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'RESEARCH_SOCKETS' in t,'extra 0';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T7.5-artist-guide.md`
+Depends on: REVISE-M7-a, REVISE-M7-b.
+
+## REVISE-M8: apply the checked review findings to the T8.1 and T8.2 drafts
+Why: as REVISE-M7-a, for T8.1 and T8.2.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T8.1-release-workflow.md` and `T8.2-repository-index-and-install-docs.md` as
+  `docs/handoff/findings/M7-M9-rulings.md` says under "How to apply them, per card". Use the objects of
+  `M7-M9-panel-check-M8.json`, each with its fix in `M7-M9-panel-M8.json`. Then apply the cross-cutting ruling X1 and
+  the M8 section:
+  - D39's `INSTALL_PLATFORMS`;
+  - Step 1 keeps wheels.yml's whole `pull_request` block (read `.github/workflows/wheels.yml` at HEAD);
+  - Blender comes from `$BLENDER`;
+  - `.github/workflows/static.yml` is the only Pages publisher and goes under T8.2's Modify, with the actions at its
+    versions;
+  - no post-deploy step.
+- Keep the drafts' style and structure. Change nothing the rulings don't ask for.
+- Answer as REVISE-M7-a does.
+Outcome: the pinned verify prints `REVISE-OK 2`. It checks, whitespace aside:
+- the new text of every `apply` fix that overlaps no other fix is in the drafts;
+- the drafts name `INSTALL_PLATFORMS` and `static.yml`;
+- no `deploy-pages@v4` is left.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T8.1-release-workflow.md', 'T8.2-repository-index-and-install-docs.md']));W=[('M7-M9-panel-M8.json','M7-M9-review-2.json','review T8.1 executability',0),('M7-M9-panel-M8.json','M7-M9-review-2.json','review T8.1 design',1)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'INSTALL_PLATFORMS' in t,'extra 0';assert 'deploy-pages@v4' not in t,'extra 1';assert 'static.yml' in t,'extra 2';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T8.1-release-workflow.md`, `docs/handoff/drafts/M7-M9/T8.2-repository-index-and-install-docs.md`
+Depends on: PANEL-M7-M9-d.
+
+## REVISE-M9-a: apply the checked review findings to the T9.1 and T9.2 drafts
+Why: as REVISE-M7-a, for T9.1 and T9.2.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T9.1-mesh-ghost-candidates.md` and `T9.2-exp-mesh-ghost.md` as
+  `docs/handoff/findings/M7-M9-rulings.md` says under "How to apply them, per card". Use the T9.1 and T9.2 objects of
+  `M7-M9-panel-check-M9.json`, each with its fix in `M7-M9-panel-M9.json`; those fixes name no file, so each applies to
+  its finding's card. Then apply:
+  - the cross-cutting rulings X1, X2 and C4 (T9.1 adds `mesh_ghost` to T7.1's `RESEARCH_SOCKETS`; take the name from
+    T7.1's revised draft);
+  - the M9 section: T9.1 exec#0's option B, T9.1 design#0's gate, and T9.2 design#1's cost ordering, combined with
+    design#0 as the check file says.
+- T9.1's Step 5, Appendices A and C and its Contract change section are rewritten against HEAD's
+  `src/painterly/kernel/globals.h` and `src/painterly/scene/device_scene.cpp`. Read them, and cite file:line in the
+  revised text.
+- Keep the drafts' style and structure. Change nothing the rulings don't ask for.
+- Answer as REVISE-M7-a does.
+Outcome: the pinned verify prints `REVISE-OK 3`. It checks, whitespace aside:
+- the new text of every `apply` fix that overlaps no other fix is in the drafts;
+- the drafts name `RESEARCH_SOCKETS`;
+- no "DRAFT (Haiku)" is left.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T9.1-mesh-ghost-candidates.md', 'T9.2-exp-mesh-ghost.md']));W=[('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.1 design',2),('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.1 design',3),('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.2 executability',1)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'RESEARCH_SOCKETS' in t,'extra 0';assert 'DRAFT (Haiku)' not in t,'extra 1';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T9.1-mesh-ghost-candidates.md`, `docs/handoff/drafts/M7-M9/T9.2-exp-mesh-ghost.md`
+Depends on: REVISE-M7-a.
+
+## REVISE-M9-b: apply the checked review findings to the T9.3 draft, and split off T9.3b
+Why: as REVISE-M7-a, for T9.3. Opus's ruling on T9.3 exec#1 splits its Blender half into a new card.
+Do:
+- Revise `docs/handoff/drafts/M7-M9/T9.3-exp-open-scenes.md` as `docs/handoff/findings/M7-M9-rulings.md` says under
+  "How to apply them, per card". Use the T9.3 objects of `M7-M9-panel-check-M9.json`, each with its fix in
+  `M7-M9-panel-M9.json`. Then apply the cross-cutting rulings X1 and X2 and the M9 section.
+- The split creates `docs/handoff/drafts/M7-M9/T9.3b-exp-open-scenes-blender.md`.
+  - T9.3b holds H6, Appendices D-F, render.py's Blender hook, its own pre-registration and its own smoke run. It
+    depends on T9.3, and its Appendix D reads `bl_idname` with `getattr`.
+  - T9.3 keeps the native path (H1-H5, H7). H7b becomes a measurement.
+- Every count or seed the split changes is recomputed with a script you run from the draft's own code (kept under
+  .ds-scratch/). Quote the command and its output in your answer. Never edit a count by hand.
+- Keep the drafts' style and structure. Change nothing the rulings don't ask for.
+- Answer as REVISE-M7-a does, and list each count you changed with its old and new value.
+Outcome: the pinned verify prints `REVISE-OK 3`. It checks, whitespace aside:
+- both drafts exist;
+- the new text of every `apply` fix that overlaps no other fix is in them;
+- no "DRAFT (Haiku)" is left.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';D='docs/handoff/drafts/M7-M9/';n=lambda s:' '.join(s.split());t=n(' '.join(open(D+f).read() for f in ['T9.3-exp-open-scenes.md', 'T9.3b-exp-open-scenes-blender.md']));W=[('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.3 executability',0),('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.3 executability',2),('M7-M9-panel-M9.json','M7-M9-review-2.json','review T9.3 design',2)];m=[w[1:] for w in W for o in json.load(open(F+w[0])) if (o['source'],o['key'],o['index'])==tuple(w[1:]) for e in (o['fix'] if isinstance(o['fix'],list) else [o['fix']]) if n(e['new']) not in t];assert not m,m;assert 'DRAFT (Haiku)' not in t,'extra 0';print('REVISE-OK',len(W))"`
+allowedPaths: `docs/handoff/drafts/M7-M9/T9.3-exp-open-scenes.md`, `docs/handoff/drafts/M7-M9/T9.3b-exp-open-scenes-blender.md`
+Depends on: PANEL-M7-M9-e.
+
 ## EXP-REPRO: the committed results of experiments 001-006 reproduce on this machine
 Why:
 - On 2026-10-15 the project moved from a cloud container to this machine, and the render cache did not move.

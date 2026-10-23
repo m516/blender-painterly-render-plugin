@@ -1,0 +1,222 @@
+[
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 executability",
+  "index": 0,
+  "panel_verdict": "partly",
+  "check": "agree",
+  "ruling": "opus",
+  "change": "Card-wide, T9.1 was written against the data layout of commit 696dc0c and HEAD has moved. KernelPainterlyObject is {normal_to_world[9], mesh, object_id} (globals.h:25-32) and PainterlyGlobalsCPU has no tri_vertices (globals.h:40-68), because D35/T3.21 (e7166f6) dropped `tfm`, `itfm` and `tri_vertices` (decisions-M3.md:141-145: 'no kernel code reads it'); vertices and indices go to Embree only (device_scene.cpp:142-143); the scene keeps indexed PainterlyMesh::vertices and ::triangles (mesh.h:22,25) and PainterlyObject::object_to_world (object.h:16-21). T9.1's Step 5, Appendix A (world_point, world_triangle reading kg->tri_vertices, world_normal and bounding_sphere taking `tfm`) and Appendix C (MeshScene fills object.tfm/itfm and g.tri_vertices) need both. Options for Opus: (A) the Contract change restores `float tfm[12]` in KernelPainterlyObject and `const float *tri_vertices` (9 object-space floats per triangle, indexed tri_offset + prim) in PainterlyGlobalsCPU, filled by device_update from PainterlyMesh and PainterlyObject::object_to_world, perhaps only when mesh_ghost is angular_dilation or sdf_step so that `off` keeps HEAD's layout, with an amendment to D35; (B) keep both gone and add one array of world-space triangles built by device_update for those two candidates, with the bounding spheres computed on the host from PainterlyMesh data; (C) read Embree's own copy through a new accessor in painterly/bvh/embree.h (that directory is on the card's do-not-touch list, and architecture allows kernel Embree calls only from kernel/bvh/bvh.h). After that ruling the panel's idea carries over unchanged: guard both Step 5 loops with `mesh.num_tris > 0`; say that a triangle-free object keeps the zero-initialised empty sphere (centre (0,0,0), radius 0, the values the helper returns, Appendix A :573-606); and write the blocks against HEAD's structure: they run on new_objects, new_meshes, new_tri_material and new_analytic, after `integrator.device_update(new_data.integrator)` (device_scene.cpp:208) and before the commit (:289); the knob is new_data.integrator.mesh_ghost; the 'record num_analytic after the append' caveat is moot because bind_globals sets it at the commit (:72). When computing the bounding sphere from indexed vertices, use only the vertices that a triangle references (the SPEC text says 'its triangles' vertices').",
+  "reason": "The asymmetry is real (T9.1-mesh-ghost-candidates.md:346-355 calls the helper for every object, :361 guards the proxy loop) and the panel's guard is right, but its code uses `object.tfm` and `tri_vertices.data()`, which HEAD no longer has (src/painterly/kernel/globals.h:25-32, 40-68; D35, docs/handoff/decisions-M3.md:141-145), and HEAD's `device_update` fills `new_*` locals and commits once (src/painterly/scene/device_scene.cpp:94-97, 289-303). The text cannot be written until Opus rules how the kernel gets world triangles again; the same gap breaks Appendix A (T9.1-mesh-ghost-candidates.md:529-606) and Appendix C's `MeshScene` (:1399-1474)."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 executability",
+  "index": 1,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "change",
+  "change": "Keep the idea of a mechanical check, and fix the appendices it checks. (1) Regenerate Appendix B from HEAD's bvh.h, not from commit 696dc0c: the analytic loop keeps the F5 line and its comment (bvh.h:47-48) and the doc comment keeps its last sentence on analytic hits (bvh.h:23-25); only the header comment, the mesh_ghost.h include and the triangle block change. (2) Appendix C's `scene_intersect_v1` becomes HEAD's function including the reset, commented as 'painterly_scene_intersect as HEAD has it before T9.1', not 'commit 696dc0c'; otherwise the 100000-ray `off` test (:2210-2237, which compares prim, u, v and Ng as well) fails wherever an analytic hit beats a triangle. (3) Replace Step 1's prose precondition by a command that compares the two function bodies only (each extracted from its signature line to its closing brace, with the function name and the signature layout normalised; HEAD's side by `git show HEAD:src/painterly/kernel/bvh/bvh.h`) and prints nothing when they agree. Appendix C's file does not exist at Step 1, so run it right after Step 7 creates it (`git show HEAD:` still has the original after Step 3 has overwritten the file), say stop and report on any output, and state that the expected output is empty, not 'only the reset line'. (4) M3-FIX-T3.17c may still edit src/painterly/kernel and src/painterly/scene (allowedPaths of that item, BACKLOG.md), so consider making Step 3 two edits to HEAD's file (the include, the triangle block) instead of overwriting it. Appendices B and C also use `tfm` and `tri_vertices`: see the ruling on T9.1 executability #0.",
+  "reason": "The drift is real and worse than the finding says: HEAD's bvh.h has the TQ.1 F5 reset (src/painterly/kernel/bvh/bvh.h:23-25, 47-48; guarded by src/test/test_path_trace.cpp:341-373), which Appendix B's analytic loop (T9.1-mesh-ghost-candidates.md:1255-1263) and Appendix C's `scene_intersect_v1` (:1582-1590) lack, so Step 1's precondition fails today and Step 3 would revert F5. The panel's `new` text says 'Appendix B keeps the TQ.1 F5 reset' (it does not), and its `diff` compares a whole file with one function against a placeholder `AppendixC`, so it can neither run nor 'print only the reset line'."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 executability",
+  "index": 2,
+  "panel_verdict": "partly",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Make no edit to the Acceptance: leave its two bullets as they are, with `build/dev` (the queue's `build/q` translation lives in BACKLOG and RULINGS, per Opus's X1) and with no suite count, because the filtered line `15 passed | 0 failed` and 'reports 0 failed' for the whole suite are count-independent. Do not apply the panel's fix: its only other content is a count. The one stale claim is Step 7's 'together with the 44 existing ones' (:377-378), a statement about the author's prototype at commit 696dc0c; when Appendices A-D are re-validated against the new base (ruling on #0), restate it with the commit the prototype ran on and without a count of existing cases, or drop it.",
+  "reason": "The Acceptance already pairs the filtered count with `0 failed` for the whole suite (T9.1-mesh-ghost-candidates.md:414-415), and the queue translates `build/dev` to `build/q` itself (BACKLOG.md:21, R2), so the panel's rewrite is only a translation (Opus X1) and there is little else to fix. HEAD's suite has 85 `TEST_CASE(` (grep over src/test/*.cpp), not 44, but the panel's replacement hard-codes that count, which the cards that land before T9.1 will change, and '85 - 15 = 70 outside the filter' is wrong arithmetic (the 15 are this card's new cases, not part of the 85)."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 executability",
+  "index": 3,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Apply the panel's text with one correction: the 19 native renders are re-run (the cache key holds the module's sha256), and the 15 figure PNGs keep their bytes. Keep '7-10 minutes on 4 cores', `completed=66 remaining=0`, T7.5's 15 figure sizes, the sentence that the report's native-render seconds are fresh renders and not a cache hit, and the `--numstat` assertion.",
+  "reason": "Real: the native cache key holds `module_sha256` (T7.5-artist-guide.md:1406-1417), so the rebuilt module re-renders every native panel, and figures.json carries neither render seconds nor a module digest (T7.5:1587-1640), so the `--numstat` `1 0` assertion holds ('mesh_ghost' sorts between max_depth and output_mode). But the panel's `new` text says 'The 19 PNGs keep their bytes', and the guide has 15 figure PNGs built from 19 native renders (T7.5:10, 235-238)."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 design",
+  "index": 0,
+  "panel_verdict": "disputed",
+  "check": "disagree",
+  "ruling": "opus",
+  "change": "Options for Opus. (1) Keep decision 8 and make it self-justifying: add why the research socket is safe to show (default `off` is bit-identical to v1 and changes no figure; the tooltip begins 'Research option'; the property is outside PRESET_SOCKETS, T7.2-presets.md:103; the Lights panel is greyed in reference mode), and reword T9.2's decision 6 (:34-35) and its 'Not in this card' bullet (:474-475) so that 'exposing a candidate' means making it the documented, recommended option (dropping the 'Research option' label and Appendix E's 'No experiment has measured these choices yet', T9.1:2572-2573; adding a per-object form and SPEC text), not the research socket's presence. (2) Gate it, as the finding proposes: land the socket and the kernel only; T4.2 still generates the Blender property, so the panel entry and the guide subsection wait for the exposing card, which needs a named exclusion in T7.1's panel registry and an exemption in T7.5's `expected_knob_headings`, and edits to T9.1's Goal (:18-19), Step 9, Appendix E and the Acceptance (figures.json numstat, panel registry). (3) Middle: keep the panel entry (T7.1's rule) and drop only the guide subsection and the `UNITS` entry, which still needs the T7.5 exemption.",
+  "reason": "The panel is right that the finding's fix (hide the entry) contradicts T7.1 ('Nothing is hidden, so every property is always drawn exactly once', T7.1-panels-and-overrides.md:13) and T7.5's one-heading-per-socket rule (T7.5-artist-guide.md:1047-1056), and that Opus decision 8 (T9.1-mesh-ghost-candidates.md:56-58) already fixes the placement; it is wrong that hiding would leave the experiment without a knob (both experiments set it through `_painterly`, T9.2-exp-mesh-ghost.md:39-45). It is not a non-defect either: T9.1 puts the socket in the panel and the guide now (:6-19) while T9.2 reserves 'exposing a candidate (UI, ..., artist guide, SPEC section 5 text)' for after the Conclusion (T9.2-exp-mesh-ghost.md:34-35, 474-475) and docs/plan.md:321 puts the exposing go/no-go after both experiments, and decision 8 gives no reason why a research option is safe to show."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 design",
+  "index": 1,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Apply the panel's sentence in all three copies and keep them equal after concatenation: the Interface table row (:209), Step 4's C++ literals (:328-335) and Appendix D's `MESH_GHOST_DESCRIPTION` (:2384-2393). Append to the Bounding Sphere sentence ', and the object is replaced by that sphere for every ray, camera rays included, so a mesh that is not a sphere renders as its bounding sphere' (so the text reads '... as a ghost sphere, and the object is replaced ... as its bounding sphere. Homothety: ...'), keep it ASCII with no trailing period, and re-wrap the C++ literals to clang-format's limit and the Python literal to ruff's 100 columns. Appendix E (:2567-2568, 'replaces each mesh object by its bounding sphere') needs no edit.",
+  "reason": "Real but minor: the tooltip says each mesh object 'becomes its bounding sphere' without saying that camera rays see it (T9.1-mesh-ghost-candidates.md:209; T9.2-exp-mesh-ghost.md:389-392 does say so). The sentence is copied in three places that must stay equal, because `test_socket` asserts the description equals Appendix D's literal (:2484) and Step 4 says its literals concatenate to the Interface text (:338), but the panel's `old` text matches only the Interface row (:209), so applying it alone would fail `test_socket`."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 design",
+  "index": 2,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "Real: the enum is a single choice (T9.1-mesh-ghost-candidates.md:6-9, 200) while two candidates keep orthogonal facets (:29-35), and T9.2 picks one candidate (T9.2-exp-mesh-ghost.md:380-383); the bullet fits 'Not in this card' (:445-446) and touches no step, count or name. Apply it, but re-wrap the `new` text: it has runs of three spaces where line breaks were lost ('the   homothety', 'part of   the M9')."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.1 design",
+  "index": 3,
+  "panel_verdict": "partly",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "The panel's tie-rule sentence is accurate: proxies are appended after every analytic primitive (T9.1-mesh-ghost-candidates.md:244-246) and the committed loop accepts only `t < best_t` (src/painterly/kernel/bvh/bvh.h:45; Appendix B :1257), so a coincident proxy loses the tie. The finding's extra C++ case is not needed: only an exact tie shows the append order, no scene of the card has one, and Appendix C builds its own proxy list (:1676-1685), so it could not test `device_update`'s order anyway."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.2 executability",
+  "index": 0,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "change",
+  "change": "Pin the empty-G case as Appendix D already behaves (checked: `decide`, :1298-1396, `run`, :1537-1598, and `print_tables` read only keys that path sets): if G is empty, H1 is refuted; H2 and every H4 outcome read 'inconclusive (H1 not supported)'; `ghost_sensitive_keys` is [], `rho` is an empty object, `rho_mesh` and `decisions.floor` hold nulls, `go` is [] and `recommended` is null, so no candidate is go. Do not list H3 among the inconclusive hypotheses: H3 and the family tests on F (the meshing comparison and the companions) are computed as usual, and Table 6 (renders, cost ratios) does not depend on G. Keep the sentence that analyze.py writes this without raising; it is true of the draft as read (not executed). Re-wrap the text (the panel's has runs of three spaces).",
+  "reason": "The empty-G case is under-pinned (T9.2-exp-mesh-ghost.md:325), but the panel's `new` text is wrong about H3 and about nulls: H3 tests R' against R on F, not on G (:335-340), and Appendix D's `decide` gives it its own verdict whatever G is (:1317), while with G empty `run` takes the `stats = None` path (:1537) and writes `rho = {}` and `rho_mesh = None` (:1540, 1598), not 'every rho null' and 'H3 inconclusive', so those words would contradict the verbatim script."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.2 executability",
+  "index": 1,
+  "panel_verdict": "partly",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "The finding's 1/64 is wrong and the panel's arithmetic is right: SMOKE_SIZE 128 and SMOKE_PASSES 4 (T9.2-exp-mesh-ghost.md:767-768) against SIZE 200 and PASSES 16 (:499-500) give 65536 against 640000 paths per half render, 1/9.77, which at the pilot's 1299 us per path (:239) is about 21 s for the slowest smoke half render on 4 threads. The new sentence is accurate ('seconds' means tens of seconds) and changes no step or count."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.2 design",
+  "index": 0,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Add the shape-limit bullet as the first bullet under the heading, with one correction: say that every mesh configuration (the negative control and the four candidates) uses the same 32 x 16 UV sphere, not 'every configuration'. Keep: the decision is a go for sphere-like meshes only; a candidate's outcome for other shapes is not measured here; a later experiment must measure a non-spherical mesh before the socket is offered generally. Related fix a few lines below (:400-401): 'X-open-scenes (T9.3) or a later experiment takes them up' is wrong for non-spherical mesh ghosts, because T9.3 never sets mesh_ghost (T9.3-exp-open-scenes.md:649), so say 'a later experiment'. Merge with design #1: this fix and design #1 have the same `old` text (heading plus first bullet, :377-380), so apply this one first and leave the go bullet unchanged; if Opus adopts a cost clause (design #1), its suffix on the go bullet and its own bullet go after this bullet and before 'If there is at least one' (:380). Re-wrap the new text.",
+  "reason": "Real: the shape limit sits only in the interpretation (T9.2-exp-mesh-ghost.md:387-402), not in the pre-registered rule (:377-385), and docs/plan.md:202 scores the candidates 'on sphere meshes'. But the panel's `new` text says 'every configuration here uses a UV sphere', which is false for the three analytic configurations (:270-274, 519-528); it also shares its `old` text with design #1 (see the `change`) and has runs of three spaces."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.2 design",
+  "index": 1,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "opus",
+  "change": "Options for Opus. (1) Keep the design (cost is reported and Opus weighs it, T9.2:380-383, 392-395) and add one sentence to 'What each outcome means' that `go` means 'reproduces the ghost within the meshing floor', not 'affordable', with the measured cost ratio quoted for every go candidate. (2) Add a pre-registered cost clause with a named knob: Opus supplies the value and its source, for example the protocol's 540-s call budget (docs/tasks/M1/_experiment_protocol.md:10) read per render at a stated reference size, or a render-time figure from X-throughput (docs/plan.md:199); the card must then also change Appendix D (`decide`: a cost outcome, the `go` list, `recommended`, :1298-1396), the results.json schema (T9.2:108-118), Tables 6-7 and Step 8, and must not state in advance which pilot candidates fall above the limit. (3) Use cost as an ordering, with no number: among go candidates whose pairwise rho difference interval contains 0 (:380-383), the cheaper one is recommended. Overlap with design #0: the two fixes have the same `old` text; the shape bullet goes first, and a cost clause, if Opus adopts one, follows the go bullet.",
+  "reason": "The decision has no cost term (T9.2-exp-mesh-ghost.md:377-385, 392-395), a fair design question, but the panel's clause cannot be applied: `COST_LIMIT` has no value or source (docs/plan.md has no render-budget clause; X-throughput at plan.md:199 only measures paths per second), its 'default set in Step 4' appears in no appendix (Appendix D's `decide`, :1298-1396, has no cost outcome), and it declares the pilot's two ratios 'above it' before a limit exists. A threshold with no evidence of origin is what CLAUDE.md rule 2 and the experiment protocol (exact decision rule) forbid."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.2 design",
+  "index": 2,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Apply the added bullet with these corrections: replace 'would score f > 1 and read as a failure' by 'would score f close to 1 (and rho close to 1), as analytic_exact does in the pilot (f = 0.988), so it would not recover and would read as a failure'; spell 'generalizes' as the rest of the card does. Keep: R is the analytic ghost ensemble because the knob generalizes ghost spheres (T9.1 SPEC text, T9.1-mesh-ghost-candidates.md:111-113); E is measured and reported as a companion and is the other end of the meshing floor (rho_mesh = |m_N - m_E| / |m_N - m_R|, T9.2:304-305), never the denominator of any rho, f or H4 outcome.",
+  "reason": "The denominator is the analytic ghost (T9.2-exp-mesh-ghost.md:272, 298-300) and nowhere says `analytic_exact` is never one, so the bullet is useful, but the panel's `new` text says a candidate that reproduced the exact sphere 'would score f > 1'; it would score f close to 1 and rho close to 1, like `analytic_exact` itself (f = 0.988 in the pilot, :235), which is why it fails H4 (a) 'recovers'."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 executability",
+  "index": 0,
+  "panel_verdict": "partly",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "The counts check by reading the draft's own Appendix A: 34 DESIGN plus 4 PAIRED configurations x 18 = 684 ensemble renders, plus 5 checks = 689 (617 native, 72 Blender), and 157 at smoke scale (T9.3-exp-open-scenes.md:206-212, 561-565, 739-751, 777-785). The rule the panel adds is the missing piece and is accurate: each PAIRED sky configuration reuses its partner's seed numbers and changes only `lamp` and `world` (:739-744), so it is 72 renders of its own."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 executability",
+  "index": 1,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "opus",
+  "change": "Options for Opus. (A) Split: T9.3 keeps the native path (H1-H5 and H7: Appendices A-C, G and H without `path = blender`; the four `blender_*` configurations are the last four of DESIGN, so no other seed moves, but `check_jobs`' seeds and every count (689, 684, 617, 157, the 16 Blender smoke renders) change), and a second card holds H6 (Appendices D-F, the Blender hook of render.py, its own pre-registered README or amendment and its own smoke run) and depends on the first. (B) Keep one card but make the Blender half fail-soft: native smoke and full runs first, and a failing Blender script marks H6 'inconclusive (not run)' with the error instead of stopping; this needs edits to render.py, analyze.py (design checks 1, 7, 8, `families_powered`, `design_checks`), the Acceptance and the schema. (C) Keep one card and its stop-and-report rule, accepting that the first Blender run probably fails and Opus revises (cheapest edit, most cycles). Whatever Opus picks, Appendix D's `{cls.bl_idname for cls in bpy.types.RenderEngine.__subclasses__()}` (:1705) must change to skip classes that have no `bl_idname` (read it with a default), and the panel's one-sentence edit must not be applied alone.",
+  "reason": "Real, and more certain than the finding says. Read-only probe, Blender 5.2.2 (code abridged; the last statement ran inside try/except): `import bpy; subs = bpy.types.RenderEngine.__subclasses__(); print([(c.__name__, hasattr(c, 'bl_idname')) for c in subs]); print({c.bl_idname for c in subs})` printed `[('HydraRenderEngine', False), ('CyclesRender', True)]` then `AttributeError: type object 'HydraRenderEngine' has no attribute 'bl_idname'` (class defined at 5.2/scripts/modules/_bpy_types.py:1612), which is Appendix D's check at T9.3-exp-open-scenes.md:1705, so the first Blender run fails. The panel's `new` text only declares 'the Blender path is a separate card' while the same paragraph (:206-212), Step 1 (:166-168), Appendices D-F, H6 and the 157/689 counts keep it in this card, so applying it leaves the card contradicting itself."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 executability",
+  "index": 2,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "Appendix H already loads `open_scenes.py` and `reference.py` by file path with `importlib.util.spec_from_file_location` (T9.3-exp-open-scenes.md:2886-2890), needs neither bpy nor _painterly (:2871), and has 9 tests and no `slow` marker (:2945-3027), as tests/core/test_oracle_parity.py:33 does for scenes.py under pyproject.toml:37-39's `--import-mode=importlib`, so the added sentence is accurate. Re-wrap its `new` text (a run of four spaces in 'does    for')."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 executability",
+  "index": 3,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "change",
+  "change": "Add the bullet to H6, but say this: the family sizes are fixed at 20, 20, 8 and 8 keys (and 12, 10, 12 and 6 for H3's estimation families), because design check 3 requires each level's measured regions to equal EXPECTED_REGIONS (closed 2-7, open_top 2-6, open_front 2-7, open_box 2-4) and `analyze.py` raises on any other set, so no region is dropped and no family shrinks silently. Drop 'A region dropped by the empty-mask rule', 'makes the family smaller' and 'lowers its first Holm threshold' (the draft has no empty-mask rule). Optionally add: were a family smaller, its first Holm threshold alpha/m would be higher, so the power claim (smallest p 4.11e-5 against 1.25e-4) would still hold. Say that results.json holds each family's actual size and first Holm threshold (`h6.comparisons`, from report.family_test, which records `n_keys` and `holm_first_threshold`, analysis/painterly_analysis/report.py:149-170).",
+  "reason": "The panel's `new` text has two errors: a family of m keys has first Holm threshold alpha/m (analysis/painterly_analysis/report.py:158), so a smaller family raises it (0.0025/16 = 1.56e-4 against 0.0025/20 = 1.25e-4), not 'lowers' it, and it invents a rule that drops a region, whereas design check 3 requires each level's regions to equal EXPECTED_REGIONS (T9.3-exp-open-scenes.md:590-591, 2052-2057) and `analyze.py` raises on a mismatch (:2253-2255). The finding is right only that the card never says the sizes (20, 20, 8, 8 for H6; 12, 10, 12, 6 for H3) are fixed."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 design",
+  "index": 0,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "change",
+  "change": "Keep 'The verdict is at 400 px; H3b is the only size check' (true: the only 800 px configurations are H3b's, T9.3:534-553). Replace the second sentence: 'H3a and H3b disagree' is undefined, because H3a (the gap grows when the box opens, at 400 px) and H3b (the open-box gap shrinks from 400 to 800 px) are different claims, and the pilot already moves r3 and r4 in opposite directions between 400 and 800 px (0.165 to 0.073 against 0.138 to 0.166, :443-446), which H3b's 'both regions' rule turns into 'inconclusive (mixed)'. State the reading by H3b's own outcome, and put what the guide does in 'What each outcome means', not in the hypothesis: add rows for H3b there (supported: the gap shrinks with size, and the guide quotes both sizes; refuted or mixed: the 400 px gap is not shown to shrink at 800 px, and the guide says so and gives each region's two gaps). The existing H3a row (:517) only says that H3b says whether the gap shrinks.",
+  "reason": "The size dependence is a real gap (H3a is decided at 400 px and H3b is the only 800 px test, T9.3-exp-open-scenes.md:434-452, 534-553), but 'disagree' has no definition: H3a and H3b test different claims and the pilot's r3 and r4 move in opposite directions between 400 and 800 px (:443-446), so the added sentence leaves the reading to whoever writes the Conclusion, and the guide consequence belongs in the outcomes table (:517), not in the hypothesis."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 design",
+  "index": 1,
+  "panel_verdict": "confirmed",
+  "check": "disagree",
+  "ruling": "opus",
+  "change": "Options for Opus. (1) Keep H7b a measurement and say so plainly, without a reading: it reports r4.luma and r3.luma per unit world and the matching world with its 99% interval (Appendix G already computes them, :2628-2642), the Conclusion quotes them, and the guide row (:523) gives the numbers; the world scale stays Opus's separate card. Drop the panel's 'pre-registered reading'. (2) Make it a hypothesis with a derived, falsifiable prediction and an exact decision rule (test, alpha, correction). Example from SPEC section 6: a miss shows the world scaled by emission_gain (spec.md:226; path.h:80-83), so the mean radiance of the missed pixels (object id -1, which analyze.py does not measure today: regions 2-7 only) in a sky configuration should equal emission_gain times the world radiance; this needs a new key and test in Appendix G and a row in the outcomes table. (3) Derive an analytic prediction of r4.luma per unit world (escape fraction of back-wall bounces times the diffuse weight) and test the measured value against it with ensemble statistics. Whichever is chosen, the text must not contain a threshold such as 'far from 1': the pilot's matching worlds (930 to 10750, :508) already show the lamp is three to four orders above a world of 1, and what to do about that is a product decision.",
+  "reason": "H7b has no reading (T9.3-exp-open-scenes.md:503-508, 523) and is the card's most artist-facing number, so the finding stands, but the panel's reading is circular ('if the measured r4.luma per unit world is the number of display bytes a world of radiance 1 adds' is what that key is, :2635) and uses a hand-picked threshold ('far from 1'), which CLAUDE.md rule 2 and the protocol's exact-decision-rule requirement (docs/tasks/M1/_experiment_protocol.md:6) forbid. Whether the world needs a scale is Opus's product decision (:523), not something the data separates."
+ },
+ {
+  "panel": "M7-M9-panel-M9.json",
+  "source": "M7-M9-review-2.json",
+  "key": "review T9.3 design",
+  "index": 2,
+  "panel_verdict": "confirmed",
+  "check": "agree",
+  "ruling": "apply",
+  "change": null,
+  "reason": "`open-scenes` is not among T7.5's ten EVIDENCE slugs (T7.5-artist-guide.md:547-558), so the Step 9 index row leaves the guide's Evidence table current (rule at T7.5:200-203), and T9.3 already says so under 'Do not touch' (T9.3-exp-open-scenes.md:120-122) but its Acceptance (:626-627) never says that `make lint test` runs after the row. The added sentence is accurate and harmless; re-wrap its `new` text (runs of three spaces in 'row   of Step 9' and 'no   change')."
+ }
+]

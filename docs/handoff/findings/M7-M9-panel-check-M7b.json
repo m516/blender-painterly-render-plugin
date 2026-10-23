@@ -1,0 +1,178 @@
+[
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.3 executability",
+    "index": 0,
+    "panel_verdict": "confirmed",
+    "check": "disagree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a card defect: R2 (.tmp/ds-queue/RULINGS.md:11-16, which names build/dev as its own example), BACKLOG.md:21 and AGENTS.md:46 translate build/dev for the queue, while Makefile:1 keeps build/dev as the default that CI and humans use, so T7.3:563 is correct as written. The panel edit would hard-code build/q into the card and leave the second literal at T7.3:571 on build/dev; the lane* filter itself is right (no existing case starts with lane: src/test/test_path_trace.cpp:205-310 begin 'painterly lane scheduler')."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.3 executability",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "disagree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a card defect: R12 (RULINGS.md:64-71, applied at :115) and BACKLOG.md:24 already add an absolute PAINTERLY_BUILD_DIR to a bare pytest step, and the plain command works as written after make build with the default build/dev (tests/conftest.py:23), so putting build/q into the card would break the default dev run. The panel's premise that T3.16 has not landed is false at MAIN HEAD (tests/core/test_oracle_parity.py exists, commit d54fd06), the oracle is the build's own (test_oracle_parity.py:152-165), and the slow 400 px run is deliberate (T7.3:564-565), so neither a host-only note nor slow marks are needed."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.3 design",
+    "index": 0,
+    "panel_verdict": "disputed",
+    "check": "agree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a defect: the proposed section 3 text (T7.3:75-97) defines the lane grid that the kernel, the tests and the socket implement, keeps the default at 0 (:32-33, :99-101) and leaves the one measured claim as a placeholder that :103-104 and :496-507 already schedule for replacement; the g = 1 sentence (:90-92) is arithmetic (row r has offset r*S mod L), not an experiment result. Whether to hold part of the SPEC text back is Opus's own call on text the card already fixes (:62-63); docs/plan.md:343 covers defaults only."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.3 design",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "opus",
+    "change": "Opus decides what a refuted H1 does to the other hypotheses; the pre-registration has no branch for it. The gap is concrete: H2 and H3 are read on R1, the regions where H1 rejects (T7.3:452-458, :474-476), and are inconclusive only when R1 is empty, so with r4 outside R1 but other regions inside they would still be read, while the outcome list (:499-501) quotes the r4 rho values, which exist only for regions in R1 (:459-460). Options: (1) the panel's rule, H1 refuted makes H2, H3 and H4 inconclusive with their numbers still reported; (2) recommended: H1 refuted makes H2 and H3 inconclusive (both depend on H1's statistic and on R1), the report says 003's seam-column finding did not replicate on the native path, and H4 stays as registered because it has its own positive control (:491-494); (3) keep the rules and add only an outcome line for H1 refuted saying Opus reviews before any SPEC text is written. The finding's request to state the pilot E_col_r4 values needs no edit: 0.449 +- 0.045 against 0.022 +- 0.042 is already in the README Background (:373) and in H1's Derived from (:439-440).",
+    "reason": "Real but overstated: H1 has a refuted verdict (T7.3:443) and no consequence, since no bullet of :498-505 covers it, but H4 has its own positive control (:491-494), so the panel's blanket rule would change three pre-registered decision rules, which R4 (RULINGS.md:22-25) reserves to Opus. The pilot values the finding wants are already at :373."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 executability",
+    "index": 0,
+    "panel_verdict": "confirmed",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Use the panel's replacement, a working-tree check: git status --porcelain lists only the files of Step 11 (with --untracked-files=all if each new file of the experiment directory should print on its own line). Cite AGENTS.md Git alone for the worker not committing, as the experiment protocol does (docs/tasks/M1/_experiment_protocol.md:19-20), and drop both the CLAUDE.md rule 7 citation and the remark that HEAD~1 names the previous card. CLAUDE.md:66-77 is the Claude agents' finish protocol and tells them to commit, and Step 11 (T7.4:516) still says Commit (CLAUDE.md rule 7). T8.2:884 has the same line and belongs to the M8 group.",
+    "reason": "Real: the worker never commits (AGENTS.md:93), so git diff --stat HEAD~1 at T7.4:529 also lists the previous landed commit's files and cannot match only the files of Step 11. The panel's text is right in substance but says the worker never commits per CLAUDE.md rule 7, which is false (CLAUDE.md:11 and :66-77 make rule 7 the Claude finish protocol that commits) and would contradict Step 11 at :516."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 executability",
+    "index": 1,
+    "panel_verdict": "confirmed",
+    "check": "disagree",
+    "ruling": "change",
+    "change": "Extend design check 6 (T7.4:256-257) with different content from the panel's. (a) Drop the clause that the engine seeds of all renders (576 at full scale) are unique, which is false by construction: with seed_per_frame off the engine seed is the base seed at every frame (docs/tasks/M4/T4.3-render-loop.md:55), so the three off configurations give 48 distinct engine seeds for 288 renders (336 distinct in all, not 576) and analyze.py would raise at full scale. State what independence needs instead: the engine-seed sets of the 96 sequences are pairwise disjoint, where a sequence's set is just its base seed with seed_per_frame off and base + f for each rendered frame f with it on; reword 'makes every seed in the experiment unique' (:107-109) the same way. (b) Add the drift guard against the README's own numbers: for every configuration index c in 0..5 and sequence k in 0..15, design.base_seed(c, k) equals the pre-registered (16*c + k)*18 of 'Sequences and pairs' (:105-109), with 16 and 18 as named constants citing that paragraph. Recomputing (2*PAIRS*c + k)*SEED_STRIDE from design.py repeats the formula of base_seed (:437), and SEED_STRIDE = FRAME_END + 1 (:423) is its definition, so such a check can never fail; the Configurations table (:96-103) has no seed column to compare with. Keep the numbering of the checks (Acceptance :524 cites 1-4 and 6-8).",
+    "reason": "The drift is real (the number (16*c + k)*18 is written in the prose at T7.4:105-109 and computed at :423 and :437, and nothing compares them), but the panel's check is a tautology and points at a seed column the Configurations table (:96-103) lacks. Reading check 6 also showed that its uniqueness clause cannot hold: seed_per_frame off repeats one seed over the six frames of a sequence (docs/tasks/M4/T4.3-render-loop.md:55; CHECK_HOLD, T7.4:249-251), so analyze.py would raise."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 executability",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "disagree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Cards keep host commands and the queue translates them: BACKLOG.md:27 makes make env and make blender host-only, AGENTS.md:31-32 forbids them, and the M4/M5 items carry a translated verify line (BACKLOG.md:732-763) while their cards still say make env-blender && make test-blender (docs/tasks/M4/T4.1-extension-skeleton.md:60). The panel edit would put BACKLOG KNOBS and host-only (R1) into the pre-registered README Method (T7.4:231-236), which is committed with the experiment, and it leaves Step 4 (:502) unchanged; no card or T7 draft cites a ruling number or BACKLOG, so the T7.4 BACKLOG item should carry make build extension reference-blend with the KNOBS."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 design",
+    "index": 0,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Keep the panel's reporting requirement and drop its prediction clause. Add to the Estimation bullet (T7.4:163-164) one sentence: for each other region of the truck and for the pan the report states whether the sign of the mean d equals r4's and lists the regions where it does not, and no verdict is read from it (H1's rule is unchanged; changing it is R4, Opus). Do not write that both readings are attenuated by the same bilinear kernel: rho_image is computed without a warp (:130), so only rho_scene is attenuated by the bilinear sampling. If a prediction is kept, derive it from the definitions: scene-locked predicts d < 0 and image-locked d > 0 in every region, and the warp can only lower rho_scene, which biases d upward in the interpolated regions, so a positive d there beside a scene-locked r4 is not by itself a mechanism signal. analyze.py and the results.json H1 entry (:486) then carry the per-region d and the list of regions that disagree.",
+    "reason": "H1 does decide on r4 alone (T7.4:155-162) and no text says what a disagreement with the four interpolated regions means, but r4 as the exact-shift contrast is 006's rule (experiments/006-2026-10-09-jitter-units/README.md:575), so only the reporting gap is real. The panel's sentence misstates the mechanism: rho_image has no warp (T7.4:130), so the bilinear kernel attenuates only rho_scene."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 design",
+    "index": 1,
+    "panel_verdict": "disputed",
+    "check": "agree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a defect: the table is headed 'applied by Opus after the final Conclusion; not by this card' (T7.4:221), the Goal says 'This card changes no default and no SPEC text' (:17-20) and Not in this card lists the freeze operator (:399). The default edit and the operator can only be carded once the Conclusion selects a row, as docs/plan.md:343 orders, so a card named now would be premature."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.4 design",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "apply",
+    "change": null,
+    "reason": "T7.4:215-217 equates the interval level 1 - 0.01 with the family-wise level, which are different quantities; the panel's rewrite assigns 0.01 to the Holm tests of (b) and (c), calls (a)'s interval a 99% coverage statement and keeps the pre-registered rule (a)-(c) at :213-214, which only Opus may change (R4). For Opus: (a) is the one decision in the project that rests on a bootstrap interval, which ensemble.py has no procedure for and 006 used for estimation only (experiments/006-2026-10-09-jitter-units/README.md:117-120); (b) is a Holm test at 0.01, so (a) and (c) only make the rule stricter."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 executability",
+    "index": 0,
+    "panel_verdict": "disputed",
+    "check": "agree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a defect: the Step 9 command already ends with '# until exit 0' (T7.5:295), the Interface says 'repeat until exit 0; 3 = renders remain' (:109), Step 4 gives the 7 to 10 minutes and 'expect two calls' (:251-252), and the fresh native cache is the point of a determinism check that renders everything again, 'the native renders included' (:291)."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 executability",
+    "index": 1,
+    "panel_verdict": "confirmed",
+    "check": "disagree",
+    "ruling": "none",
+    "change": null,
+    "reason": "The nine hashes (T7.5:309-321) depend on the oracle binary's sha256, which keys the cache (analysis/painterly_analysis/experiment.py:105-113), not on where the cache sits, and run_jobs renders deterministically (Step 1 says so, :219-221), so a clone can reproduce them; which cache and oracle a worker reads is a BACKLOG-item knob (BACKLOG.md:1032 style). The panel fix is unsafe: PAINTERLY_CACHE=MAIN/.cache also moves the default native cache to MAIN/.cache/artist-guide-renders (T7.5:1647-1649) and Step 4 passes no --native-cache-dir, so the 19 native renders would be written into MAIN; the card already says what a mismatch means (:245-247)."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 executability",
+    "index": 2,
+    "panel_verdict": "confirmed",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Replace the Step 1 fallback (T7.5:219-221) with a stop-and-report and no make oracle, in the plain wording the M3 fix-up cards use (docs/handoff/drafts/M3-fixups/T3.19-zero-length-bounce.md:307, T3.26-analysis-constants.md:53): if .cache/oracle-build/src/app/smallpaint_oracle does not exist, stop and report it, and never run make oracle, because the experiment cache is keyed by that binary's sha256 and a rebuild orphans every cached render. Drop 'the 47 experiment renders are then rendered again (about an hour of CPU; deterministic, so Step 4's checks still hold)': a binary built from today's source is not R7's pre-T3.4 oracle, so that the nine hashes still hold is unverified. Do not call .cache/renders read-only (the Do-not-touch bullet, :96-97, lets run_jobs add missing renders), and cite no R-number.",
+    "reason": "Real: T7.5:219-221 tells the executor to run make oracle, which AGENTS.md:31-32 forbids and R7 (RULINGS.md:39-40) says is never done, though the two bullets at :96-99 and :219-221 do not contradict each other (the first only forbids a rebuild while the binary exists). The panel's replacement calls .cache/renders read-only, which contradicts :96-97, and cites R7 and R1, which no card does."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 design",
+    "index": 0,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Take the panel's bullet (Known limits PROSE, before the Render time bullet: one sentence naming every EVIDENCE slug whose status is not final and the knob or limit each will decide), as hand-written prose and not as a generated block, which would change Appendices A, B and D and the Interface block table. Add one clause to Rules for later cards (T7.5:200-203): when Opus finalizes an experiment, its slug also leaves this sentence, as its fixed not-final sentence is replaced. Reason: nothing tests the sentence (check_structure, :1258-1329, checks only headings, block placement, link targets, links to non-final experiments and leftover PROSE placeholders), so without the clause it goes stale silently.",
+    "reason": "Six of the ten EVIDENCE slugs are not final (T7.5:547-562) and the disclosure is spread over per-section fixed sentences (Step 7, :281-286), so a consolidated sentence in Known limits (:2314-2336) helps; the finding overstates the silence, since the generated Evidence table already prints each slug's status and sections (:1128-1139). The panel's bullet is a static sentence that no check covers and that Rules for later cards (:200-203) do not tell Opus to update."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 design",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Add the sentence to the intro PROSE comment (T7.5:1897-1900) with two corrections. Say that no panel is a Blender render and that each panel is smallpaint's own render, an experiment's oracle render or a native-core render: the first panel of the first figure is the reference PPM, source reference (:156; describe_panel, :1145-1146), so the panel's wording that every one is the native core or the oracle is false. Do not call T7.4's two figures the project's Blender-rendered frames, an exhaustive claim nothing checks; say only that the camera-motion experiment renders its two crop figures through Blender and that its status is in the Evidence table, with no link (links only to final experiments, Step 7 :276-277).",
+    "reason": "Real but already Opus decision 1 and Not in this card (T7.5:26-35, :333-334), so one caption sentence is the right size. The panel's wording is inexact: fig_look's panel (a) is smallpaint's own reference PPM, neither the native core nor the oracle (T7.5:156, :1145-1146)."
+  },
+  {
+    "panel": "M7-M9-panel-T7.3-T7.5.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T7.5 design",
+    "index": 2,
+    "panel_verdict": "disputed",
+    "check": "agree",
+    "ruling": "none",
+    "change": null,
+    "reason": "Not a defect: the SPEC is already a permitted source (Opus decision 5, T7.5:46-47; writing rule, :272-273), the Spiral Frame and Spiral Rotation comments cite SPEC sections 1 and 4 (:2078-2092), and for unmeasured knobs the card already says to make no general claim (:279-280). The finding's premise that no experiment will measure spiral_frame is wrong: T7.4 H3 measures it under a pan, and the Animation comment (:2305-2312) carries it."
+  }
+]

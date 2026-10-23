@@ -1,0 +1,156 @@
+[
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 executability",
+    "index": 0,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "apply",
+    "change": null,
+    "reason": "The `linux_` ban exists only in check_wheels (T8.1-release-workflow.md:301-302). The mapping table (:227-231) only translates tags, its comment already calls `linux_x86_64` the local-build tag and :656 pins the failing case, so the finding's 'an unrepaired wheel could be accepted' is overstated, as the panel says. The panel's sentence names the owner next to the ban, its `old` matches once, and no test or acceptance line depends on that bullet's wording."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 executability",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Edit 1 (the Interface sentence) stands as written: only `--work-dir build` collides, because the release stages under `<work-dir>/extension/painterly` (so `build` gives `build/extension/painterly`, T4.4's directory, while `build/extension` gives `build/extension/extension/painterly`), and the default `build/release` is chosen for that reason.\nEdit 2 must change. A names-only snapshot, `sorted(os.listdir(\"build/extension/painterly\"))`, cannot detect the collision it targets: a restage there leaves the same top-level names (add-on files, `blender_manifest.toml`, `wheels/`). Snapshot the bytes of `build/extension/painterly/blender_manifest.toml` (or 'absent') instead: `make extension` stages a one-platform manifest and a release stage writes the three-platform one, so any restage changes the bytes. The existing sentence 'the snapshots are unchanged. The release path never touches `make extension`'s outputs' then needs no edit.",
+    "reason": "Re-derived from T8.1-release-workflow.md:142-143, :240-243, :264-266, :369 and docs/tasks/M4/T4.4-extension-build-it.md:13-17: only `--work-dir build` stages into `build/extension/painterly`, so the panel is right and the finding's `build/extension` is wrong. The panel's second edit (:702) snapshots directory names only, which a restage into the same directory would leave unchanged."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 executability",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Keep the idea: state the accepted forms in the Step 3 `source_versions` bullet. Corrections:\n(1) Refer to the constant by name (`CMAKE_PROJECT_VERSION`), never by a draft line number: the panel's text says ':278', which is stale as soon as the card is edited.\n(2) Say what the pattern really accepts: a line that starts `project(painterly VERSION X.Y.Z` with single spaces and ASCII digits; whatever follows (`LANGUAGES C CXX`, `)`) is not read. The panel's premise that the card's pattern is 'stricter' than the finding's is false for four-component versions: the trailing `\\b` also matches before `.` and `-`, so `VERSION 0.1.0.1` and `VERSION 0.1.0-rc1` both read as `0.1.0` (checked in Python), yet `PAINTERLY_VERSION` would then be `0.1.0.1` (src/blender/CMakeLists.txt:13) and `engine.init()` would refuse the extension (T4.1). Recommended: end the pattern with a lookahead for whitespace or `)` instead of `\\b`, and add `VERSION 0.1.0.1` to the `ReleaseError` cases of `test_release.py`. If Opus keeps `\\b`, the sentence must say that anything after X.Y.Z is ignored.\n(3) The finding's last ask, which the panel dropped: say that a missing `version` key in the manifest or in pyproject, and invalid TOML, also raise `ReleaseError` naming the file (as the CMake case does). Otherwise `plan` prints a KeyError traceback instead of `release: <reason>` (the contract at :136-137).\nDo not adopt the finding's looser regex (it would accept any project name).",
+    "reason": "T8.1-release-workflow.md:278 and :286-287 already pin the manifest, pyproject and CMake forms (tomllib keys, a named regex), so the panel is right that no table is needed. But its sentence cites ':278' (a draft line number), and the regex's `\\b` reads `project(painterly VERSION 0.1.0.1)` as `0.1.0` (Python check), which contradicts the panel's note that the card's regex is the stricter one."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 executability",
+    "index": 3,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Keep the extra test bullet, but change how the branch is reached and add the missing message.\n(1) The card names no 'helper that runs it': Step 3's `git_tree` runs `git -C <root> rev-parse --show-object-format` inline, so 'monkeypatch the helper' has no target. Reach the branch for real: in `tmp_path`, `git init --object-format=sha256` (git 2.29 or later; the panel saw `rev-parse --show-object-format` print `sha256` there), call `git_tree` on that directory and expect `ReleaseError`. If Opus prefers a monkeypatch, Step 3 must first name the seam (for example a private `_git(root, *args)`).\n(2) The test asserts that the message names `sha256`, but the `git_tree` bullet says only 'otherwise raise `ReleaseError`'. Give the message as exact text, like the other Step 3 messages, containing the object format found and `root`.",
+    "reason": "T8.1-release-workflow.md:306-309 makes `sha1` a hard precondition of `git_tree` (so the finding's 'silently changes meaning' is wrong) and :661-674 has no test for that branch, so the missing test is real. The panel's test needs a monkeypatchable helper the card never defines and asserts a message the `git_tree` bullet does not specify."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 design",
+    "index": 0,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "opus",
+    "change": "OPUS DECISION (D39, decisions-M3.md:161 and queue.md:94: no macOS CI test job, nothing new for macOS, macOS-only failures do not block). T8.1's `install` job has a `macos-14` leg (T8.1-release-workflow.md:512-513; Goal item 4 at :13; the matrix test at :694; the CI block at :748, 'install (...) green on all three OSes') and `publish` needs `install` (:565), so a macOS-only failure would block the release. Options: (1) drop the macOS leg of `install`: the macOS zip is still built and byte-verified in `package`; the matrix test compares against a named subset (an `INSTALL_PLATFORMS` constant), not `set(RELEASE_PLATFORMS)`; the CI block says install is green on Linux and Windows. (2) Keep the leg as a recorded exception to D39. (3) Keep it non-gating through a macOS-specific `continue-on-error`: the most macOS-specific of the three. Recommend (1).\nREQUIRED WHATEVER IS DECIDED:\n(a) The panel's heading edit (BACKLOG.md:27 lists CI as host-only).\n(b) T8.1 has the defect the panel confirmed for T8.2: its local bullets at :725-730 (`make blender && ... test_release_package.py`, and `make blender-it` with its zip check) need Blender, and :700-701 looks for it under the clone's .cache. Rule them like T8.2's two Blender bullets (see the ruling on T8.2 executability#1: BLENDER knob or host-only) and name the substitute that runs without Blender: the three fast test files (:723-724) and the fast command-line block (:732-739). The finding's own substitute, `test_release_package.py`, needs Blender, so the panel is right to reject it.\n(c) NEW: Step 1 (:199-211) is stale against HEAD. It says to replace the `on:` block 'exactly' with four `pull_request.paths`, but .github/workflows/wheels.yml now has seven and a comment (`third_party/**`, `tools/symbol_audit.py`, `.github/workflows/wheels.yml`, added by commit 84fced7, M3-FIX-T3.28, after the draft). Applied verbatim it reverts them. Step 1 must replace only the `push: tags: [\"v*\"]` trigger with `workflow_call:` and leave `workflow_dispatch` and the whole `pull_request` block (comment and all seven paths) byte for byte. The Step 5 test `set(wf[True]) == {\"workflow_call\", \"workflow_dispatch\", \"pull_request\"}` still holds.",
+    "reason": "The CI block is already headed 'run by the orchestrator' (T8.1-release-workflow.md:742), so the finding's premise is half wrong and the panel's marker is a nicety; its rejection of `test_release_package.py` as the substitute is right (:699-701). Checking the card against the committed workflows finds two things the panel did not: Step 1 (:199-211) would undo wheels.yml's T3.28 path filter, and the `install` macOS leg (:512-513) is a new macOS CI test job under D39."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 design",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "apply",
+    "change": null,
+    "reason": "T8.1-release-workflow.md:152 is sorted and `asset_names` sorts separately (:294); T8.2-repository-index-and-install-docs.md:142-143 and :309-310 do reorder the index into `RELEASE_PLATFORMS` order, so the panel's comment states a true cross-card coupling. The Interface block is signatures only and already has lines over 100 columns (:166), so the long comment is not a lint risk; `old` matches once."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.1 design",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Keep the idea (state the rule in Step 2 item 4, where the staging happens) with two corrections.\n(1) The panel's new text says `LICENCES/`. The directory, and the value of `LICENCE_DIR`, is `LICENSES` (the SPDX spelling; pyproject.toml:11 has `LICENSES/*.txt`), so the rule must say `LICENSES/`; only the constant names keep the British `LICENCE_` spelling.\n(2) Make the rule true. A notice added to `LICENCE_FILES` is staged, but `verify_extension_zip` check 4 (:335-336) names `LICENSE` and `THIRD_PARTY_NOTICES.md` literally and check 5 (:337) rejects any other member that is not an add-on file, so the release would fail. Keep that literal list (it is the independent expectation) and say that a card which adds a top-level notice changes both `LICENCE_FILES` and check 4, and the acceptance one-liner at :729 that lists the two names.",
+    "reason": "The asymmetry is real (T8.1-release-workflow.md:185-186 fixed tuple versus :245 wholesale directory) and `ls LICENSES` shows seven files. The panel's text misspells the directory as `LICENCES/` and omits that check 4 (:335-336) and the one-liner at :729 also name the two notices."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 executability",
+    "index": 0,
+    "panel_verdict": "confirmed",
+    "check": "disagree",
+    "ruling": "change",
+    "change": "Keep the replacement: `git status --porcelain` lists exactly the seven files of Create and Modify. Change the parenthetical: it must not cite CLAUDE.md rule 7 for 'the worker never commits'. CLAUDE.md rule 7 is the Claude agents' Finish protocol (commit once; its preamble says it applies to Claude agents only), and 'Never run `git commit`' is AGENTS.md:93 and appears nowhere in CLAUDE.md. Cite AGENTS.md 'Git' alone, or drop the citation. Leave Step 8 (:865, 'commit once (CLAUDE.md rule 7)') alone: AGENTS.md overrides it for queue workers, as for the other cards, and the new line must not contradict it. PANEL-c's fix for T7.4 (`review T7.4 executability#0`) carries the same wrong citation and should be corrected the same way.",
+    "reason": "The defect is real: T8.2-repository-index-and-install-docs.md:884 uses `HEAD~1`, which in a queue clone names the previous card's commit (AGENTS.md:93: the queue makes the commit), and `git status --porcelain` is the right replacement. But the fix is not right as written: its parenthetical cites 'CLAUDE.md rule 7' for the opposite of what rule 7 says (CLAUDE.md:66-79)."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 executability",
+    "index": 1,
+    "panel_verdict": "confirmed",
+    "check": "disagree",
+    "ruling": "opus",
+    "change": "DECIDE how the two Blender bullets (T8.2-repository-index-and-install-docs.md:871-873) can be met.\nOption A (recommended): AGENTS.md says tests take host-provided paths from a knob and skip only when the knob is unset, and BACKLOG commit f3f82c2 already makes verifies run Blender targets with BLENDER=MAIN/.cache/blender/.... So the slow tests of this card (`test_repo_index_client.py`, :792-793) and of T8.1 (`test_release_package.py`, T8.1:700-701) take `<blender>` from the BLENDER environment variable (the Makefile exports it) and fall back to `fetch_blender.py --print-path-only`. The pytest bullet then runs with BLENDER set and without `make blender &&`, and 'none skipped' stays checkable. As written the tests look under the clone's .cache/blender, which a clone lacks, so a verify would see them skip.\nOption B (the panel): mark both bullets 'host-only, not run in a worker clone'.\nUNDER EITHER OPTION the panel's third bullet (the substitute) is wrong and must change. `tests/core/test_repo_index.py` runs `rewrite_index`, `verify_index` and `check_urls` (the `file://` base URL is used only by `check_urls`, :752; the others use `BASE`, :696) and, for `generate`, only the failures that precede Blender (:757-764). It never runs `server-generate`, so 'exercises `generate` ... without Blender' is false, and the host's share is every Blender run (generate, repo-add, install, update, the two refusals), not only 'the Blender client path'. Cite AGENTS.md 'Environment' (Offline), not 'BACKLOG's table'. T8.1's bullets at :725-730 follow the same choice.",
+    "reason": "The defect is real (T8.2-repository-index-and-install-docs.md:871-873 need Blender, :792-793 looks for it under the clone's .cache, AGENTS.md:31-32 forbids `make blender`). The fix is not right as written: its substitute bullet says the fast test exercises `generate` without Blender, which :757-764 contradicts, and it ignores that BACKLOG f3f82c2 now runs Blender targets in verifies."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 executability",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Edit 1 must lose its formatting claim. `blender_like_index` (T8.2-repository-index-and-install-docs.md:676-694) returns a dict, the value `run_server_generate` gets from `json.loads` of Blender's file; `indent=2` and the missing trailing newline are properties of a file that the fast test never reads, so 'in Blender's own formatting' is wrong for this helper. Say instead that it returns the dict `server-generate` would produce from the three zips: the fields and key order of facts 1-2, relative `./<zip>` `archive_url`s, `python_versions` `[\"3\"]`, and the entries in the order given, here `SCANDIR_ORDER` (the order fact 1 observed).\nEdit 2 stands, but name the second order: `SCANDIR_ORDER` reversed is `[2, 0, 1]` (it moves all three entries, unlike `[1, 0, 2]`, which leaves Windows last), and the same assertions run for it.",
+    "reason": "The card already gives the synthetic index verbatim (T8.2-repository-index-and-install-docs.md:646-696), so the finding's 'never says where it comes from' is mostly wrong. The panel's wording says the helper is in Blender's file formatting, but the helper returns a dict (:694), and a single input order (:696) leaves the reorder under-tested."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 executability",
+    "index": 3,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "apply",
+    "change": null,
+    "reason": "T8.2-repository-index-and-install-docs.md:902-908 does mix two one-time settings with a per-release check; the panel's split is right and it rightly omits the finding's guessed error strings, which have no source in the tree. The old fourth bullet (:909-910, the manual Blender check) stays under 'after each release', which fits. static.yml (HEAD) deploys through the same `github-pages` environment, so the Source setting may already be in place; any text about it comes from the ruling on design#0."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 design",
+    "index": 0,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "opus",
+    "change": "Two decisions.\n(1) NEW, static.yml. .github/workflows/static.yml (commit 8c91752, 2026-10-22; the draft predates it) deploys the whole repository root (`path: '.'`) to GitHub Pages on every push to claude/clever-johnson-gnso1s (the remote's default branch), through the same `github-pages` environment and the same `pages` concurrency group as this card's `pages` job. A Pages site is one deployment, so the next branch push replaces the release's index-only site: https://m516.github.io/blender-painterly-render-plugin/index.json then answers 404 for every user's remote repository until the next release (no index.json is tracked at the root), and a release deploy in turn replaces the repo-tree site. The shared group also lets a later static.yml run cancel a still-pending release `pages` job (GitHub keeps one pending job per group). static.yml pins `actions/deploy-pages@v5` and `actions/configure-pages@v5`; this card and its Step 3 test pin `deploy-pages@v4`. Options: (a) retire static.yml's `push` trigger (or the file), so release.yml's `pages` is the only publisher; the card must then list static.yml under Modify (it is in neither list) or leave the edit to the owner; (b) keep both and make every deployment carry the index (static.yml fetches the latest release's index; a redesign); (c) move the index off Pages, which changes docs/plan.md 'Distribution' and install.md. Align the action versions whatever is chosen. If (a) is not chosen, 'the deployed site equals the artifact' holds only until the next branch push.\n(2) The panel's post-deploy step is flawed. Under the runner's `bash -eo pipefail`, the assignment `actual=\"$(curl -fsS ... | ...)\"` exits the step at the first curl failure (a 404 before the first deployment propagates, that is the first release), so the loop retries only on a stale 200. Ten attempts and `sleep 60` are hand-picked (CLAUDE.md rule 2), the last check falls at about 9 minutes, and no max-age source is in the tree. Step 3's test pins no such step. Options: (i) no new step: the owner's `curl` equality check (kept by the exec#3 split) stays the evidence; (ii) the step, with the retry guarded by `if`, attempts and interval as named env knobs with a cited source for the wait, and a Step 3 assertion pinning it.",
+    "reason": "T8.2-repository-index-and-install-docs.md:462-473 checks the URLs before the deploy, and after it only the owner's manual `curl` (:906-908) remains, so the finding is real; the panel is also right that the card gives no max-age to derive a wait from. Its replacement step has a `set -e` bug and magic numbers, and the finding cannot be settled without deciding what to do about .github/workflows/static.yml, which deploys the repo root to the same Pages site."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 design",
+    "index": 1,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Which occurrence: the SECOND, in Step 1's constants block (T8.2-repository-index-and-install-docs.md:245, under the comment at :243-244, 'The repository this project is published from ... docs/install.md states / its Pages URL.'), not the signature in the Interface block at :175. The panel's evidence cites :243-245, and a multi-line comment belongs in the verbatim constants, not in a 'signatures only' list. A literal first-match replace would hit :175, so anchor `old` on the comment line above the constant (`# its Pages URL.` plus the constant line) to make it unique.\nText: put the added sentences in the comment ABOVE the constant, like its neighbours, not trailing. The panel's three new lines are 110, 122 and 97 columns, and Step 1 requires every Python block to fit ruff's 100 columns (:209-210; pyproject.toml line-length 100, E501 covers comments), so as written `make lint` would fail on `tools/repo_index.py`. Content to add: this is the upstream repository, whose Pages URL docs/install.md and the README state; a fork's workflow passes its own `--repository \"$GITHUB_REPOSITORY\"` (:395-396, :410-411), so its index and its Pages URL both name the fork, and its users need `pages_index_url(<fork>)`. No `--allow-fork` flag and no precondition: agree with the panel.",
+    "reason": "Both the archive URLs and the Pages URL derive from the same `--repository` (T8.2-repository-index-and-install-docs.md:287-290, :395-396), so the finding's divergence does not exist and the panel is right to document instead of forbidding. The `old` text occurs at :175 and :245 (fix-check BAD), and the panel's `new` text has lines of 110 and 122 columns against the card's 100-column rule (:209-210)."
+  },
+  {
+    "panel": "M7-M9-panel-M8.json",
+    "source": "M7-M9-review-2.json",
+    "key": "review T8.2 design",
+    "index": 2,
+    "panel_verdict": "partly",
+    "check": "agree",
+    "ruling": "change",
+    "change": "Keep the idea with three corrections.\n(1) Order: say the section goes 'immediately before `## Layout`' (so after `## Documentation` once T7.5 has landed), not 'after T7.5's `## Documentation` section', which cannot be satisfied if T7.5 is not yet in the tree. Neither header guarantees T7.5 first: T8.2's says 'Depends on: T8.1 (and through it M4-M7)' and T8.1's (:2) lists T7.1-T7.4, not T7.5. So add T7.5 to T8.2's Depends-on line (and to its BACKLOG item).\n(2) Replace 'the two never differ in substance', which nobody checks, by 'if they disagree, docs/install.md wins'.\n(3) In Step 5, keep 'exactly' attached to the section text: put the position and the 'this section is a pointer' sentence before it, so the sentence still ends in the colon that introduces the code block.",
+    "reason": "Both cards insert into the README gap between `## Status` and `## Layout` (T8.2-repository-index-and-install-docs.md:117 and :620; T7.5-artist-guide.md:85-87; README.md at HEAD has Status, Layout, Development, Credits, Licence), and neither says which text is normative, so the finding is real. The panel's ordering rests on a dependency the headers do not state (T8.1-release-workflow.md:2)."
+  }
+]
