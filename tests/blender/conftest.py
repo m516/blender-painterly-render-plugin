@@ -5,6 +5,9 @@
 stays green on a machine that has no Blender Python. The add-on is imported from
 ``src/blender/addon`` as the package ``painterly``, which is the name Blender gives it once
 it is installed as an extension.
+
+The package module is created here, at collection time, so that a test module can import
+``painterly.properties`` and its siblings at module level; the ``addon`` fixture registers it.
 """
 
 import importlib.util
@@ -30,15 +33,14 @@ HAS_BPY = importlib.util.find_spec("bpy") is not None
 collect_ignore_glob = [] if HAS_BPY else ["test_*.py"]
 
 
-@pytest.fixture(scope="session")
-def addon() -> ModuleType:
-    """The registered add-on, imported from ``src/blender/addon`` as the package ``painterly``.
+def _load_addon() -> ModuleType | None:
+    """Import the add-on package as ``painterly`` without registering it.
 
-    Registering once per session mirrors Blender, which loads the add-on once; ``unregister()`` runs
-    on teardown so a later test process starts clean.
+    Returns:
+        The package module, or ``None`` when bpy is not installed.
     """
     if not HAS_BPY:
-        pytest.skip("bpy is not importable; run `make env-blender` (bpy==5.2.2) to test the add-on")
+        return None
 
     if str(MODULE_DIR) not in sys.path:
         sys.path.insert(0, str(MODULE_DIR))
@@ -51,7 +53,22 @@ def addon() -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     sys.modules["painterly"] = module
     spec.loader.exec_module(module)
+    return module
 
-    module.register()
-    yield module
-    module.unregister()
+
+ADDON = _load_addon()
+
+
+@pytest.fixture(scope="session")
+def addon() -> ModuleType:
+    """The registered add-on, imported from ``src/blender/addon`` as the package ``painterly``.
+
+    Registering once per session mirrors Blender, which loads the add-on once; ``unregister()`` runs
+    on teardown so a later test process starts clean.
+    """
+    if ADDON is None:
+        pytest.skip("bpy is not importable; run `make env-blender` (bpy==5.2.2) to test the add-on")
+
+    ADDON.register()
+    yield ADDON
+    ADDON.unregister()
