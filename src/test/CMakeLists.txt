@@ -42,6 +42,7 @@ add_executable(painterly_tests
   test_path.cpp
   test_path_trace.cpp
   test_scene.cpp
+  test_triangle_diagnostics.cpp
   test_session.cpp
   smallpaint_camcr_ref.cpp)
 target_link_libraries(painterly_tests PRIVATE
