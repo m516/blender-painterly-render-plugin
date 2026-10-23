@@ -307,22 +307,43 @@ def test_set_integrator_round_trips_every_socket() -> None:
 
 
 def test_set_integrator_rejects_unknown_names_and_wrong_types() -> None:
-    """An unknown name, a wrong type and an unknown enum identifier all raise."""
+    """An unknown name, a wrong type and an unknown enum identifier all raise ValueError.
+
+    The exception is ValueError for the wrong types too, never TypeError: card T3.15 line 24 and
+    src/blender/_painterly.pyi:125 (Opus ruling R44, 2026-10-22).
+    """
     scene = _painterly.Scene()
     with pytest.raises(ValueError):
         scene.set_integrator(no_such_socket=1)
     with pytest.raises(ValueError):
         scene.set_integrator(chain="no_such_chain")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         scene.set_integrator(chain=1)
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         scene.set_integrator(lane_length="16")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         scene.set_integrator(two_sided=1)
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         scene.set_integrator(alpha="0.5")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         scene.set_integrator(spiral_rotation=(0.0, 0.0))
+
+
+def test_a_rejected_set_integrator_call_sets_nothing() -> None:
+    """Every knob is converted before any is stored, so a raising call changes no socket.
+
+    The good knob comes first in each call, so a conversion applied knob by knob would have stored
+    it before the bad knob raised (M3-FIX-T3.15a, Do: "Look up and convert every knob before
+    setting any, so a call that raises changes nothing").
+    """
+    scene = _painterly.Scene()
+    before = scene.get_integrator()
+    with pytest.raises(ValueError):
+        scene.set_integrator(lane_length=3, max_depth=0)
+    assert scene.get_integrator() == before
+    with pytest.raises(ValueError):
+        scene.set_integrator(alpha=0.25, two_sided=1)
+    assert scene.get_integrator() == before
 
 
 def test_set_integrator_rejects_the_kernel_preconditions() -> None:

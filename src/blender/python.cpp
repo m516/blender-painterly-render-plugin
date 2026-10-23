@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "painterly/integrator/buffers.h"
@@ -257,31 +258,56 @@ nb::list integrator_sockets()
 // Value conversion by socket type (Scene.set_integrator / Scene.get_integrator)
 // ---------------------------------------------------------------------------------------------
 
+// The exception a wrong Python type raises. Scene.set_integrator raises ValueError for every bad
+// knob, its wrong types included (card T3.15 line 24: "raises ValueError on unknown names, wrong
+// types, enum identifiers that are not in the socket's items, and values that break a kernel
+// precondition"; src/blender/_painterly.pyi:125; Opus ruling R44, 2026-10-22). Every other Scene
+// method keeps TypeError, which card line 30 allows for its array checks.
+enum class WrongTypeError {
+  TYPE_ERROR,
+  VALUE_ERROR,
+};
+
+// Raise `message` as the wrong-type exception `wrong_type`. The message is the same either way, so
+// the wording of a rejected knob does not depend on which exception type it is raised as.
+[[noreturn]] void throw_wrong_type(const std::string &message, const WrongTypeError wrong_type)
+{
+  if (wrong_type == WrongTypeError::VALUE_ERROR) {
+    throw nb::value_error(message.c_str());
+  }
+  throw nb::type_error(message.c_str());
+}
+
 // A Python real number as a C double, exactly as PyFloat_AsDouble converts one: any object with
 // __float__ (int, float and numpy scalars included) is accepted. The pyi types the knobs by
 // socket, never by a strict PyFloat_Check, because T3.16 and T4.3 pass numpy float32 scalars and
-// ints.
-double as_real(nb::handle value, const std::string &what)
+// ints. `wrong_type` is the exception a non-real raises; Scene.set_integrator passes
+// VALUE_ERROR, every other caller takes the TypeError default.
+double as_real(nb::handle value,
+               const std::string &what,
+               const WrongTypeError wrong_type = WrongTypeError::TYPE_ERROR)
 {
   const double converted = PyFloat_AsDouble(value.ptr());
   if (converted == -1.0 && PyErr_Occurred()) {
     PyErr_Clear();
-    throw nb::type_error((what + " must be a real number").c_str());
+    throw_wrong_type(what + " must be a real number", wrong_type);
   }
   return converted;
 }
 
 // A Python integer through __index__ (int, numpy integers and anything else with __index__), as a
 // C long long. A bool is not an integer here: it is a wrong type for every int socket.
-long long as_integer(nb::handle value, const std::string &what)
+long long as_integer(nb::handle value,
+                     const std::string &what,
+                     const WrongTypeError wrong_type = WrongTypeError::TYPE_ERROR)
 {
   if (PyBool_Check(value.ptr())) {
-    throw nb::type_error((what + " must be an int, not a bool").c_str());
+    throw_wrong_type(what + " must be an int, not a bool", wrong_type);
   }
   PyObject *indexed = PyNumber_Index(value.ptr());
   if (indexed == nullptr) {
     PyErr_Clear();
-    throw nb::type_error((what + " must be an int").c_str());
+    throw_wrong_type(what + " must be an int", wrong_type);
   }
   const nb::object owned = nb::steal(indexed);
   const long long converted = PyLong_AsLongLong(owned.ptr());
@@ -310,13 +336,24 @@ void check_integrator_precondition(const std::string &name, const long long valu
   }
 }
 
-// One socket value from Python, converted by the socket's type and written to `integrator`. The
-// type table is the pyi's: a boolean is a bool, an int/uint an integer, a float any real number
-// stored as float32, an enum an identifier string of the socket's items, a vector a 3-sequence of
-// reals.
-void set_socket_from_python(PainterlyIntegrator &integrator,
-                            const SocketType &socket,
-                            nb::handle value)
+// One knob of a set_integrator call, converted but not yet stored. set_integrator looks up and
+// converts every knob of the call before it stores any, so a call that raises changes nothing
+// (M3-FIX-T3.15a, Do: "Look up and convert every knob before setting any, so a call that raises
+// changes nothing").
+struct StagedKnob {
+  const SocketType *socket;
+  // The converted value, read back by the socket's type: bool for BOOLEAN, int for INT and ENUM,
+  // uint for UINT, float for FLOAT, float3 for VECTOR.
+  std::variant<bool, int, uint, float, float3> value;
+};
+
+// One socket value from Python, converted by the socket's type and appended to `staged`. The type
+// table is the pyi's: a boolean is a bool, an int/uint an integer, a float any real number stored
+// as float32, an enum an identifier string of the socket's items, a vector a 3-sequence of reals.
+// Every failure is a ValueError (R44).
+void stage_socket_from_python(std::vector<StagedKnob> &staged,
+                              const SocketType &socket,
+                              nb::handle value)
 {
   const std::string name = socket.name.string();
   const std::string what = "set_integrator: " + name;
@@ -325,13 +362,13 @@ void set_socket_from_python(PainterlyIntegrator &integrator,
       // bool only: the check is the type, not the truthiness, so set_integrator(two_sided=1) is a
       // wrong type rather than a silent conversion.
       if (!PyBool_Check(value.ptr())) {
-        throw nb::type_error((what + " must be a bool").c_str());
+        throw nb::value_error((what + " must be a bool").c_str());
       }
-      integrator.set(socket, value.ptr() == Py_True);
+      staged.push_back({&socket, value.ptr() == Py_True});
       return;
     case SocketType::INT:
     case SocketType::UINT: {
-      const long long converted = as_integer(value, what);
+      const long long converted = as_integer(value, what, WrongTypeError::VALUE_ERROR);
       if (socket.type == SocketType::UINT) {
         // seed is the one uint socket. The Node stores a 32-bit unsigned value.
         if (converted < 0 ||
@@ -339,7 +376,7 @@ void set_socket_from_python(PainterlyIntegrator &integrator,
         {
           throw nb::value_error((what + " is out of range").c_str());
         }
-        integrator.set(socket, static_cast<uint>(converted));
+        staged.push_back({&socket, static_cast<uint>(converted)});
         return;
       }
       if (converted < std::numeric_limits<int>::min() ||
@@ -348,39 +385,70 @@ void set_socket_from_python(PainterlyIntegrator &integrator,
         throw nb::value_error((what + " is out of range").c_str());
       }
       check_integrator_precondition(name, converted);
-      integrator.set(socket, static_cast<int>(converted));
+      staged.push_back({&socket, static_cast<int>(converted)});
       return;
     }
     case SocketType::FLOAT:
       // Any real number, converted as PyFloat_AsDouble does; the socket stores its float32 value
       // (the pyi's "stores its float32 value").
-      integrator.set(socket, static_cast<float>(as_real(value, what)));
+      staged.push_back(
+          {&socket, static_cast<float>(as_real(value, what, WrongTypeError::VALUE_ERROR))});
       return;
     case SocketType::ENUM: {
       if (!PyUnicode_Check(value.ptr())) {
-        throw nb::type_error((what + " must be an enum identifier string").c_str());
+        throw nb::value_error((what + " must be an enum identifier string").c_str());
       }
       const std::string identifier = nb::cast<std::string>(value);
       const NodeEnum &values = *socket.enum_values;
       if (!values.exists(ustring(identifier))) {
         throw nb::value_error((what + " has no item \"" + identifier + "\"").c_str());
       }
-      integrator.set(socket, values[ustring(identifier)]);
+      staged.push_back({&socket, values[ustring(identifier)]});
       return;
     }
     case SocketType::VECTOR: {
       nb::sequence sequence;
       if (!nb::try_cast<nb::sequence>(value, sequence) || nb::len(sequence) != 3) {
-        throw nb::type_error((what + " must be a (x, y, z) sequence").c_str());
+        throw nb::value_error((what + " must be a (x, y, z) sequence").c_str());
       }
-      const double x = as_real(sequence[0], what);
-      const double y = as_real(sequence[1], what);
-      const double z = as_real(sequence[2], what);
-      integrator.set(socket, make_float3(float(x), float(y), float(z)));
+      const double x = as_real(sequence[0], what, WrongTypeError::VALUE_ERROR);
+      const double y = as_real(sequence[1], what, WrongTypeError::VALUE_ERROR);
+      const double z = as_real(sequence[2], what, WrongTypeError::VALUE_ERROR);
+      staged.push_back({&socket, make_float3(float(x), float(y), float(z))});
       return;
     }
     default:
-      throw nb::type_error((what + ": unsupported socket type").c_str());
+      throw nb::value_error((what + ": unsupported socket type").c_str());
+  }
+}
+
+// Store one converted knob. Only called once every knob of the call has converted, so the
+// integrator never holds half a call.
+void apply_staged_knob(PainterlyIntegrator &integrator, const StagedKnob &knob)
+{
+  const SocketType &socket = *knob.socket;
+  switch (socket.type) {
+    case SocketType::BOOLEAN:
+      integrator.set(socket, std::get<bool>(knob.value));
+      return;
+    case SocketType::INT:
+    case SocketType::ENUM:
+      // The Node stores an enum as its integer value (graph/node.h, Node::set(SocketType, int)).
+      integrator.set(socket, std::get<int>(knob.value));
+      return;
+    case SocketType::UINT:
+      integrator.set(socket, std::get<uint>(knob.value));
+      return;
+    case SocketType::FLOAT:
+      integrator.set(socket, std::get<float>(knob.value));
+      return;
+    case SocketType::VECTOR:
+      integrator.set(socket, std::get<float3>(knob.value));
+      return;
+    default:
+      // Unreachable: stage_socket_from_python rejects every other socket type.
+      throw std::logic_error("set_integrator: unsupported socket type " +
+                             SocketType::type_name(socket.type).string());
   }
 }
 
@@ -825,13 +893,20 @@ void bind_module(nb::module_ &m)
           "set_integrator",
           [](PainterlyScene &self, nb::kwargs knobs) {
             const NodeType *type = PainterlyIntegrator::get_node_type();
+            // Every knob of the call is looked up and converted first, and stored only once all of
+            // them have converted, so a call that raises leaves get_integrator() unchanged.
+            std::vector<StagedKnob> staged;
+            staged.reserve(nb::len(knobs));
             for (const auto &item : knobs) {
               const std::string name = nb::cast<std::string>(nb::str(item.first));
               const SocketType *socket = type->find_input(ustring(name));
               if (socket == nullptr) {
                 throw nb::value_error(("set_integrator: unknown socket \"" + name + "\"").c_str());
               }
-              set_socket_from_python(self.integrator, *socket, item.second);
+              stage_socket_from_python(staged, *socket, item.second);
+            }
+            for (const StagedKnob &knob : staged) {
+              apply_staged_knob(self.integrator, knob);
             }
           },
           nb::arg("knobs"))
