@@ -23,9 +23,11 @@
 - The cost model the card names: a fixed 20 bounces per path, no Russian roulette, and brute-force ghost spheres. It
   predicts that the cost of a path is set by the bounce count and by the number of ghost spheres, not by the size of the
   scene's acceleration structure.
-- `docs/tasks/M3/T3.17-triangle-path.md` and `T3.16-oracle-parity.md` completed the triangle path and the exact parity of
-  the core with `smallpaint_oracle`, so the core can now be timed on this machine, and a triangle mesh can be timed
-  against the analytic planes without a fidelity question in the way.
+- T3.16 gave the core exact parity with `smallpaint_oracle` on the analytic scene, and T3.17 added the triangle path
+  (Opus, 2026-10-23). T3.17's statistical match with the oracle is refuted at fresh seeds. The quad scene's radiance is
+  lower in `r6` (by 0.15-0.24%) and higher in `r7` (by 0.09-0.27%) under both chains (M3-FIX-T3.17b), and it draws
+  0.06-0.07% fewer samples; M3-FIX-T3.17c looks for the cause. Both are far below this experiment's run-to-run spread
+  (about 6%, Results), so they change no number here.
 - This experiment measures speed only. It makes no image comparison and renders no figure.
 
 ## Hypothesis
@@ -269,24 +271,35 @@ results file), so its numbers are quoted from the table that run printed; the co
 
 ## Conclusion
 
-DRAFT (DeepSeek) — pending Opus review.
+Final (Opus, 2026-10-23). Every number below was re-derived from `results.json`: the 11 medians from the recorded
+elapsed times, the speedups, the ratios and the projection.
 
 - **H1: supported.** On `chain=row`, the analytic reference scene at 400 px went from a median 487,929 paths/s at 1
-  thread to 860,571 at 2 (×1.764) and 1,450,840 at 4 (×1.686), and every one of the 3 repeats was faster at T than at
-  T/2 for both T = 2 and T = 4, so the card's rule holds. `chain=lane:16` behaves the same (458,947 / 831,039 /
-  1,462,164 paths/s, ×1.811 and ×1.759, the same rule satisfied), as SPEC §3's one-chain-per-lane parallelization
-  predicts. `chain=image` does not grow (468,249 / 482,701 / 469,118 paths/s, ×1.031 and ×0.972; the rule fails at
-  T = 4), which is what SPEC §3's single chain requires.
-- **H2: measurement.** The cost per path is nearly independent of the triangle count: 1,450,840 paths/s with no
-  triangles, 845,959 with the 12 triangles of the quads (×0.583), and 741,658 with the 81,932 triangles of the quads
-  plus the level-6 icosphere (×0.877 against the triangle scene). Adding 81,920 triangles costs 12.3% of the
-  throughput, while replacing the six analytic planes by 12 triangles costs 41.7% — the analytic-plane to triangle
-  step, not the triangle count, is the large one, and the icosphere's cost is in line with the cost model's "the bounce
-  count, not the scene size, dominates". No threshold is attached.
-- **H3: projection.** 1920×1080 × 1024 passes on this machine at `chain=row`, 4 threads, from the analytic median:
-  **0.407 h, i.e. about 24.4 minutes** (2,123,366,400 paths at 1,450,840 paths/s = 1,463.5 s). The triangle scene gives
-  41.8 min and the triangle scene with the icosphere 47.7 min, as estimation only.
-- **Caveats.** The machine was shared and loaded (1-minute load average 15.4-16.9 on 12 CPUs, `uptime` before and after
-  every render), so the absolute numbers are a loaded-machine floor: an idle machine would be faster. Two runs of the
-  same script a few minutes apart differ by about ±6% in the medians, which bounds the precision of these numbers. The
-  timed interval includes the scene snapshot and the object-id pass, at most 1/16 of it (Method).
+  thread to 860,571 at 2 (×1.764) and 1,450,840 at 4 (×1.686). Each of the 3 paired repeats was faster at T than at T/2
+  for both T = 2 and T = 4, so the card's rule holds.
+  - The rule alone is weak. If the thread count had no effect and the noise were symmetric, three paired repeats would
+    all come out faster with probability 1/8, and `chain=image`, a single chain (SPEC §3), passed it at T = 2 with a
+    median ×1.031.
+  - The `row` support also rests on the size: ×1.764 and ×1.686 are far outside the run-to-run spread of about 6%.
+  - `chain=lane:16` grows like `row` (458,947 / 831,039 / 1,462,164 paths/s, ×1.811 and ×1.759), as SPEC §3's one chain
+    per (lane, pass) predicts. `chain=image` does not grow (468,249 / 482,701 / 469,118 paths/s, ×1.031 and ×0.972), as
+    its single chain requires.
+- **H2: measurement.** 1,450,840 paths/s with no triangles, 845,959 with the 12 triangles of the quads (×0.583), and
+  741,658 with the 81,932 triangles of the quads and the level-6 icosphere (×0.877 against the triangle scene).
+  Replacing the six analytic planes by 12 triangles costs 41.7% of the throughput, and adding 81,920 more triangles
+  costs 12.3%: the step from analytic planes to the triangle path is the large one, not the triangle count. This is one
+  mesh at one size, with no threshold attached.
+- **H3: projection.** 1920×1080 × 1024 passes at `chain=row`, 4 threads, from the analytic median: **0.407 h, about
+  24.4 min** (2,123,366,400 paths at 1,450,840 paths/s = 1,463.5 s). Blender scenes are meshes, so a Blender render goes
+  through the triangle path. The same projection gives 41.8 min from the triangle scene and 47.7 min with the
+  icosphere (estimation only, as pre-registered). A guide (T7.5) should quote the triangle number next to the
+  registered one, with this machine and its load.
+- **Caveats.**
+  - The machine was shared and loaded: the 1-minute load average was 15.4-16.9 on 12 CPUs before and after every
+    render. No idle-machine number was measured, so these are loaded-machine numbers, not a bound.
+  - H1's support depends on that load. The audit's own rerun, at a 1-minute load of 24-34, measured `row`'s 4-thread
+    speedup at ×1.14, and the rule failed there (audit of t-m3-18, 2026-10-22). So the registered verdict holds for
+    this run only. Thread scaling on a busier machine is not established.
+  - Two runs a few minutes apart differ by up to about 6% in the medians. That estimate comes from one earlier run whose
+    `results.json` was overwritten, so its numbers are quoted from the table it printed.
+  - The timed interval includes the scene snapshot and the object-id pass, at most 1/16 of it (Method).
