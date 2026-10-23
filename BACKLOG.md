@@ -673,6 +673,45 @@ Outcome:
   and the method each belongs to.
 allowedPaths: `src/blender/python.cpp`, `tests/core/test_api_contract.py`
 
+## M3-FIX-T3.17d: the triangle tests assert only what holds on every machine, and say what was measured
+Why (Sonnet landing review, 2026-10-23; Opus): this item makes T3.17a's doctest portable before it lands. Until then,
+the landing of 2026-10-23 holds the doctest back.
+- `src/test/test_triangle_diagnostics.cpp` (M3-FIX-T3.17a) CHECKs exact counts of a chaotic walk (about lines
+  505-518: 4049, 75964 and 75966, 66503 and 66471, 29497 and 63398). These counts are driven by about 47 paths whose
+  float32 hits fall on either side of an edge, and Embree's hit distance depends on the instruction set
+  (`src/test/test_bvh.cpp:30-72`). CI builds on ubuntu-24.04 and under MSVC on windows-2022, so these counts need not
+  hold there.
+- Its header (about lines 21-33 and 477-498) calls the two scenes "the same scene". M3-FIX-T3.17b has since measured a
+  radiance bias in `r6` and `r7` under both chains, and its cause is open (M3-FIX-T3.17c).
+- `tests/core/test_triangle_path.py` still says the triangle path matches the oracle. The card's Status bullet
+  (`docs/tasks/M3/T3.17-triangle-path.md`) records that the match is refuted at fresh seeds.
+Do:
+- In `src/test/test_triangle_diagnostics.cpp`:
+  - turn every exact count of either walk into `MESSAGE` output: path lengths, `k_total` constants, equal-path counts and
+    normal mismatch counts;
+  - keep the checks that hold on any machine: `k_total` equals the kernel's own trace for both scenes, no misses at
+    any bounce, and every path reaches bounces 0 and 1;
+  - check the quad's shading normal against the plane's `n` by value (`==`, so -0.0 equals +0.0) on every hit, instead
+    of counting bitwise mismatches;
+  - fix the comment that gives +2.7e-4 for a difference the numbers put at +2.6e-5. Re-derive it with a command and
+    quote that.
+  - reword the header so the cause of the difference is open (M3-FIX-T3.17c), not "the same scene";
+  - keep the `TEST_CASE` name: the verify finds the case by its prefix `painterly scene: the quad scene`.
+- In `tests/core/test_triangle_path.py`, change no assertion, parameter or seed. The module docstring and the slow
+  test's comments should say:
+  - the slow test's pass at block 68 is not evidence of a match;
+  - quote the card's Status numbers, and the smallest p-value and its Holm threshold from one run of the slow test at
+    block 68 (quote the command and output).
+- Never search for values or seeds that pass.
+Outcome:
+- `CHECK` exits 0.
+- The doctest case still runs and passes.
+- The doctest fails if a quad's shading normal is replaced by a constant. Show the mutation and its failure, then
+  restore it.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && build/q/src/test/painterly_tests --test-case='painterly scene: the quad scene*' | grep -qE '^\[doctest\] test cases: +1 \| +1 passed \| +0 failed \|'`
+allowedPaths: `src/test/test_triangle_diagnostics.cpp`, `tests/core/test_triangle_path.py`
+Depends on: M3-FIX-T3.17a.
+
 ## M3-FIX-TOL-a: comments that derive two analysis-test tolerances (landing review F1)
 Card: none; this item is the specification. CLAUDE.md golden rule 2 lets a unit test of numerical code use a tolerance
 only with a comment that justifies it, and `experiments/007-2026-10-15-noise-locking/PLAN.md` (lines 84-85 and 119-121)
@@ -732,6 +771,23 @@ Outcome: the card's Acceptance, translated, with Blender at the `BLENDER` path; 
 ## M4-T4.2: properties from core reflection; panels, presets, operators
 Card: `docs/tasks/M4/T4.2-properties-ui.md`. Depends on: M4-T4.1.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
+
+## M4-FIX-T4.2a: the version_update handler upgrades every scene, as Cycles' does
+Why (Sonnet landing review, 2026-10-23): `src/blender/addon/version_update.py` defines `do_versions(scene)`, but Blender
+calls `version_update` handlers with an argument that is not a scene. Cycles' handler is `do_versions(self)` and
+iterates `bpy.data.scenes` (`.cache/vendor/blender-v5.2.2/intern/cycles/blender/addon/version_update.py:66-110`). Ours
+returns at once, so no upgrade would run. It's latent today, because there are no upgrade steps yet. The tests call
+the handler with a scene, which hides it.
+Do:
+- Make `do_versions` take Blender's argument, ignore it, and upgrade `scene.painterly` for every scene in
+  `bpy.data.scenes`, as Cycles does.
+- In `tests/blender/test_properties.py`, call the handler as Blender does, with an argument that is not a scene. Check
+  that every scene's `data_version` ends at `CURRENT_DATA_VERSION`, including a second scene. The test must fail on
+  today's handler: show that before your fix.
+Outcome: `CHECK` and `make test-blender` exit 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/blender/addon/version_update.py`, `tests/blender/test_properties.py`
+Depends on: M4-T4.2.
 
 ## M4-T4.3: render loop (session ↔ RenderResult, output modes, built-in reference scene)
 Card: `docs/tasks/M4/T4.3-render-loop.md`. Depends on: M4-T4.2.
