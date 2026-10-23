@@ -567,6 +567,10 @@ resources: `mem=6G cpus=4 time=6h`
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py`
 
 ## M3-FIX-T3.17b: the triangle path's slow test runs Blender's `row` chain
+Closed (Opus, 2026-10-23): t-fix317b's report_blocked holds. Under `row` on both sides, block 68 fails and 7 of blocks
+69-78 reject. The quad scene's raw radiance is lower in `r6` (by 0.15-0.24%) and higher in `r7` (by 0.09-0.27%), with the
+same signs in all 8 blocks measured and under both chains. The card's amendment is withdrawn, and M3-FIX-T3.17c takes
+the bias.
 Card: `docs/tasks/M3/T3.17-triangle-path.md`, its Goal and its Slow bullet as amended on 2026-10-23. Depends on: M3-T3.17.
 Why (Opus, 2026-10-23):
 - Under `image` the triangle scene is distinguishable from the oracle. Of the fixed fresh blocks 69-78, seven reject on
@@ -598,8 +602,12 @@ verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV
 Card: `docs/tasks/M3/T3.17-triangle-path.md`. Depends on: M3-T3.17.
 Why (Opus, 2026-10-23, at Micah's request):
 - In all 11 seed blocks of the steward's check, the triangle scene draws 0.06-0.07% fewer samples than the oracle under
-  `image` (M3-FIX-T3.17a's evidence). M3-FIX-T3.17b moves the card's check to `row`. This item is about the shortfall
-  itself, so that the triangle path also matches the oracle in the reference mode.
+  `image` (M3-FIX-T3.17a's evidence). This item is about the shortfall itself, so that the triangle path also matches the
+  oracle in the reference mode.
+- M3-FIX-T3.17b (closed) tried `row` on both sides, and the difference stayed. The quad scene's raw radiance is lower in
+  `r6` (by 0.15-0.24%) and higher in `r7` (by 0.09-0.27%), with the same signs in all 8 blocks measured and under both
+  chains. So the target is that radiance bias, and the sample shortfall may be one of its symptoms. The queue task no
+  longer waits for T3.17b (repointed to t-fix317a).
 - t-fix317a reported the following. Measure it again here; don't take it as given.
   - With one chain per pixel, the quad scene uses fewer K than the analytic scene on 1801 pixels and more on 347.
     Moving the analytic planes by 1e-5 to 1e-3 instead gives an even split.
