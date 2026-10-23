@@ -622,6 +622,182 @@ upstream_sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1
 sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1205"
 patched = false
 
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/util.h"
+dest = "kernel/svm/util.h"
+upstream_sha256 = "00854e9d8f250d82fd3d439cc19103f3cdbaf23ad6cc07628d3e7f7e205d589f"
+sha256 = "00854e9d8f250d82fd3d439cc19103f3cdbaf23ad6cc07628d3e7f7e205d589f"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/node_types.h"
+dest = "kernel/svm/node_types.h"
+upstream_sha256 = "eb4fa7cdb5f6561bb4f47349053271428ec18febce1f54796889e2fd72c8a554"
+sha256 = "eb4fa7cdb5f6561bb4f47349053271428ec18febce1f54796889e2fd72c8a554"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/value.h"
+dest = "kernel/svm/value.h"
+upstream_sha256 = "59377581d5722900bcf4c9b3e95803c719cb6524b52fcca9a661784598871470"
+sha256 = "59377581d5722900bcf4c9b3e95803c719cb6524b52fcca9a661784598871470"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/math.h"
+dest = "kernel/svm/math.h"
+upstream_sha256 = "06e3e483800e69abfc71d8e6a35d02a8de948a3ecd7e3b1c8f66540831c76d02"
+sha256 = "06e3e483800e69abfc71d8e6a35d02a8de948a3ecd7e3b1c8f66540831c76d02"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/math_util.h"
+dest = "kernel/svm/math_util.h"
+upstream_sha256 = "dd8bd9ace34b789ccb3be54810a30b0abd68732367ed5b7b330cf26996cc0721"
+sha256 = "dd8bd9ace34b789ccb3be54810a30b0abd68732367ed5b7b330cf26996cc0721"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/mix.h"
+dest = "kernel/svm/mix.h"
+upstream_sha256 = "49c48c1f0d728635b72231e63bf261904755a8cc29bbc391ca0187623d81fb58"
+sha256 = "49c48c1f0d728635b72231e63bf261904755a8cc29bbc391ca0187623d81fb58"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/color_util.h"
+dest = "kernel/svm/color_util.h"
+upstream_sha256 = "2f61ccec33b8a9f97dc6fa6e99ae004317d1d2aebcb008081ddf7d7fa1db2c5e"
+sha256 = "2f61ccec33b8a9f97dc6fa6e99ae004317d1d2aebcb008081ddf7d7fa1db2c5e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/map_range.h"
+dest = "kernel/svm/map_range.h"
+upstream_sha256 = "a4f5f8794ac18ff73e99d421c178be180d9ac8453c96671604b7301f9b392dbe"
+sha256 = "a4f5f8794ac18ff73e99d421c178be180d9ac8453c96671604b7301f9b392dbe"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/clamp.h"
+dest = "kernel/svm/clamp.h"
+upstream_sha256 = "64227e0477c0c54d33ce5ebfa3d7b75c1845102d108c1f14b2d587d775bf396a"
+sha256 = "64227e0477c0c54d33ce5ebfa3d7b75c1845102d108c1f14b2d587d775bf396a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/invert.h"
+dest = "kernel/svm/invert.h"
+upstream_sha256 = "b3c991e0ca2b2a0fc5e07aa90c67322433782681bbc4871b4f7438ca20ad966e"
+sha256 = "b3c991e0ca2b2a0fc5e07aa90c67322433782681bbc4871b4f7438ca20ad966e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/gamma.h"
+dest = "kernel/svm/gamma.h"
+upstream_sha256 = "2327be7a7bfd55c33b5b8afc576f0cb237af3d565bba275f30904dc5592e3a95"
+sha256 = "2327be7a7bfd55c33b5b8afc576f0cb237af3d565bba275f30904dc5592e3a95"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/brightness.h"
+dest = "kernel/svm/brightness.h"
+upstream_sha256 = "3bb8d1f0c3047122b0177a7c9a0a932adae6be96afe94c421000fe055942ee81"
+sha256 = "3bb8d1f0c3047122b0177a7c9a0a932adae6be96afe94c421000fe055942ee81"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/hsv.h"
+dest = "kernel/svm/hsv.h"
+upstream_sha256 = "2783b1e212036cfcfed4bea33d5778b84a70be8c6106d248844e447a43a4cf47"
+sha256 = "2783b1e212036cfcfed4bea33d5778b84a70be8c6106d248844e447a43a4cf47"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/sepcomb_color.h"
+dest = "kernel/svm/sepcomb_color.h"
+upstream_sha256 = "5c70293cf480410c5a04b207d69acf532f99ac5d5c412f98f2c290c860af241d"
+sha256 = "5c70293cf480410c5a04b207d69acf532f99ac5d5c412f98f2c290c860af241d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/sepcomb_vector.h"
+dest = "kernel/svm/sepcomb_vector.h"
+upstream_sha256 = "aca9538f2ac3e01daa8d1a4d9a1a79338643a7049800e61096469123bf8ae41c"
+sha256 = "aca9538f2ac3e01daa8d1a4d9a1a79338643a7049800e61096469123bf8ae41c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/convert.h"
+dest = "kernel/svm/convert.h"
+upstream_sha256 = "7d102a9914c1561aad0f535d9a9011eb6350656fe77b196c040624261d6b222c"
+sha256 = "7d102a9914c1561aad0f535d9a9011eb6350656fe77b196c040624261d6b222c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/ramp.h"
+dest = "kernel/svm/ramp.h"
+upstream_sha256 = "dc07845ec49e15b495eabe09371b04e7b5133f1f044b359b04d563e9e8e8e65a"
+sha256 = "dc07845ec49e15b495eabe09371b04e7b5133f1f044b359b04d563e9e8e8e65a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/ramp_util.h"
+dest = "kernel/svm/ramp_util.h"
+upstream_sha256 = "195c28223f80895d7ed2624cbbd6e484ad94afbcd29dc3e9a5cd3cfa22dba3ee"
+sha256 = "195c28223f80895d7ed2624cbbd6e484ad94afbcd29dc3e9a5cd3cfa22dba3ee"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/mapping.h"
+dest = "kernel/svm/mapping.h"
+upstream_sha256 = "e8d1b11f7eece595cd97295fbd7b3fff5f822101cfeefd049c1ff6ea73bde9bc"
+sha256 = "e8d1b11f7eece595cd97295fbd7b3fff5f822101cfeefd049c1ff6ea73bde9bc"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/mapping_util.h"
+dest = "kernel/svm/mapping_util.h"
+upstream_sha256 = "be189a0a2141692a570cadc47acf629308497114d57ae7a67093d46891ef270a"
+sha256 = "be189a0a2141692a570cadc47acf629308497114d57ae7a67093d46891ef270a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/tables.h"
+dest = "kernel/tables.h"
+upstream_sha256 = "6556cea1070c863881f639bb361fd5500acf2b119f036957d08ef4e22f36b9c3"
+sha256 = "6556cea1070c863881f639bb361fd5500acf2b119f036957d08ef4e22f36b9c3"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/util/colorspace.h"
+dest = "kernel/util/colorspace.h"
+upstream_sha256 = "cee623a1fd9a5c45ca0551963eab719fa9c72b5e434458dd71b14880c258d7eb"
+sha256 = "cee623a1fd9a5c45ca0551963eab719fa9c72b5e434458dd71b14880c258d7eb"
+patched = false
+
 [[fragment]]
 name = "kernel/svm/svm_h/svm_case/NODE_END"
 upstream = "cycles"
@@ -690,3 +866,318 @@ begin = "      default:"
 end = "}"
 upstream_lines = [617, 622]
 sha256 = "4309298f1b8090ed6ccdb34b4efb4c9fe5566d0a3e392952148f6ed628a53238"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CONVERT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CONVERT"
+upstream_lines = [202, 204]
+sha256 = "0528deb091d61ba02d0b35fc37bbc05ff840229951ec08022dc6f9bddefe4f17"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CONVERT_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CONVERT_DERIVATIVE"
+upstream_lines = [205, 210]
+sha256 = "a3dcd50a930c1e70db3daf0bc0e972e758875950f21bae8a2d302aac1fa9aae1"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VALUE_F"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VALUE_F"
+upstream_lines = [224, 226]
+sha256 = "d6e29facea20093827394bc49af184235392fa70ac87e6b3fb2968a0f48e0468"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VALUE_F_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VALUE_F_DERIVATIVE"
+upstream_lines = [227, 232]
+sha256 = "33c017f9600d11d89f4bb201a5fbcc315883649c913bdae9b41c6d51387dbe4b"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VALUE_V"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VALUE_V"
+upstream_lines = [233, 235]
+sha256 = "f0d07a9158e698f402d5929cf6580ab80f27fe001bf97220383b0f4a372583ec"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VALUE_V_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VALUE_V_DERIVATIVE"
+upstream_lines = [236, 241]
+sha256 = "6b86adbd2581f40cf3e3303ee86741494111bd2363b9e33a95a579093e5101a8"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_HSV"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_HSV"
+upstream_lines = [325, 327]
+sha256 = "4c53522b5d5298137e08b42ea2686d6af895be15903afe0fbef0b6a416dc05ac"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MATH"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MATH"
+upstream_lines = [367, 369]
+sha256 = "ff40098be23f67915862067349d8e30a4bd64dfa3dec79cb17e7c50711880696"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VECTOR_MATH"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VECTOR_MATH"
+upstream_lines = [370, 372]
+sha256 = "ca139cd378e76c249961537b1fb8af000ce3c0e02d3a5bf5997d1b5e02d45b3e"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VECTOR_MATH_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VECTOR_MATH_DERIVATIVE"
+upstream_lines = [373, 378]
+sha256 = "4bbf1c943eac1fb6e7525dd5b013a06addbdb6b80d25695e543620352a4d68b0"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_RGB_RAMP"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_RGB_RAMP"
+upstream_lines = [379, 384]
+sha256 = "1cc3fe66e960c00b8f051bfaaf3166b654cf7e3d134977c20e6e62047c1cba86"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_GAMMA"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_GAMMA"
+upstream_lines = [385, 387]
+sha256 = "100f8a7d2d70c57c8c6cd733fb898326739369d974cf0bbb3199ffbb0f1a8db7"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_BRIGHTCONTRAST"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_BRIGHTCONTRAST"
+upstream_lines = [388, 390]
+sha256 = "d594f5224e2a77599b179c73b37a7cf2ac9b1c04b83ea74c4249d32c3a3d1375"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEXTURE_MAPPING"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEXTURE_MAPPING"
+upstream_lines = [416, 418]
+sha256 = "945d652d97add8a65364d93952c9320c48431e870614f76f6690480a17e08cdd"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEXTURE_MAPPING_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEXTURE_MAPPING_DERIVATIVE"
+upstream_lines = [419, 424]
+sha256 = "2762f381924de379d208c77321bf38aefd803cea61c51e2744422e0484dd4deb"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MAPPING"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MAPPING"
+upstream_lines = [425, 427]
+sha256 = "4b570b9052868f7d8215d67ca8b79ad70df8fe894c4f1c09969a7d4259bb2c32"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MAPPING_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MAPPING_DERIVATIVE"
+upstream_lines = [428, 433]
+sha256 = "b8c7f07fe1213554009e6724637f67d882cec0c5acdd99ee08e77fe515903ed8"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIN_MAX"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIN_MAX"
+upstream_lines = [434, 436]
+sha256 = "adc8bb0f829d8f43d4b4d35b79a5984b62d47cd1e4b79be796aaad99e33762d4"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CURVES"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CURVES"
+upstream_lines = [490, 495]
+sha256 = "3cada05d76275c1bc6d7702228b5f36dae8d78afd718bfdaa848500e69299244"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_INVERT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_INVERT"
+upstream_lines = [512, 514]
+sha256 = "545541b42443c7e73a8b5a3272308e0750abea5daa6b68e5e1ecd54334cd1a83"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIX"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIX"
+upstream_lines = [515, 517]
+sha256 = "b83122a2f59c924859c740fe9c1d78a996d3535405748edd0d1b9c3672f9b2eb"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_SEPARATE_COLOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_SEPARATE_COLOR"
+upstream_lines = [518, 520]
+sha256 = "71e0001a90b7e03d45c6150d1ec1ba188af863a8d4081b4409385634a5f48265"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_COMBINE_COLOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_COMBINE_COLOR"
+upstream_lines = [521, 523]
+sha256 = "96813e0522530fd748bffacf6ee9f74eefb7562e81cacb85c06e31ff3513d35e"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_SEPARATE_VECTOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_SEPARATE_VECTOR"
+upstream_lines = [524, 526]
+sha256 = "f18bfd8a38cd530fc7724b899c54f0f470e2ae228b7108fa186c470946a938e9"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_SEPARATE_VECTOR_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_SEPARATE_VECTOR_DERIVATIVE"
+upstream_lines = [527, 532]
+sha256 = "e3a396de6d7c705d3310162674ad7b3ad71f1fc4decb90f9f99c7e6c6c48814b"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_COMBINE_VECTOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_COMBINE_VECTOR"
+upstream_lines = [533, 535]
+sha256 = "50d2a9714c7d99a1d24df8fce9c14fbf856c0c11f42eecc59a2b114944d605ed"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_COMBINE_VECTOR_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_COMBINE_VECTOR_DERIVATIVE"
+upstream_lines = [536, 541]
+sha256 = "2e95cbfc9d809288627e206f3bb0ae2448abfafb73cbfcd97dee9bdbf90335ab"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MAP_RANGE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MAP_RANGE"
+upstream_lines = [557, 559]
+sha256 = "857e4e069770dbf33bc81f56dada60b2a5669f605f432f08184f41cbf4b60d17"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_VECTOR_MAP_RANGE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_VECTOR_MAP_RANGE"
+upstream_lines = [560, 562]
+sha256 = "743bf2d25e6324bcf9969a5ec3192ccee71aef847b97dd62df105d1a17c97f7d"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CLAMP"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CLAMP"
+upstream_lines = [563, 565]
+sha256 = "c1ace3d4603a542ab375b461ade98a382e8f531146b4a99e734532f0c9a69397"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_FLOAT_CURVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_FLOAT_CURVE"
+upstream_lines = [595, 600]
+sha256 = "b9a354c079a070868c61d9f10cc74f1398e4a219f7ee1f7e0300b5330ab83e02"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIX_COLOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIX_COLOR"
+upstream_lines = [601, 603]
+sha256 = "118c8d83b2e780944cf43c8ce19a3ec98b7b1ec3f94dce47c6636ddc0279a1a4"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIX_FLOAT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIX_FLOAT"
+upstream_lines = [604, 606]
+sha256 = "c6a6bb514149f9f34011504ad7f6e26937c6e33f41e8b264d23dd0545a28d62d"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIX_VECTOR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIX_VECTOR"
+upstream_lines = [607, 609]
+sha256 = "4b47fa372628c5041e8e02a9175b001c04ff602a1efe757ed3b1fde50a7e1075"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_MIX_VECTOR_NON_UNIFORM"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_MIX_VECTOR_NON_UNIFORM"
+upstream_lines = [610, 613]
+sha256 = "69b9544cb0088fd7ea94c2b3b9f8763f964d0c5274e8a977548bbf656d2f4935"

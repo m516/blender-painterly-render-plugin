@@ -1,0 +1,79 @@
+{
+  "H1": {
+    "build_exit": 0,
+    "closure_paths": 78,
+    "closure_shims_reached": [
+      "kernel/device/cpu/globals.h"
+    ],
+    "closure_uncovered": [],
+    "closure_unresolved": [],
+    "closure_upstream_lines": 16446,
+    "patches": 0,
+    "shim_status_lines": [],
+    "supported": true,
+    "vendor_check_upstream_exit": 0
+  },
+  "H2": {
+    "control flow": {
+      "failed": 0,
+      "passed": 11
+    },
+    "every stack node case dispatches": {
+      "failed": 0,
+      "passed": 105
+    },
+    "supported": true
+  },
+  "H3": {
+    "color ramp": {
+      "failed": 0,
+      "passed": 3
+    },
+    "convert": {
+      "failed": 0,
+      "passed": 3
+    },
+    "map range": {
+      "failed": 0,
+      "passed": 3
+    },
+    "math": {
+      "failed": 0,
+      "passed": 3
+    },
+    "mix": {
+      "failed": 0,
+      "passed": 3
+    },
+    "supported": true
+  },
+  "M1": {
+    "generated_header_lines": 284,
+    "generated_header_sha256": "b86aad32d05591ea9b980f494465137ceb7eafe0f5b4c0172c47ed16b087d7d2",
+    "manifest_cases": 39,
+    "manifest_includes": 19,
+    "svm_case_fragment_lines": 174,
+    "svm_case_fragments": 39,
+    "vendored_headers": 22
+  },
+  "M2": {
+    "deps_generated": 1,
+    "deps_shim": 1,
+    "deps_third_party_cycles": 74,
+    "deps_third_party_cycles_lines": 16154,
+    "deps_total": 492
+  },
+  "M3": {
+    "compile_seconds": [
+      6.78,
+      6.12,
+      6.92
+    ],
+    "compile_seconds_median": 6.78
+  },
+  "build_dir": "/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.tmp/steward/sprints/S1/svm/repo/build/q",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "gate": true,
+  "registration": "2026-10-09, card T6.3 (Opus)",
+  "run_date": "2026-10-23"
+}

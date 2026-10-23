@@ -63,6 +63,14 @@ jobs:
         shell: bash
         run: git clone --depth 1 --branch v4.4.1 https://github.com/RenderKit/embree.git .cache/src/embree
 
+      # T6.3: the build runs tools/gen_svm_switch.py (src/cycles/CMakeLists.txt), which needs Python >= 3.12. The
+      # configure line below names this interpreter, as the Makefile names .venv/bin/python.
+      - name: Set up Python for the build-time generators
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Build the C++ libraries and unit tests with MSVC
         shell: cmd
         # -k 0: Ninja keeps building after a failure, so one run reports every failing translation unit (as MSBuild does).
@@ -71,7 +79,7 @@ jobs:
           call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
           cmake --version || exit /b 1
           ninja --version || exit /b 1
-          cmake -S . -B build/msvc -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=ON -DPAINTERLY_BUILD_ORACLE=OFF -DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree || exit /b 1
+          cmake -S . -B build/msvc -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTERLY_BUILD_MODULE=OFF -DPAINTERLY_BUILD_TESTS=ON -DPAINTERLY_BUILD_ORACLE=OFF -DFETCHCONTENT_SOURCE_DIR_EMBREE=.cache/src/embree "-DPython_EXECUTABLE=${{ steps.python.outputs.python-path }}" || exit /b 1
           cmake --build build/msvc -- -k 0 || exit /b 1
 
       - name: Run the C++ unit tests

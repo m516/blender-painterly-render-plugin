@@ -17,6 +17,7 @@ The rules are in `CLAUDE.md`, section "Experiments".
 | 008 | 2026-10-15 | jitter-dose-response | How does the texture respond to the jitter dose f (knob range and scale for M7)? | draft | pre-registered; analysis pending |
 | 009 | 2026-10-15 | scale-limits | Does image-locking hold above 800 px, and is the 200 px departure undersampling or a chain effect? | draft | pre-registered; analysis pending |
 | 010 | 2026-10-22 | cpu-throughput | How many paths per second does the native core do, how does that depend on the scene size, and how long is a 1920×1080 × 1024-pass render? | final | H1 supported on a loaded machine (row throughput ×1.76 at 2 threads, ×1.69 at 4); scaling under heavier load not established (×1.14 in the audit's rerun); `image` does not grow; triangles in place of the analytic planes cost 42%, 81,920 more triangles 12%; 1920×1080 × 1024 passes ≈ 24 min at 4 threads, 42 min through the triangle path |
+| 011 | 2026-10-23 | svm-probe | Do Cycles' stack-only SVM nodes run verbatim and give exactly the derived values through the generated svm_eval_nodes()? | draft | H1-H3 supported; gate passed on `c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0`; DRAFT (DeepSeek) — pending Opus review |
 
 ## How to run
 

@@ -106,3 +106,43 @@ target_compile_definitions(cycles_kernel INTERFACE __MAX_CLOSURE__=${PAINTERLY_M
 # wheel builds, which build no tests, compile it with MSVC, Clang and GCC.
 add_library(cycles_shim_markers OBJECT shim_markers.cpp)
 target_link_libraries(cycles_shim_markers PRIVATE cycles_kernel cycles_graph)
+
+# T6.3: Cycles' SVM interpreter. tools/gen_svm_switch.py (T6.2) assembles svm_eval_nodes() from the verbatim fragments
+# that src/cycles/svm_nodes.toml lists, into the build tree. cycles_svm is header-only: a consumer includes
+# "svm_eval_nodes.h" and gets the kernel definition set through cycles_kernel. Every fragment change rewrites its sha256
+# in VENDORED.toml, so these DEPENDS cover the fragments too.
+find_package(Python 3.12 REQUIRED COMPONENTS Interpreter)
+set(PAINTERLY_SVM_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+add_custom_command(
+  OUTPUT ${PAINTERLY_SVM_GENERATED_DIR}/svm_eval_nodes.h
+  COMMAND ${Python_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tools/gen_svm_switch.py
+          --manifest ${CMAKE_CURRENT_SOURCE_DIR}/svm_nodes.toml
+          --vendored ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+          --output ${PAINTERLY_SVM_GENERATED_DIR}/svm_eval_nodes.h
+  DEPENDS ${PROJECT_SOURCE_DIR}/tools/gen_svm_switch.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/svm_nodes.toml
+          ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+  COMMENT "Generating svm_eval_nodes.h with tools/gen_svm_switch.py"
+  VERBATIM)
+add_custom_target(cycles_svm_generate DEPENDS ${PAINTERLY_SVM_GENERATED_DIR}/svm_eval_nodes.h)
+add_library(cycles_svm INTERFACE)
+# Consumers build after the generator: CMake follows an INTERFACE library's dependencies transitively.
+add_dependencies(cycles_svm cycles_svm_generate)
+target_include_directories(cycles_svm INTERFACE ${PAINTERLY_SVM_GENERATED_DIR})
+target_link_libraries(cycles_svm INTERFACE cycles_kernel)
+
+# T6.3: the 22 SVM headers that T6.3 vendors compile verbatim with the kernel definition set (svm_headers_check.cpp). An
+# OBJECT library in ALL, like cycles_shim_markers, so the wheel builds, which build no tests and never run the generator,
+# compile them with MSVC, Clang and GCC.
+add_library(cycles_svm_headers_check OBJECT svm_headers_check.cpp)
+target_link_libraries(cycles_svm_headers_check PRIVATE cycles_kernel)
+
+# T6.3: Blender compiles all of Cycles with -fno-strict-aliasing (v5.2.2 build_files/cmake/platform/
+# platform_unix.cmake:898 for GCC, :970 for Clang; platform_apple.cmake:161; platform_win32.cmake:207 for clang-cl).
+# svm_node_get<T> (kernel/svm/util.h:204-213) reads typed node structs through a reinterpret_cast of the uint byte code,
+# and SVMCompiler writes them as int words (scene/svm.h:104). INTERFACE on cycles_kernel, so every target that compiles
+# a kernel/ header gets it. MSVC does no type-based alias analysis. The flag changes no layout and no floating-point
+# result.
+if(NOT MSVC)
+  target_compile_options(cycles_kernel INTERFACE -fno-strict-aliasing)
+endif()
