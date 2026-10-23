@@ -594,6 +594,51 @@ allowedPaths: `tests/core/test_triangle_path.py`
 resources: `mem=6G cpus=4 time=6h`
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py`
 
+## M3-FIX-T3.17c: find why the triangle scene draws 0.06-0.07% fewer samples, and remove the cause if it is a defect
+Card: `docs/tasks/M3/T3.17-triangle-path.md`. Depends on: M3-T3.17.
+Why (Opus, 2026-10-23, at Micah's request):
+- In all 11 seed blocks of the steward's check, the triangle scene draws 0.06-0.07% fewer samples than the oracle under
+  `image` (M3-FIX-T3.17a's evidence). M3-FIX-T3.17b moves the card's check to `row`. This item is about the shortfall
+  itself, so that the triangle path also matches the oracle in the reference mode.
+- t-fix317a reported the following. Measure it again here; don't take it as given.
+  - With one chain per pixel, the quad scene uses fewer K than the analytic scene on 1801 pixels and more on 347.
+    Moving the analytic planes by 1e-5 to 1e-3 instead gives an even split.
+  - The split narrows with `ghost="lights"` (154 against 135) and with `ghost="none"` (327 against 177).
+  - After a quad hit, the next ray meets the same wall closer than `ray_epsilon` about 3 times as often as after an
+    analytic hit (618 against 205 at bounce 1, 64 px).
+  - Its explanation, untested: a float32 hit point moves the next ray's origin, and near a ghost sphere's silhouette
+    that changes whether the ghost root passes `eps`.
+Do:
+- Measure before you change anything. Render `build_smallpaint_scene` and `build_smallpaint_scene_triangles` at 400 px,
+  P = 32, seed 1088 (block 68's first), with one chain per pixel (`chain="lane"`, `lane_length=1`), so that both
+  scenes start every pixel from the same K0. Report:
+  - the per-pixel K difference (quad minus analytic): how many pixels lose K, gain K and are equal;
+  - for the pixels that differ, where the two paths first part: the bounce, the object each scene hits, and whether a
+    ghost sphere's root is what changed;
+  - the signed distance of the hit points from their plane in both scenes: its mean, and the fractions in front of and
+    behind the plane;
+  - the same counts with the quads' `plane_extent` at 6 instead of 50, as a diagnostic only.
+  Report every number with its command. Name the harness.
+- If the cause is in the core's mesh path (for example, hit points that land behind the plane more often than in
+  front), fix it there. Add `tests/core/test_triangle_samples.py`, marked slow, that runs the sign-flip test of the
+  Outcome below. It fails at HEAD and passes after the fix; quote both runs.
+- If the cause is not a defect in our code, call report_blocked with the measurements. Never change the analytic
+  scene, `build_smallpaint_scene_triangles`, the oracle, `ray_epsilon`, `PLANE_EXTENT` or any test's decision rule to
+  close the gap.
+Outcome:
+- `CHECK` exits 0, and the card's slow test passes at block 68 with the chain your tree's test file uses.
+- At 400 px, P = 32, seed 1088 and one chain per pixel, the per-pixel K differences of the pixels that differ are
+  centred on zero: `ensemble.sign_flip_pvalue(differences, "two-sided")` gives p >= 0.01, the card's `ALPHA`. If no
+  pixel differs, the test passes and says so. Report the pixels that lose and gain K and p, before and after the fix.
+- On your committed tree, the card's slow test with `chain="image"` on both sides rejects at most 1 of the fixed blocks
+  69-78. For each block change only the chain (if your tree's test uses `row`) and `SEED_BLOCK`, in place, run the slow
+  test, then restore the file with `git checkout -- tests/core/test_triangle_path.py`. Report each block's rejected
+  keys, or "passed". If 2 or more reject, call report_blocked with the numbers.
+- Report the samples drawn by the triangle scene and by the oracle at block 68 under `image`, before and after.
+allowedPaths: `src/painterly/bvh/**`, `src/painterly/kernel/**`, `src/painterly/scene/**`, `src/test/**`, `tests/core/test_triangle_samples.py`
+resources: `mem=6G cpus=4 time=6h`
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py tests/core/test_triangle_samples.py`
+
 ## M3-FIX-T3.15a: set_integrator raises ValueError for every bad knob, and a failed call sets nothing
 Card: `docs/tasks/M3/T3.15-bindings.md`, the `Scene.set_integrator` bullet (lines 18-27). Depends on: M3-T3.15.
 Why:
