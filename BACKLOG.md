@@ -535,6 +535,8 @@ Outcome: the card's Acceptance, translated; `CHECK` exits 0; and the README has 
 ## M3-FIX-T3.17a: the triangle scene differs from the oracle in regions r6 and r7 (find the cause, fix it)
 Card: `docs/tasks/M3/T3.17-triangle-path.md`; its Goal is the specification: replacing smallpaint's six planes with quads
 leaves the look statistically indistinguishable from the oracle. Depends on: M3-T3.17.
+Closed (Opus, 2026-10-23): t-fix317a measured the cause, and it is in the test's design (the `image` chain), so this
+item's report_blocked branch applies. M3-FIX-T3.17b continues the work; don't emit another task for this item.
 Evidence (Opus, 2026-10-22, a fresh clone of T3.17's commit; the card's slow test with only `SEED_BLOCK` changed, the
 blocks fixed before any run):
 - Block 68, the committed block, passes, but with `r6.mean.R` p = 6.2e-4 and `r7.mean.B` p = 4.7e-4 against Holm's first
@@ -561,6 +563,34 @@ Outcome:
   `SEED_BLOCK`, in place, run the slow test, then restore the file with `git checkout -- tests/core/test_triangle_path.py`.
   Report each block's rejected keys, or "passed". These ten blocks are fixed now; don't add, drop or replace any.
 allowedPaths: `src/painterly/bvh/**`, `src/painterly/kernel/**`, `src/painterly/scene/**`, `src/test/**`, `tests/core/scenes.py`, `tests/core/test_triangle_path.py`
+resources: `mem=6G cpus=4 time=6h`
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py`
+
+## M3-FIX-T3.17b: the triangle path's slow test runs Blender's `row` chain
+Card: `docs/tasks/M3/T3.17-triangle-path.md`, its Goal and its Slow bullet as amended on 2026-10-23. Depends on: M3-T3.17.
+Why (Opus, 2026-10-23):
+- Under `image` the triangle scene is distinguishable from the oracle. Of the fixed fresh blocks 69-78, seven reject on
+  `r3`, `r6` and `r7` means (M3-FIX-T3.17a's evidence; t-fix317a reproduced the list exactly).
+- t-fix317a found no defect in the shading. With one chain per pixel, the two scenes' region means agree to 1e-7
+  relative. The quads draw 0.06-0.07% fewer samples in every block, and `image` runs one K sequence through the whole
+  render without a reset (SPEC §3), so the shortfall moves the sample window of every later pixel.
+- Blender renders are meshes, and they use `row` (SPEC §3): one chain per (row, pass), with K0 drawn per row, so a
+  shortfall stays inside its row. The card took `image` from T3.16, whose bit-for-bit parity needs it; T3.16's parity
+  test already covers the analytic scene under `row`.
+Do:
+- In `tests/core/test_triangle_path.py`, run the slow ensemble with `chain="row"` on the core and `chain="row"` in the
+  oracle's jobs. Change no other parameter: the key family, `ALPHA`, `SEED_BLOCK = 68`, `SLOW_PAIRS`, `PLANE_EXTENT`,
+  `SLOW_SIZE`, `SLOW_PASSES`, the ghost setting and the knobs stay as they are.
+- Keep printing `k_consumed` against the oracle's, without asserting it.
+- Say in the module docstring and the comments why the chain is `row`, and quote the `image` result above.
+Outcome:
+- `CHECK` exits 0, and the slow test passes at block 68.
+- On your committed tree, the slow test at blocks 69-78 rejects at most 1 of the 10. For each block change only
+  `SEED_BLOCK`, in place, run the slow test, then restore the file with `git checkout -- tests/core/test_triangle_path.py`.
+  Report each block's rejected keys, or "passed". These ten blocks are fixed now; don't add, drop or replace any.
+- If 2 or more of the 10 reject, call report_blocked with each block's rejected keys. Don't change the chain again, or
+  anything else in the test.
+allowedPaths: `tests/core/test_triangle_path.py`
 resources: `mem=6G cpus=4 time=6h`
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest" && PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q -m slow tests/core/test_triangle_path.py`
 
