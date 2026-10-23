@@ -567,6 +567,20 @@ def test_bootstrap_cohen_d_rows_are_effect_summary_of_the_resampled_runs() -> No
         resampled_b = [b[index] for index in draws_b[row]]
         expected = ensemble.effect_summary(resampled_a, resampled_b, list(keys))
         for index, key in enumerate(keys):
+            # Identity: row r of bootstrap_cohen_d evaluates effect_summary's own formula
+            # (mean_a - mean_b) / s_p on the same resampled values, so the two differ only by
+            # float64 round-off (unit round-off u = 2**-53 = 1.11e-16; gamma_k = k u / (1 - k u)
+            # bounds k chained roundings). Both form each mean from n <= 6 values
+            # (gamma_6 = 6.66e-16, gamma_5 = 5.55e-16 relative), and a mean's error is absolute,
+            # so (gamma_6 + gamma_5) * max|value| reaches the difference, with max|value| the
+            # largest |value| in the two matrices. That difference is the small quantity here:
+            # the smallest |diff| over these 8 assertions is 0.0587 * max|value|, so the mean
+            # errors are at most 2.08e-14 relative. Each sd is a ddof-1 two-pass form
+            # (gamma_24 = 2.66e-15), and s_p from two sds, a square root and the final division
+            # adds gamma_6 = 6.66e-16, giving a relative bound of
+            # 2.08e-14 + 3.33e-15 + u = 2.42e-14, 41x inside rel=1e-12. abs=0.0 is right because
+            # the identity is exact in real arithmetic, so there is no absolute error floor to
+            # allow, and no asserted value is near 0 (the smallest is |cohen_d| = 0.117).
             assert got[row, index] == pytest.approx(expected[key]["cohen_d"], rel=1e-12, abs=0.0)
 
 

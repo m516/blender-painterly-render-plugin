@@ -154,6 +154,20 @@ def test_gaussian_highpass_axis_of_the_transposed_field_is_the_transposed_high_p
     field = rng.normal(size=(7, 11))
     along_rows = np.asarray(gaussian_highpass_axis(field, 1.4, 1))
     along_columns = np.asarray(gaussian_highpass_axis(field.T, 1.4, 0).T)
+    # Identity: the axis=0 branch is gaussian_highpass_axis(x.T, sigma, 1).T, so both sides
+    # compute x - G_sigma * x along the same 11-pixel rows of the same values, and each differs
+    # from that exact result only by the float64 round-off of its own FFT (unit round-off
+    # u = 2**-53 = 1.11e-16). One row is filtered by an rfft and an irfft of its 22-point
+    # half-sample extension (m = 2 * 11). The standard radix-2 bound puts a transform within
+    # gamma_k * ||x||_1 of the exact sum, where gamma_k = k u / (1 - k u) bounds k chained
+    # roundings and k = 3 log2(m) counts one complex twiddle multiply and two additions per
+    # butterfly stage; a real-input transform of m points costs no more than the complex one of
+    # m points, so this bounds it. With k = 3 log2(22) = 13.38 and ||x||_1 <= m * max|field|,
+    # gamma_13.38 * 22 = 3.27e-14 * max|field|. A forward and inverse pair, the elementwise
+    # transfer multiply and the subtraction add 2u, giving 6.56e-14 * max|field| per side and
+    # 1.31e-13 * max|field| for the two sides. The atol term 1e-12 * max|field| alone is 7.6x
+    # that bound, so the atol term already covers the round-off; the rtol term adds the
+    # non-negative 1e-12 * |along_rows|, so it can only widen what is allowed.
     np.testing.assert_allclose(
         along_columns, along_rows, rtol=1e-12, atol=1e-12 * float(np.max(np.abs(field)))
     )
