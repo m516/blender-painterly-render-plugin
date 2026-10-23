@@ -8,6 +8,8 @@
 
 #pragma once
 
+#define PAINTERLY_SHIM_UTIL_LOG_H 1
+
 #include <iostream>
 
 #define LOG_ERROR (std::cerr << "Error: ")

@@ -13,6 +13,8 @@
 
 #pragma once
 
+#define PAINTERLY_SHIM_UTIL_PARAM_H 1
+
 #include <cstddef>
 #include <functional>
 #include <mutex>

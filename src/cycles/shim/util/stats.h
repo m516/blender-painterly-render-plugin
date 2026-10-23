@@ -10,6 +10,8 @@
 
 #pragma once
 
+#define PAINTERLY_SHIM_UTIL_STATS_H 1
+
 #include <atomic>
 #include <cassert>
 #include <cstddef>

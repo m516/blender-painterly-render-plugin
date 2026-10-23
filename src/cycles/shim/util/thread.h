@@ -9,6 +9,8 @@
 
 #pragma once
 
+#define PAINTERLY_SHIM_UTIL_THREAD_H 1
+
 #include <atomic>
 #include <condition_variable>
 #include <functional>

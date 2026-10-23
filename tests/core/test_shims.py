@@ -9,8 +9,12 @@ include path (docs/architecture.md, "Source layout and naming").
 src/ and third_party/cycles/ also share no top-level directory (T3.22). Both are include
 directories of cycles_util, and compilers search the SYSTEM directory third_party/cycles/ after
 src/, so a shared name could let a file under src/ shadow a vendored header.
+
+Each shim header also defines its marker macro and is asserted in
+src/cycles/shim_markers.cpp (T6.1, "Shim markers").
 """
 
+import re
 import tomllib
 from pathlib import Path
 
@@ -76,3 +80,36 @@ def test_src_and_vendored_tree_share_no_top_level_directory() -> None:
     vendored_names = {path.name for path in VENDOR_DIR.iterdir() if path.is_dir()}
     shared = sorted(src_names & vendored_names)
     assert not shared, f"src/ and third_party/cycles/ share the top-level directories {shared}"
+
+
+SHIM_MARKERS_CPP = REPO_ROOT / "src" / "cycles" / "shim_markers.cpp"
+SHIM_HEADERS = [path for path in SHIM_FILES if path.suffix == ".h"]
+SHIM_HEADER_IDS = [_relative(path) for path in SHIM_HEADERS]
+
+
+def shim_marker(relpath: str) -> str:
+    """Marker macro of the shim header at relpath (POSIX, relative to src/cycles/shim/).
+
+    T6.1 "Shim markers": PAINTERLY_SHIM_ and relpath upper-cased, with "/" and "." replaced by "_".
+    """
+    return "PAINTERLY_SHIM_" + relpath.upper().replace("/", "_").replace(".", "_")
+
+
+@pytest.mark.parametrize("shim", SHIM_HEADERS, ids=SHIM_HEADER_IDS)
+def test_every_shim_header_defines_its_marker(shim: Path) -> None:
+    """The header has a line that reads `#define <marker> 1` after strip()."""
+    expected = f"#define {shim_marker(_relative(shim))} 1"
+    lines = [line.strip() for line in shim.read_text(encoding="utf-8").splitlines()]
+    assert expected in lines, f"{_relative(shim)}: no line {expected!r}"
+
+
+@pytest.mark.parametrize("shim", SHIM_HEADERS, ids=SHIM_HEADER_IDS)
+def test_shim_markers_cpp_asserts_every_marker(shim: Path) -> None:
+    """shim_markers.cpp has `static_assert(<marker> == 1,`, with any whitespace.
+
+    clang-format may wrap a static_assert directly after its opening parenthesis.
+    """
+    marker = shim_marker(_relative(shim))
+    text = SHIM_MARKERS_CPP.read_text(encoding="utf-8")
+    pattern = rf"static_assert\(\s*{re.escape(marker)}\s*==\s*1\s*,"
+    assert re.search(pattern, text), f"src/cycles/shim_markers.cpp asserts no {marker} == 1"

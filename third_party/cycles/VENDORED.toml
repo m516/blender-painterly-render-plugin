@@ -525,3 +525,99 @@ dest = "util/path.h"
 upstream_sha256 = "2e012d8ab17b29126da11db6a68ee23bc57ab1856afa0ff61cc134c7495b0b98"
 sha256 = "2e012d8ab17b29126da11db6a68ee23bc57ab1856afa0ff61cc134c7495b0b98"
 patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/types.h"
+dest = "kernel/types.h"
+upstream_sha256 = "4f1f0f0156f8f5c829916ad302d0390b3cb0b38bdf0edb7e3ebddf6e32a35647"
+sha256 = "4f1f0f0156f8f5c829916ad302d0390b3cb0b38bdf0edb7e3ebddf6e32a35647"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/features.h"
+dest = "kernel/features.h"
+upstream_sha256 = "6bb3e4fb0ff2cad4361a73a4cc01943afc679e3b2ab5e29540e3c19cc7d65f83"
+sha256 = "6bb3e4fb0ff2cad4361a73a4cc01943afc679e3b2ab5e29540e3c19cc7d65f83"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/data_template.h"
+dest = "kernel/data_template.h"
+upstream_sha256 = "43b519e1b1301953cb522b67252093b83cadc60671a2308d99af4b88dd799e11"
+sha256 = "43b519e1b1301953cb522b67252093b83cadc60671a2308d99af4b88dd799e11"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/data_arrays.h"
+dest = "kernel/data_arrays.h"
+upstream_sha256 = "f0a2890e197fcce66ba3059cead68912557d37482c85d52d1eb3f912d3481022"
+sha256 = "f0a2890e197fcce66ba3059cead68912557d37482c85d52d1eb3f912d3481022"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/device/cpu/compat.h"
+dest = "kernel/device/cpu/compat.h"
+upstream_sha256 = "e9d0934e9a6649691671f5845f9eaca9700faeb601ae007ec53f0edee8368e93"
+sha256 = "e9d0934e9a6649691671f5845f9eaca9700faeb601ae007ec53f0edee8368e93"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/types.h"
+dest = "kernel/svm/types.h"
+upstream_sha256 = "292ebde03bfc6f4bf45a49b1d88f78d54f33095a1e690135886ba8773fb994c9"
+sha256 = "292ebde03bfc6f4bf45a49b1d88f78d54f33095a1e690135886ba8773fb994c9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/node_types_template.h"
+dest = "kernel/svm/node_types_template.h"
+upstream_sha256 = "4dede480e1e344c73587194217c479f795c7175243bb13a1be4b084fc4285066"
+sha256 = "4dede480e1e344c73587194217c479f795c7175243bb13a1be4b084fc4285066"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/integrator/state_template.h"
+dest = "kernel/integrator/state_template.h"
+upstream_sha256 = "92450ae8888254032023358e6165bd9bf0e48dddbaaa228ffe485270bc91eba2"
+sha256 = "92450ae8888254032023358e6165bd9bf0e48dddbaaa228ffe485270bc91eba2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/integrator/shadow_state_template.h"
+dest = "kernel/integrator/shadow_state_template.h"
+upstream_sha256 = "ac00e2445e13e1a645a3ccc4aefba88ce424ef9dad2232f8ace30ca25522ce49"
+sha256 = "ac00e2445e13e1a645a3ccc4aefba88ce424ef9dad2232f8ace30ca25522ce49"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/static_assert.h"
+dest = "util/static_assert.h"
+upstream_sha256 = "3629e938c83951b0438c5a2ab28a7476bfa4208bcb30b152ff982e781eccb895"
+sha256 = "3629e938c83951b0438c5a2ab28a7476bfa4208bcb30b152ff982e781eccb895"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/types_image.h"
+dest = "util/types_image.h"
+upstream_sha256 = "e18c9ae47722a892da9b6cd1f9fcf0125d57b9ab9f2bde77384ab4ea38bc5fd6"
+sha256 = "e18c9ae47722a892da9b6cd1f9fcf0125d57b9ab9f2bde77384ab4ea38bc5fd6"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/globals.h"
+dest = "kernel/globals.h"
+upstream_sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1205"
+sha256 = "32400920e276f25a8a55f7d73d1985102295e500774c0d215b060b7dc36b1205"
+patched = false

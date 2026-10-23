@@ -88,3 +88,21 @@ target_link_libraries(cycles_graph PUBLIC cycles_util)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(cycles_graph PUBLIC -Wno-invalid-offsetof)
 endif()
+
+# T6.1: vendored Cycles kernel headers and the one kernel definition set. Every target whose sources include a kernel/
+# header must link cycles_kernel, so that all its translation units compile one KernelData and ShaderData layout. Only
+# the shim kernel/device/cpu/globals.h #errors without __MAX_CLOSURE__; kernel/types.h alone falls back to 64.
+# __KERNEL_FEATURES__, WITH_EMBREE, WITH_OSL and WITH_PATH_GUIDING stay undefined (T6.1 "Definition set").
+set(PAINTERLY_MAX_CLOSURE 64 CACHE STRING
+    "Cycles __MAX_CLOSURE__, the closure slots per ShaderData; 64 is Cycles' value when it is undefined (kernel/types.h:829-830)")
+if(NOT PAINTERLY_MAX_CLOSURE MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "PAINTERLY_MAX_CLOSURE must be a positive integer, got '${PAINTERLY_MAX_CLOSURE}'")
+endif()
+add_library(cycles_kernel INTERFACE)
+target_link_libraries(cycles_kernel INTERFACE cycles_util)
+target_compile_definitions(cycles_kernel INTERFACE __MAX_CLOSURE__=${PAINTERLY_MAX_CLOSURE})
+
+# T6.1: every shim header is reached through its upstream path (shim_markers.cpp). An OBJECT library in ALL, so the
+# wheel builds, which build no tests, compile it with MSVC, Clang and GCC.
+add_library(cycles_shim_markers OBJECT shim_markers.cpp)
+target_link_libraries(cycles_shim_markers PRIVATE cycles_kernel cycles_graph)

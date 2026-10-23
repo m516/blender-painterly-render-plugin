@@ -11,6 +11,8 @@
 
 #pragma once
 
+#define PAINTERLY_SHIM_UTIL_STRING_H 1
+
 /* Upstream's OpenImageIO/string_view.h provides the fixed-width integer types, and vendored
  * util/md5.h, util/path.h and util/md5.cpp use uint8_t, uint32_t and uint64_t through this header,
  * so the shim provides them too. */

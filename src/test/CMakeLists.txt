@@ -62,3 +62,15 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$" AND CMAKE_CXX_COMPILE
 endif()
 
 add_test(NAME painterly_tests COMMAND painterly_tests)
+
+# T6.1: Cycles kernel types. The layout probe is its own library, so the layout test compares two targets that each get
+# the definition set only through their own link to cycles_kernel.
+option(PAINTERLY_TEST_LAYOUT_SKEW
+       "Test only: compile the kernel layout probe with __KERNEL_FEATURES__=0, so the kernel layout test must fail" OFF)
+add_library(painterly_test_kernel_layout_probe STATIC cycles_kernel_layout_probe.cpp)
+target_link_libraries(painterly_test_kernel_layout_probe PRIVATE cycles_kernel)
+if(PAINTERLY_TEST_LAYOUT_SKEW)
+  target_compile_definitions(painterly_test_kernel_layout_probe PRIVATE __KERNEL_FEATURES__=0)
+endif()
+target_sources(painterly_tests PRIVATE test_cycles_kernel_layout.cpp test_cycles_kernel_types.cpp)
+target_link_libraries(painterly_tests PRIVATE cycles_kernel painterly_test_kernel_layout_probe)
