@@ -14,32 +14,54 @@
 //   - the hits closer than ray_epsilon, found by intersecting again with no near limit;
 //   - the hits whose shading normal faces away from the incoming ray (dot(N, d) > 0);
 //   - the bounce at which the two paths first hit different objects;
-//   - the mean path length.
+//   - the total path length.
 // It also reports the quantities the card's slow test compares: the total K consumption and the
 // total radiance of a 64 px pass.
 //
-// The finding at HEAD: the two scenes are the same scene. No path misses, no hit falls inside
-// ray_epsilon, the two walks reach every bounce in the same numbers up to bounce 17, 4049 of 4096
-// paths hit the same object at every bounce, and the total radiance agrees to six significant
-// figures. The quad's shading normal is the plane's n to the last bit, except for the sign of a
-// zero component (a -0.0 dot-products identically to +0.0).
+// The test asserts only what holds on any machine, because about 47 paths graze a box edge or a
+// sphere's silhouette, where Embree's float32 hit distance - and so the side the path lands on -
+// depends on the instruction set (src/test/test_bvh.cpp:30-72):
+//   - each walk's K consumption equals the kernel's own trace of the same pixels;
+//   - no path misses, at any bounce;
+//   - every path reaches bounces 0 and 1;
+//   - every quad hit's shading normal equals the analytic plane's n by value (==, so a -0.0
+//     component equals +0.0).
+// Every count the walk produces is printed with MESSAGE and none of them is asserted: the path
+// lengths, the two K totals, the number of paths that hit the same object at every bounce, and the
+// number of shading normals that differ.
 //
-// The one difference is the diffuse-bounce count, 32 draws in 66471 (4.8e-4 relative): a path that
-// lands on a mirror or a glass sphere in one scene and on a diffuse wall in the other gains or
-// loses a diffuse bounce. That is what the card's slow test measures, and it is a property of the
-// scene's chaos under a float32 hit, not of the shading: with one chain per pixel the two scenes'
-// region means agree to 1e-7 relative, while the card's image-chain design reports 1.7e-3, because
-// the image chain runs one K sequence through the whole image and a shift in it moves every later
-// pixel's sample window.
+// What this machine's run prints (these numbers are not pinned, they move with the instruction
+// set): the two walks reach bounces 0 to 17 in equal numbers, 4049 of 4096 paths hit the same
+// object at every bounce, the total path length is 75964 against 75966, and the radiance total
+// agrees to six significant figures. The total path length therefore differs by 2.6e-5 relative,
+// derived from those two numbers with
+//   python3 -c 'print((75966 - 75964) / 75964)'   ->   2.6328260755094518e-05
+// The two differences the numbers show are:
+//   - the quad scene sees more hits just inside ray_epsilon (618 against 205 at bounce 1). Those
+//     are the surface the path is already on: Embree's float32 t puts the new origin about 1e-7
+//     off the plane, so the raw root of that plane is a small positive t instead of exactly 0.
+//     The near limit rejects them, which is what it is for, so they cost nothing;
+//   - the diffuse-bounce count differs by about 4.8e-4 relative (66503 against 66471): a path that
+//     lands on a mirror or a glass sphere in one scene and on a diffuse wall in the other gains or
+//     loses a diffuse bounce.
 //
-// This test pins the counts, so a change that moves the quad geometry off the plane, breaks the
-// mesh path or flips a shading normal fails here.
+// Neither is a shading difference, and this walk finds none. Nor is the walk evidence that the
+// two scenes agree: M3-FIX-T3.17a refuted the look match at fresh seeds (the card's slow test
+// rejects 7 of 10 blocks 69-78 on the r3, r6 and r7 means), M3-FIX-T3.17b measured the quad
+// scene's raw radiance lower in r6 and higher in r7 under both chains, and the cause of that bias
+// is open (M3-FIX-T3.17c). With one chain per pixel the two scenes' region means agree to 1e-7
+// relative, while the card's image-chain design reports 1.7e-3, because the image chain runs one K
+// sequence through the whole image and a shift in it moves every later pixel's sample window; the
+// bias is in the mesh path's per-path radiance, not in the chain (M3-FIX-T3.17b).
+//
+// A change that moves the quad geometry off the plane, breaks the mesh path or flips a shading
+// normal still fails here: the misses, the reach counts at bounces 0 and 1, the K equality and the
+// by-value normal comparison all break.
 
 #include <doctest/doctest.h>
 
 #include <cmath>
 #include <cstdint>
-#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -184,12 +206,19 @@ void build_reference_scene(PainterlyScene &scene, const bool quads)
 /* One bounce of a walk. */
 struct Bounce {
   bool miss = false;
-  bool near_hit = false;            /* A hit lies within ray_epsilon of the ray's origin. */
-  bool away = false;                /* The shading normal faces away from the incoming ray. */
-  bool normal_equals_plane = false; /* A quad hit: the shading normal is the plane's n, bitwise. */
+  bool near_hit = false;           /* A hit lies within ray_epsilon of the ray's origin. */
+  bool away = false;               /* The shading normal faces away from the incoming ray. */
+  bool normal_equals_plane = true; /* A quad hit: the shading normal equals the plane's n. */
 
   int object_id = -1;
 };
+
+/* True when two vectors are equal by value, component for component: -0.0 == +0.0, and no bit
+ * pattern is compared. */
+bool same_value(const double3 a, const double3 b)
+{
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
 
 /* The object id of a hit, or -1. */
 int object_of(const PainterlyGlobals kg, const PainterlyIntersection &isect)
@@ -294,7 +323,7 @@ int walk(const PainterlyGlobals kg,
       const double3 plane_n = make_double3(PLANES[b.object_id - FIRST_PLANE_ID].n[0],
                                            PLANES[b.object_id - FIRST_PLANE_ID].n[1],
                                            PLANES[b.object_id - FIRST_PLANE_ID].n[2]);
-      b.normal_equals_plane = std::memcmp(&N, &plane_n, sizeof(double3)) == 0;
+      b.normal_equals_plane = same_value(N, plane_n);
     }
     bounces->push_back(b);
 
@@ -407,15 +436,16 @@ TEST_CASE("painterly scene: the quad scene's paths match the analytic scene's, b
         t.radiance_total += rt.radiance.x + rt.radiance.y + rt.radiance.z;
         a.length += na;
         t.length += nt;
-        /* Every quad hit's shading normal against the analytic plane's normal, bit for bit. */
+        /* Every quad hit's shading normal against the analytic plane's normal, by value: -0.0
+         * equals +0.0, so the sign of a zero component is not a difference. The count is printed;
+         * the comparison itself is what this test asserts, on every hit. */
         for (const Bounce &b : t.bounces) {
           if (b.miss || b.object_id < FIRST_PLANE_ID) {
             continue;
           }
           normal_hits++;
-          if (!b.normal_equals_plane) {
-            normal_mismatch++;
-          }
+          CHECK(b.normal_equals_plane);
+          normal_mismatch += b.normal_equals_plane ? 0 : 1;
         }
         a.k_total += K_a - k0_a;
         t.k_total += K_t - k0_t;
@@ -468,54 +498,45 @@ TEST_CASE("painterly scene: the quad scene's paths match the analytic scene's, b
     }
   }
   MESSAGE("quad shading normals vs the plane's n: " << normal_mismatch << " of " << normal_hits
-                                                    << " hits differ bitwise");
+                                                    << " hits differ by value");
   MESSAGE("total path length: analytic " << a.length << ", quad " << t.length << " over " << paths
                                          << " paths");
   MESSAGE("K consumption: analytic " << a.k_total << ", quad " << t.k_total);
   MESSAGE("radiance: analytic " << a.radiance_total << ", quad " << t.radiance_total);
+  MESSAGE("paths that hit the same object at every bounce: " << first_different[size_t(MAX_DEPTH)]
+                                                             << " of " << paths);
 
-  /* What the measurement shows at HEAD, pinned so that a change of the quad geometry, the mesh
-   * path or the shading normal fails here.
+  /* The checks that hold on any machine.
    *
-   * The box is closed in both scenes: no path misses, at any bounce. The two scenes agree on the
-   * paths themselves: the same number of paths reaches bounces 0 to 17, and 4049 of 4096 paths hit
-   * the same object at every bounce. The 47 that differ are the ones that graze a box edge or a
-   * sphere's silhouette, where a float32 t and a double t can land on different sides; the card's
-   * fast test reports the same edge case and does not assert it.
+   * The box is closed in both scenes, so no path misses at any bounce, and every path reaches
+   * bounces 0 and 1. The K consumption of each walk equals the kernel's own trace of the same
+   * pixels. Every quad hit's shading normal equals the analytic plane's n by value.
    *
-   * The quad scene sees more hits just inside ray_epsilon (618 against 205 at bounce 1). Those are
-   * the surface the path is already on: Embree's float32 t puts the new origin about 1e-7 off the
-   * plane, so the raw root of that plane is a small positive t instead of exactly 0. The near
-   * limit rejects them, which is what it is for, so they cost nothing.
+   * The numbers printed above are this machine's run, and none of them is asserted. About 47 paths
+   * graze a box edge or a sphere's silhouette, where Embree's float32 hit distance depends on the
+   * instruction set (src/test/test_bvh.cpp:30-72), so the path lengths, the K totals, the number
+   * of paths that hit the same object at every bounce and the count of paths that reach a late
+   * bounce all move with the build. The two differences the numbers show are:
    *
-   * The mean path length agrees to four decimals (18.5459 against 18.5464, +2.7e-4 relative), and
-   * the radiance total agrees to six significant figures. The K consumption does not: the quad
-   * scene draws 32 fewer diffuse samples over this 64 px pass (66503 against 66471, -4.8e-4
-   * relative), because a path that lands on a mirror or glass sphere in one scene and on a diffuse
-   * wall in the other gains or loses a diffuse bounce. That is the only difference the measurement
-   * finds, and it is not a shading difference: measured with one chain per pixel, so that nothing
-   * cascades, the region means of the two scenes agree to 1e-7 relative, four orders of magnitude
-   * below the 1.7e-3 the card's slow test reports. */
+   * - the quad scene sees more hits just inside ray_epsilon: Embree's float32 t puts the new
+   * origin about 1e-7 off the plane, so the raw root of that plane is a small positive t instead
+   * of exactly 0. The near limit rejects them, which is what it is for, so they cost nothing;
+   * - the diffuse-bounce count differs by about 4.8e-4 relative, because a path that lands on a
+   *   mirror or a glass sphere in one scene and on a diffuse wall in the other gains or loses a
+   *   diffuse bounce.
+   *
+   * Neither is a shading difference, and this walk finds no shading difference. Nor is it evidence
+   * that the two scenes agree: the look match is refuted at fresh seeds (the card's slow test),
+   * M3-FIX-T3.17b measured the quad scene's raw radiance lower in r6 and higher in r7 under both
+   * chains, and the cause of that bias is open (M3-FIX-T3.17c). */
   for (int i = 0; i < MAX_DEPTH; i++) {
     CHECK(a.miss[size_t(i)] == 0);
     CHECK(t.miss[size_t(i)] == 0);
   }
-  /* The paths agree until the first edge pixel diverges, at bounce 18. */
-  for (int i = 0; i < 18; i++) {
-    CHECK(a.reached[size_t(i)] == t.reached[size_t(i)]);
-  }
   CHECK(a.reached[0] == paths);
   CHECK(a.reached[1] == paths);
-  /* Every path but the 47 edge pixels hits the same object at every bounce. */
-  CHECK(first_different[size_t(MAX_DEPTH)] == 4049);
-  CHECK(a.length == 75964);
-  CHECK(t.length == 75966);
-  CHECK(a.k_total == 66503);
-  CHECK(t.k_total == 66471);
-  /* The shading normal of a quad is the plane's n, up to the sign of a zero component: a -0.0
-   * component dot-products identically to +0.0, so the two routes agree on every cost. */
-  CHECK(normal_mismatch == 29497);
-  CHECK(normal_hits == 63398);
+  CHECK(t.reached[0] == paths);
+  CHECK(t.reached[1] == paths);
 }
 
 CCL_NAMESPACE_END

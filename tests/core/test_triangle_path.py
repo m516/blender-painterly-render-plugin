@@ -1,21 +1,55 @@
-"""The triangle path is statistically indistinguishable from the oracle (T3.17).
+"""The triangle path's ids match the analytic scene's; its look does not match the oracle (T3.17).
 
 Blender scenes are triangle meshes, and Embree intersects triangles in float32, so the triangle
-scene of SPEC §9 cannot be bit-identical to the analytic one of T3.16. This file shows that the
-difference is not visible in the look:
+scene of SPEC §9 cannot be bit-identical to the analytic one of T3.16.
 
-- the fast test compares the object-id maps of the analytic and the triangle scene at 64 px. The
+- The fast test compares the object-id maps of the analytic and the triangle scene at 64 px. The
   ids agree exactly on the interior pixels, those whose 3x3 neighbourhood in the analytic map
   holds a single id (T5.4's 3x3 criterion, applied here to every id, because both scenes keep the
   analytic spheres). The edge pixels legitimately differ: the unjittered rays of columns 16 and 48
   pass within a relative 4.4e-8 of the back wall's vertical edges
   (``tan((double)float(pi/4))`` = 1 + 4.4e-8, SPEC §7), which is below float32 resolution, and
   the same holds along the floor-wall edges and where the spheres meet the floor. Their number is
-  reported, not asserted;
-- the slow test compares the triangle scene with the oracle on an ensemble of 8 pairs at 400 px
-  with P = 32 and the chain ``image``. The decision is the card's: ``compare_ensembles`` with
+  reported, not asserted.
+- The slow test compares the triangle scene with the oracle on an ensemble of 8 pairs at 400 px
+  with P = 32 and the chain ``image``. Its decision is the card's: ``compare_ensembles`` with
   ``alpha = 0.01`` on ``metrics.realization_free_key_family(metrics.diffuse_key_family(keys))``
   must reject nothing.
+
+**Its pass at block 68 is not evidence that the triangle path matches the oracle.** The card's
+Status bullet (``docs/tasks/M3/T3.17-triangle-path.md``, Opus, 2026-10-23) reads, in part:
+
+    The match is refuted at fresh seeds, so the slow test's pass at block 68 is not evidence of
+    it. Under `image`, 7 of 10 fresh seed blocks (69-78) reject on the `r3`, `r6` and `r7` means
+    (M3-FIX-T3.17a). Switching both sides to `row` didn't help (M3-FIX-T3.17b, whose amendment of
+    this card is withdrawn): 7 of 10 still reject. The quad scene's raw radiance is lower in `r6`
+    (by 0.15-0.24%) and higher in `r7` (by 0.09-0.27%), with the same signs in every block
+    measured and under both chains. M3-FIX-T3.17c looks for the cause in the mesh path.
+
+One run of this test at block 68, in this clone, measured:
+
+    $ PYTHONPATH="$PWD/analysis" PAINTERLY_BUILD_DIR="$PWD/build/q" \
+        <venv>/bin/python -m pytest -q -m slow -s tests/core/test_triangle_path.py
+    key  mean tri  sd tri  mean oracle  sd oracle  rel diff  cohen d  p  rejected
+        (the table's header line, its column gaps collapsed here to fit 100 columns)
+    ...
+    r7.mean.B  75.3299  0.06804  75.1665  0.05686  0.002174  2.606  0.0004662  False
+        (that table's row for r7.mean.B, its column gaps collapsed the same way)
+    ...
+    1 passed, 2 deselected in 80.57s (0:01:20)
+
+That table holds 26 keys, and the smallest p-value of the run is ``r7.mean.B``'s ``0.0004662``.
+Holm tests the smallest p-value against ``alpha / m`` (``ensemble.holm``), which is
+
+    $ python3 -c 'print(0.01 / 26)'
+    0.0003846153846153846
+    $ python3 -c 'print(0.0004662 / (0.01 / 26))'
+    1.21212
+
+so the smallest p-value is 1.21 times its threshold: this block passes, but the key nearest to
+rejection is not far from it, and a pass at one block does not decide the question the card asks.
+The p-values are exact permutation p-values, so they are the same on every run; the duration in
+the pytest summary line varies with the machine's load.
 
 The realization-dependent keys (``pattern_corr`` and ``block_rmse``) measure agreement with the
 oracle's particular sample sequence, and Embree's float32 hits shift the K consumption, so the
@@ -239,11 +273,23 @@ def _print_table(
 def test_the_triangle_scene_is_indistinguishable_from_the_oracle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The triangle scene and the oracle are indistinguishable on the realization-free family.
+    """The triangle scene's look against the oracle's, on the realization-free family.
 
     The decision is the card's: ``compare_ensembles`` at ``alpha = 0.01`` on
     ``metrics.realization_free_key_family(metrics.diffuse_key_family(keys))`` must reject
     nothing. The table is printed, and the K consumption is reported.
+
+    A pass here is not evidence that the triangle path matches the oracle. The card's Status
+    bullet records that the match is refuted at fresh seeds: 7 of 10 fresh seed blocks (69-78)
+    reject on the ``r3``, ``r6`` and ``r7`` means under ``image``, 7 of 10 still reject under
+    ``row``, and the quad scene's raw radiance is lower in ``r6`` (by 0.15-0.24%) and higher in
+    ``r7`` (by 0.09-0.27%) with the same signs in every block measured and under both chains
+    (M3-FIX-T3.17a, M3-FIX-T3.17b; the cause is open, M3-FIX-T3.17c).
+
+    One run at block 68 (command and output in the module docstring) measured 26 keys, the
+    smallest p-value ``r7.mean.B``'s ``0.0004662``, and a first Holm threshold of
+    ``0.01 / 26 = 0.0003846153846153846``: the smallest p-value is 1.21 times its threshold, so
+    this block's pass is the absence of a rejection here, not a measured match.
     """
     # The oracle's renders go into this clone's own cache (R7).
     monkeypatch.setenv("PAINTERLY_CACHE", str(CACHE_DIR))
@@ -300,6 +346,12 @@ def test_the_triangle_scene_is_indistinguishable_from_the_oracle(
         f"the triangle scene draws {core_total} times, the oracle {oracle_total}"
     )
 
+    # The card's decision, unchanged. A pass is the absence of a rejection at this seed block, not
+    # evidence of a match: the card's Status bullet records that 7 of 10 fresh blocks (69-78)
+    # reject on the r3, r6 and r7 means, and the quad scene's raw radiance is lower in r6 (by
+    # 0.15-0.24%) and higher in r7 (by 0.09-0.27%) under both chains, cause open
+    # (M3-FIX-T3.17c). The module docstring quotes one run's smallest p-value at this block and
+    # its Holm threshold.
     assert comparison.indistinguishable, (
         f"{[key for key in keys if comparison.rejected[key]]} differ between the triangle scene "
         f"and the oracle at alpha={ALPHA}"
