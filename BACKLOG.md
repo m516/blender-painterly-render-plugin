@@ -763,6 +763,116 @@ Outcome:
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && PYTHONPATH="$PWD/analysis" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -m pytest -q tests/core/test_repro_report.py && rm -rf .cache/repro-gen && for n in 001 002 003 004 006; do mkdir -p .cache/repro-gen/in/$n && cp experiments/$n-*/fig_*.png docs/handoff/repro/host/$n/results.json .cache/repro-gen/in/$n/ || exit 1; done && PYTHONPATH="$PWD/analysis" /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python tools/repro_report.py --outputs .cache/repro-gen/in --out .cache/repro-gen/out && cmp .cache/repro-gen/out/REPRO.json docs/handoff/repro/REPRO.json && cmp .cache/repro-gen/out/REPRO.md docs/handoff/repro/REPRO.md`
 allowedPaths: `tools/repro_report.py`, `tests/core/test_repro_report.py`
 
+## M3-FIX-TQ3a: the session's tests fail under the mutations that would break the add-on (TQ.3 F1-F4, F12-F15)
+Why (audit TQ.3, `docs/audits/TQ.3.md`, 2026-10-24): `src/painterly/session` (T3.14) reads correctly, but its tests pass
+under mutations the add-on's render loop would not survive: `wait(timeout)` returning true while a render runs (F1), a
+destructor without `cancel()` (F2), an unlocked copy (F3), a restart without its join or resets (F4), and `elapsed`
+growing after a render (F12). Three edge cases are open: two threads starting one Session (F13), a failed thread start
+(F14) and a non-finite timeout (F15).
+Do:
+- In `src/test/test_session.cpp`, add test cases that fail under each mutation of `src/painterly/session/session.cpp`
+  below. Show each mutation and its failure in your answer, then restore it. No case may assert a latency bound (D27).
+  - `wait` returning `true` unconditionally (line 84): right after `start()` of a render with far more passes than can
+    finish soon (for example a large `passes` on a small image), `wait(0.0)` returns false; then `cancel()`, and
+    `wait(-1.0)` returns true.
+  - No `cancel()` in the destructor (line 24): a case that sees the difference without a timing bound. If there is
+    none, say why and leave this one out.
+  - Restart (lines 48-50, 62, 67): after a finished render, `start()` again on the same Session with another pass
+    count gives buffers equal, bit for bit, to a fresh Session's render with that pass count, with an empty error; a
+    `cancel()` made between the two renders does not cancel the second.
+  - The copy's lock (lines 108 and 149): while a render runs, read `buffers_copy()` and `progress()` repeatedly and
+    check an invariant that a torn copy breaks; name the invariant. If none exists, say so.
+  - `elapsed` (lines 99-100): after the render finishes, two `progress()` calls with a sleep between them report the
+    same `elapsed`.
+- In `session.cpp`: if constructing the render thread throws, restore the state the session had and rethrow (F14). A
+  NaN, an infinite timeout, or one too large for the clock waits like a negative one (F15).
+- In `src/painterly/session/session.h`: say that a Session and its Scene are used from one thread at a time
+  (`start()` releases the GIL in the bindings, T3.15). `src/blender/_painterly.pyi` is a CONTRACT file: leave it.
+- Change no existing assertion.
+Outcome: `CHECK` exits 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/painterly/session/session.cpp`, `src/painterly/session/session.h`, `src/test/test_session.cpp`
+Depends on: M3-T3.14.
+
+## M3-FIX-TQ3b: the _painterly bindings are tested for their effect, not only their signature (TQ.3 F5, F17-F19, F23)
+Why (audit TQ.3, `docs/audits/TQ.3.md`, 2026-10-24): `tests/core/test_api_contract.py` compares the bindings' names,
+parameters and defaults with `_painterly.pyi`, and no test calls several of them for their effect: forwarding
+`set_camera_orthographic` to the perspective camera, or swapping `add_sun`'s direction and radiance, passes every test
+(F5). Three wrong-type sites are untested (F17), the original Python exception is discarded (F18), and the selftest's
+`t` check accepts any t below 0.75 (F19).
+Do:
+- In `tests/core/test_api_contract.py`, test the effect of `set_camera_perspective`, `set_camera_orthographic`,
+  `add_sun`, `set_spiral_object`, `Scene.clear` and `add_sphere(spot=...)`, each with a check that the mutations above
+  fail, for example two tiny renders that must differ. Use at least one transform that is not the identity, so a
+  shifted row in `object_to_world_from_python` fails. Show each mutation and its failure, then restore it.
+- Test `lane_length=True` (TypeError: a bool is not an int), `spiral_rotation=(0, 0, "a")` (the ValueError of
+  `src/blender/python.cpp:414-416`) and a negative `k0_phase_lock_bits` (ValueError).
+- In `python.cpp`, keep the original Python exception as the cause (`__cause__`) of the TypeError or ValueError that
+  `as_real` and `as_integer` raise (lines 290-294 and 307-311), with the message unchanged; test it with
+  `alpha=10**400` and with an object whose `__float__` raises. Build the range in line 331's message from
+  `PAINTERLY_K0_BITS`.
+- In `tests/core/test_import.py:48`, check `t` against the bound that `src/test/test_bvh.cpp:87` derives, so that
+  `SELFTEST_ORIGIN_Z = 1.4` in `src/blender/selftest.cpp` fails; show it, then restore it.
+- In `test_api_contract.py`: check `keep_alive` deterministically (the Scene's reference count while a Session holds
+  it); correct the module docstring's claim for lines 167-244; remove the dead branch at lines 116-117. If the GIL
+  test's precondition (line 629) can fail on a fast machine, make it independent of timing, or say why it can't be.
+Outcome: `CHECK` exits 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/blender/python.cpp`, `tests/core/test_api_contract.py`, `tests/core/test_import.py`
+Depends on: M3-FIX-T3.15a.
+
+## M3-FIX-TQ3c: tests that cannot fail or prove nothing, and comments that are wrong (TQ.3 F7, F16, F20, F22, F29, F34)
+Why (audit TQ.3, `docs/audits/TQ.3.md`, 2026-10-24): no test regenerates the committed REPRO.json and REPRO.md, so the
+generator and the files can drift apart (F7, TQ.2 F9's cost). Two device-scene checks run on an unchanged scene (F16),
+an oracle check compares a path with itself (F34), the `_under` check of the prebuilt-Embree tool is untested (F22),
+one test duplicates a parametrised case (F29), and three comments or helpers are wrong or doubled (F20).
+Do:
+- F7: in `tests/core/test_repro_report.py`, run `tools/repro_report.py` on the committed inputs, into a temporary
+  directory, as M3-FIX-TQ2-REPRO's landing check did, and require REPRO.json and REPRO.md byte-identical to the
+  committed files under `docs/handoff/repro/`. Show it failing after a one-character change to the generator's
+  output, then restore it.
+- F16: in `src/test/test_scene.cpp:989-999`, change the scene before each of the two failing `device_update` calls, so
+  that a rebuilt device scene would differ from the kept one; show a mutation it now catches.
+- F20: correct the comments at `test_scene.cpp:378` and `:1038` (the 52 bits of a binary64 significand are 13 hex
+  digits), and let `src/test/test_bvh.cpp:167` use the shared `make_ray` (TQ.2 F7).
+- F22: correct the comment at `tests/core/test_embree_prebuilt.py:63-64`, and add a unit test that fails when the
+  `_under` check at `tools/embree_prebuilt.py:270` is deleted; show it.
+- F29: remove `tests/core/test_compare_results.py:178-184`, after checking that the parametrised test at `:208-226`
+  covers its cases.
+- F34: replace `test_the_oracle_is_the_binary_of_this_build` (`tests/core/test_oracle_parity.py:160-167`) with a check
+  that fails when the oracle binary is stale or belongs to another build, or remove it and say why.
+Outcome: `CHECK` exits 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `tests/core/test_repro_report.py`, `src/test/test_scene.cpp`, `src/test/test_bvh.cpp`, `tests/core/test_embree_prebuilt.py`, `tests/core/test_compare_results.py`, `tests/core/test_oracle_parity.py`
+Depends on: M3-FIX-TQ2-REPRO.
+
+## M3-FIX-T3.17e: the triangle tests' comments say only what was measured, and two derivations are sound (TQ.3 F6, F24, F32, F33)
+Why (audit TQ.3, `docs/audits/TQ.3.md`, 2026-10-24): the header of `src/test/test_triangle_diagnostics.cpp` (lines
+40-46, 52-55) states an untested mechanism as fact and places the bias in per-path radiance, while its own sentence
+calls the cause open and its 1e-7 one-chain-per-pixel agreement points the other way (F32).
+`tests/core/test_triangle_path.py:192-196` passes on an empty interior (F6), and the module repeats
+`ensemble.DEFAULT_ALPHA` and calls an "indistinguishable" verdict "equivalent" (F24). TOL-a's two derivations
+(`analysis/tests/test_report.py:570-583`, `analysis/tests/test_scale_metrics.py:157-170`) reach their tolerances by
+loose arguments (F33).
+Do:
+- Start from M3-FIX-T3.17c's result: where it changed these files or found the cause, the comments follow it.
+- In the diagnostics header, state as measured only what the harness measures, mark the near-hit mechanism as a
+  hypothesis, and make the bias sentence agree with the open cause and the 1e-7 result (or with T3.17c's finding).
+  Keep the TEST_CASE name's prefix `painterly scene: the quad scene`; the rest of the name, which says the paths
+  "match", may change.
+- In `test_triangle_path.py`: require a non-empty interior before comparing it, and show that an empty interior now
+  fails; use `ensemble.DEFAULT_ALPHA` instead of a second 0.01; rename the tests or messages that call the verdict
+  "equivalent". Say in a comment why the `sys.modules` purge at lines 84-88 is needed, or remove it if the tests pass
+  without it.
+- TOL-a: in `test_report.py`, the derivation covers both evaluations that are compared (JAX and numpy). In
+  `test_scale_metrics.py`, count the operations of the 22-point transform the code actually runs (mixed radix 2 x 11,
+  not radix 2). If both sides are bitwise equal there (they run the same code on the same values), assert that with
+  `np.testing.assert_array_equal` instead, and say how you checked. No tolerance may widen.
+Outcome: `CHECK` exits 0, and the quad-scene doctest case still runs and passes.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && build/q/src/test/painterly_tests --test-case='painterly scene: the quad scene*' | grep -qE '^\[doctest\] test cases: +1 \| +1 passed \| +0 failed \|'`
+allowedPaths: `src/test/test_triangle_diagnostics.cpp`, `tests/core/test_triangle_path.py`, `analysis/tests/test_report.py`, `analysis/tests/test_scale_metrics.py`
+Depends on: M3-FIX-T3.17c.
+
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
 - Re-pointed on 2026-10-22: T4.1 needs T3.17's triangle path and nothing from experiment X-throughput.
@@ -794,6 +904,32 @@ Card: `docs/tasks/M4/T4.3-render-loop.md`. Depends on: M4-T4.2.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 - The verify adds the card's Blender targets to `CHECK`, whose `make check` runs no Blender test (`check: lint build test`).
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+
+## M4-FIX-T4.3a: T4.3's film tests pin IEC 61966-2-1 and see a flip (TQ.3 F8-F11, F30, F31)
+Why (landing review and audit TQ.3, `docs/audits/TQ.3.md`, 2026-10-24): `tests/core/test_film.py` builds its expected
+values from `film.py`'s own constants, so `BYTE_MAX = 100.0` or `SRGB_EXPONENT = 2.2` passes (F8). The flip test's
+uniform rows can't tell a row flip from a both-axes flip or a reversed RGBA order (F9), and the monotonicity assert can't
+fail (F11). The end-to-end render covers scene_linear at 100 % only (F10). film.py's values themselves are right.
+Do:
+- In `test_film.py`, write the standard's numbers as literals: 0.04045, 12.92, 0.055, 1.055 and 2.4 (IEC 61966-2-1),
+  and 255 x passes for a full byte (SPEC §8). Compute the half-inverse point from those literals. Replace the bound at
+  lines 116-127 with one that is sound for the operations used, or with `rel=1e-12` and CLAUDE.md rule 2's
+  justification (F30). Show `BYTE_MAX = 100.0`, `SRGB_EXPONENT = 2.2` and a changed `SRGB_JUNCTION` each failing,
+  then restore them.
+- Give the flip test a distinct value in every element, so a both-axes flip and a reversed channel order fail; show
+  both.
+- Take the monotonicity check's differences along the sums' axis (axis 0), and show it failing for a non-monotone map.
+- In `tests/blender/test_render_reference.py`, build the existing case's expectation with a hand-written row reversal
+  instead of `film.to_blender_rows`. Add end-to-end cases for display_referred, for a `resolution_percentage` below
+  100, and for `seed_per_frame` at a non-zero frame, each with an expectation built by hand from SPEC §8, not through
+  `film`. Mark a case `slow` if it takes more than about 10 s. Show a mutation of `src/blender/addon/session.py` that
+  each case catches, then restore it.
+- In `src/blender/addon/film.py`, correct the two docstrings (lines 92 and 107) that name Blender's row order: those
+  functions return the core's order (F31). Change no value in film.py.
+Outcome: `CHECK` and `make test-blender` exit 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `tests/core/test_film.py`, `tests/blender/test_render_reference.py`, `src/blender/addon/film.py`
+Depends on: M4-T4.3.
 
 ## M4-T4.4: build, install and render the extension in real Blender 5.2.2
 Card: `docs/tasks/M4/T4.4-extension-build-it.md`. Depends on: M4-T4.3.
