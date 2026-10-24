@@ -4,7 +4,8 @@
 
 Mirrors Cycles' ``intern/cycles/blender/addon/version_update.py``: a ``@persistent`` handler on
 ``bpy.app.handlers.version_update`` that runs after a file is loaded and upgrades
-``scene.painterly.data_version`` to :data:`CURRENT_DATA_VERSION`.
+``scene.painterly.data_version`` to :data:`CURRENT_DATA_VERSION` for every scene in
+``bpy.data.scenes``.
 """
 
 from __future__ import annotations
@@ -31,20 +32,24 @@ def upgrade(settings, from_version: int) -> None:
 
 
 @persistent
-def do_versions(scene) -> None:
-    """Bring ``scene.painterly.data_version`` up to :data:`CURRENT_DATA_VERSION` after a load.
+def do_versions(self) -> None:
+    """Bring every scene's ``painterly.data_version`` up to :data:`CURRENT_DATA_VERSION`.
+
+    Blender calls a ``version_update`` handler with an argument that is not a scene, so the scenes
+    come from :data:`bpy.data.scenes`, as in Cycles' ``do_versions``.
 
     Args:
-        scene: the scene whose Painterly settings are upgraded.
+        self: Blender's handler argument, which this handler does not use.
     """
-    settings = getattr(scene, "painterly", None)
-    if settings is None:
-        return
+    for scene in bpy.data.scenes:
+        settings = getattr(scene, "painterly", None)
+        if settings is None:
+            continue
 
-    from_version = settings.data_version
-    if from_version < CURRENT_DATA_VERSION:
-        upgrade(settings, from_version)
-        settings.data_version = CURRENT_DATA_VERSION
+        from_version = settings.data_version
+        if from_version < CURRENT_DATA_VERSION:
+            upgrade(settings, from_version)
+            settings.data_version = CURRENT_DATA_VERSION
 
 
 def register() -> None:

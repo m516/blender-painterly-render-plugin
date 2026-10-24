@@ -534,6 +534,20 @@ def test_the_operator_reports_when_nothing_changes(settings) -> None:
     assert "already match" in message
 
 
+# Blender calls a ``version_update`` handler with an argument that is not a scene: bpy 5.2.2 passes
+# ``None`` when a file is loaded. The handler must take its scenes from ``bpy.data.scenes``, so the
+# tests below pass the same argument instead of a scene, which would hide that (M4-FIX-T4.2a).
+VERSION_HANDLER_ARGUMENT = None
+
+
+@pytest.fixture()
+def second_scene(addon: ModuleType):
+    """A second scene, as a file saved with more than one scene has; removed after the test."""
+    scene = bpy.data.scenes.new("second scene")
+    yield scene
+    bpy.data.scenes.remove(scene)
+
+
 def test_the_version_handler_is_registered_and_persistent() -> None:
     assert version_update.do_versions in bpy.app.handlers.version_update
     assert hasattr(version_update.do_versions, "_bpy_persistent")
@@ -541,17 +555,28 @@ def test_the_version_handler_is_registered_and_persistent() -> None:
 
 def test_the_version_handler_upgrades_an_old_file(settings) -> None:
     settings.data_version = 0
-    version_update.do_versions(bpy.context.scene)
+    version_update.do_versions(VERSION_HANDLER_ARGUMENT)
     assert settings.data_version == version_update.CURRENT_DATA_VERSION == 1
+
+
+def test_the_version_handler_upgrades_every_scene(second_scene, settings) -> None:
+    """The handler ignores its argument and upgrades each scene of ``bpy.data.scenes``."""
+    settings.data_version = 0
+    second_scene.painterly.data_version = 0
+
+    version_update.do_versions(VERSION_HANDLER_ARGUMENT)
+
+    assert settings.data_version == version_update.CURRENT_DATA_VERSION == 1
+    assert second_scene.painterly.data_version == version_update.CURRENT_DATA_VERSION
 
 
 def test_the_version_handler_leaves_a_current_or_newer_file(settings) -> None:
     settings.data_version = version_update.CURRENT_DATA_VERSION
-    version_update.do_versions(bpy.context.scene)
+    version_update.do_versions(VERSION_HANDLER_ARGUMENT)
     assert settings.data_version == version_update.CURRENT_DATA_VERSION
 
     settings.data_version = version_update.CURRENT_DATA_VERSION + 1
-    version_update.do_versions(bpy.context.scene)
+    version_update.do_versions(VERSION_HANDLER_ARGUMENT)
     assert settings.data_version == version_update.CURRENT_DATA_VERSION + 1
 
 
