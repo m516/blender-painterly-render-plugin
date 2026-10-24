@@ -93,3 +93,7 @@ target_link_libraries(painterly_tests PRIVATE cycles_svm cycles_scene)
 
 # T6.7: closure SVM nodes, the BSDF lookup tables and the painterly closure collector (cycles_svm, cycles_scene).
 target_sources(painterly_tests PRIVATE test_cycles_svm_closures.cpp)
+
+# T6.8: image texture SVM nodes (cycles_svm) and the in-memory ImageManager (cycles_scene).
+target_sources(painterly_tests PRIVATE test_cycles_svm_images.cpp)
+target_link_libraries(painterly_tests PRIVATE cycles_svm cycles_scene)

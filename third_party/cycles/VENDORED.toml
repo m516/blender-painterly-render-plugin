@@ -1398,6 +1398,46 @@ upstream_sha256 = "ee3d637794b21fc5dfd4e7d6fd22a975e0b4de7c31be7180e419166ca0efe
 sha256 = "ee3d637794b21fc5dfd4e7d6fd22a975e0b4de7c31be7180e419166ca0efe96e"
 patched = false
 
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/device/cpu/image.h"
+dest = "kernel/device/cpu/image.h"
+upstream_sha256 = "caf7c614508647048608cfa9a3ed217bf6702a34d69fd8df22213e7c4f9d795d"
+sha256 = "caf7c614508647048608cfa9a3ed217bf6702a34d69fd8df22213e7c4f9d795d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/image.h"
+dest = "kernel/image.h"
+upstream_sha256 = "74ad3a60bc1d40b708701257ac219301f04d7fb5720a5be02b91f04ca2d27c67"
+sha256 = "74ad3a60bc1d40b708701257ac219301f04d7fb5720a5be02b91f04ca2d27c67"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/image.h"
+dest = "kernel/svm/image.h"
+upstream_sha256 = "6a15693bd2e76575de5ca9464a4e7e339325db3e501b8f3f323711c50ab7e345"
+sha256 = "6a15693bd2e76575de5ca9464a4e7e339325db3e501b8f3f323711c50ab7e345"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/util/image_2d.h"
+dest = "kernel/util/image_2d.h"
+upstream_sha256 = "52dea116acb42b1536591b086391eec0614e427c5f5e594214ff5e7868e53ef4"
+sha256 = "52dea116acb42b1536591b086391eec0614e427c5f5e594214ff5e7868e53ef4"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/half.h"
+dest = "util/half.h"
+upstream_sha256 = "ba9a1a78f46bda84138e9d1dec5f440f2216fa3832b5dba603834dc7925f9048"
+sha256 = "ba9a1a78f46bda84138e9d1dec5f440f2216fa3832b5dba603834dc7925f9048"
+patched = false
+
 [[fragment]]
 name = "kernel/svm/svm_h/svm_case/NODE_END"
 upstream = "cycles"
@@ -4141,3 +4181,57 @@ kind = "function"
 anchor = "round_up_to_multiple"
 upstream_lines = [58, 61]
 sha256 = "dd4c546f7559a1f56f05f88beb02600f691fc97325c9f1fb7e79f68155b20540"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_IMAGE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_IMAGE"
+upstream_lines = [281, 283]
+sha256 = "bc42f0a73033d9edcc00c03d89a74b82d788457430b51bf7b8b1ed1b05dce1c0"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_IMAGE_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_IMAGE_DERIVATIVE"
+upstream_lines = [284, 289]
+sha256 = "306aea0cb311c0fe2280564c1b20c92f4c295e078f60b9146611b153d21a6682"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_IMAGE_BOX"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_IMAGE_BOX"
+upstream_lines = [290, 292]
+sha256 = "d0e6cf41402844d1d4f9bbbdeb5cee4c5cbf39c1b80ad072554256774eea3ab6"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_IMAGE_BOX_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_IMAGE_BOX_DERIVATIVE"
+upstream_lines = [293, 299]
+sha256 = "bbf54ba2b5726c90b516cdee433293803cea21d0c021c8eb9cfce9ddf1ee8fc7"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_ENVIRONMENT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_ENVIRONMENT"
+upstream_lines = [440, 443]
+sha256 = "a2eaaaac60eec15ac605c3c8b4ff27d54a44a507fa6a7e4e9c0b58c76ba09fdd"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_ENVIRONMENT_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_ENVIRONMENT_DERIVATIVE"
+upstream_lines = [444, 450]
+sha256 = "c6e9945c6b0dcb81b557d6264bb305f798a80a520cd7cef6715cafacff4b55c3"

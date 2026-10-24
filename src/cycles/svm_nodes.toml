@@ -41,6 +41,8 @@ includes = [
   "kernel/svm/voronoi.h",
   "kernel/svm/wave.h",
   "kernel/svm/white_noise.h",
+  # T6.8: the image and environment texture evaluators (kernel/svm/svm.h:55).
+  "kernel/svm/image.h",
 ]
 cases = [
   "NODE_END",
@@ -108,4 +110,11 @@ cases = [
   "NODE_CLOSURE_BACKGROUND",
   "NODE_CLOSURE_WEIGHT",
   "NODE_MIX_CLOSURE",
+  # T6.8: Image Texture (flat and box projection) and Environment Texture, with their derivative variants.
+  "NODE_TEX_IMAGE",
+  "NODE_TEX_IMAGE_DERIVATIVE",
+  "NODE_TEX_IMAGE_BOX",
+  "NODE_TEX_IMAGE_BOX_DERIVATIVE",
+  "NODE_TEX_ENVIRONMENT",
+  "NODE_TEX_ENVIRONMENT_DERIVATIVE",
 ]

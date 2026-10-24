@@ -25,10 +25,13 @@ static_assert(PAINTERLY_SHIM_UTIL_PARAM_H == 1,
 static_assert(PAINTERLY_SHIM_UTIL_THREAD_H == 1,
               "util/thread.h did not resolve to src/cycles/shim/util/thread.h");
 
+#include "util/atomic.h"
 #include "util/log.h"
 #include "util/stats.h"
 #include "util/string.h"
 
+static_assert(PAINTERLY_SHIM_UTIL_ATOMIC_H == 1,
+              "util/atomic.h did not resolve to src/cycles/shim/util/atomic.h");
 static_assert(PAINTERLY_SHIM_UTIL_LOG_H == 1,
               "util/log.h did not resolve to src/cycles/shim/util/log.h");
 static_assert(PAINTERLY_SHIM_UTIL_STATS_H == 1,

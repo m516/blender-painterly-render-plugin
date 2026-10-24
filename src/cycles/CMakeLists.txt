@@ -234,3 +234,7 @@ add_custom_command(
   COMMENT "Generating Cycles fragment unit tables.cpp"
   VERBATIM)
 target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/tables.cpp)
+
+# T6.8: the in-memory ImageManager of the shim scene/image.h (images given by the caller, conformed as Cycles conforms them,
+# untiled, without OIIO, OCIO or the texture cache). The kernel image path is header-only, in cycles_svm.
+target_sources(cycles_scene PRIVATE shim/scene/image.cpp)
