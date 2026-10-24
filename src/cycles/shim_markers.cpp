@@ -35,3 +35,20 @@ static_assert(PAINTERLY_SHIM_UTIL_STATS_H == 1,
               "util/stats.h did not resolve to src/cycles/shim/util/stats.h");
 static_assert(PAINTERLY_SHIM_UTIL_STRING_H == 1,
               "util/string.h did not resolve to src/cycles/shim/util/string.h");
+
+#include "scene/attribute.h"
+#include "scene/image.h"
+#include "scene/osl.h"
+#include "scene/scene.h"
+#include "scene/shader.h"
+
+static_assert(PAINTERLY_SHIM_SCENE_ATTRIBUTE_H == 1,
+              "scene/attribute.h did not resolve to src/cycles/shim/scene/attribute.h");
+static_assert(PAINTERLY_SHIM_SCENE_IMAGE_H == 1,
+              "scene/image.h did not resolve to src/cycles/shim/scene/image.h");
+static_assert(PAINTERLY_SHIM_SCENE_OSL_H == 1,
+              "scene/osl.h did not resolve to src/cycles/shim/scene/osl.h");
+static_assert(PAINTERLY_SHIM_SCENE_SCENE_H == 1,
+              "scene/scene.h did not resolve to src/cycles/shim/scene/scene.h");
+static_assert(PAINTERLY_SHIM_SCENE_SHADER_H == 1,
+              "scene/shader.h did not resolve to src/cycles/shim/scene/shader.h");

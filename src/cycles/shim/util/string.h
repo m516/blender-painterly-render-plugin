@@ -29,6 +29,9 @@ using std::string;
 
 using string_view = std::string_view;
 
+/* Defined in src/cycles/shim/util/string.cpp. */
+bool string_endswith(string_view s, string_view end);
+
 #ifdef _WIN32
 using std::wstring;
 

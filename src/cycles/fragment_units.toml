@@ -1,0 +1,46 @@
+# Translation units assembled from the fragments of one upstream file each (tools/gen_fragment_units.py,
+# card T6.4). A unit holds every [[fragment]] of its upstream_path in third_party/cycles/VENDORED.toml, in
+# upstream order, after the includes below. A card that adds fragments whose code needs another header adds it
+# to `includes`. node_registry = true appends painterly_cycles_shader_node_types() (src/cycles/shader_node_registry.h).
+
+[unit.shader_nodes]
+upstream_path = "scene/shader_nodes.cpp"
+# scene/shader_nodes.cpp:5-41, keeping the headers that the T6.4 fragments need.
+includes = [
+  "scene/shader_nodes.h",
+  "kernel/svm/node_types.h",
+  "kernel/svm/types.h",
+  "kernel/types.h",
+  "scene/constant_fold.h",
+  "scene/osl.h",
+  "scene/scene.h",
+  "scene/svm.h",
+  "util/log.h",
+  "util/math_base.h",
+  "util/math_float3.h",
+  "util/string.h",
+  "util/transform.h",
+  "kernel/svm/math_util.h",
+  "<cassert>",
+  "<limits>",
+  "<mutex>",
+]
+node_registry = true
+
+[unit.svm]
+upstream_path = "scene/svm.cpp"
+# scene/svm.cpp:5-27, keeping the headers that the T6.4 fragments need.
+includes = [
+  "<algorithm>",
+  "<functional>",
+  "scene/scene.h",
+  "scene/shader.h",
+  "scene/shader_graph.h",
+  "scene/shader_nodes.h",
+  "scene/svm.h",
+  "kernel/svm/node_types.h",
+  "util/log.h",
+  "util/map.h",
+  "util/math_float3.h",
+]
+node_registry = false

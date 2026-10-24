@@ -798,6 +798,94 @@ upstream_sha256 = "cee623a1fd9a5c45ca0551963eab719fa9c72b5e434458dd71b14880c258d
 sha256 = "cee623a1fd9a5c45ca0551963eab719fa9c72b5e434458dd71b14880c258d7eb"
 patched = false
 
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/constant_fold.cpp"
+dest = "scene/constant_fold.cpp"
+upstream_sha256 = "b919a0ae02b1c4b8cdf176d2fff48a164b2142c8b23f7fe1e38d5dc8110aed88"
+sha256 = "b919a0ae02b1c4b8cdf176d2fff48a164b2142c8b23f7fe1e38d5dc8110aed88"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/constant_fold.h"
+dest = "scene/constant_fold.h"
+upstream_sha256 = "fb07a019e3042e6dfb1f1a6b1e39a56d867a5e4fdd2147838a285aabcfca4d1f"
+sha256 = "fb07a019e3042e6dfb1f1a6b1e39a56d867a5e4fdd2147838a285aabcfca4d1f"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/shader_graph.cpp"
+dest = "scene/shader_graph.cpp"
+upstream_sha256 = "74cd5f24fac8970e6fc172b4e5b29d339a66dadb5acbd24ce585f95d841b2271"
+sha256 = "74cd5f24fac8970e6fc172b4e5b29d339a66dadb5acbd24ce585f95d841b2271"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/shader_graph.h"
+dest = "scene/shader_graph.h"
+upstream_sha256 = "c97c42aa6af5a1f2da94f100219636d932618cd728f66852e229387241718fa9"
+sha256 = "c97c42aa6af5a1f2da94f100219636d932618cd728f66852e229387241718fa9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.h"
+dest = "scene/shader_nodes.h"
+upstream_sha256 = "3c07502d01a2abba3778626987018477b41d04ffac69e3e1b2b2e43e36864778"
+sha256 = "3c07502d01a2abba3778626987018477b41d04ffac69e3e1b2b2e43e36864778"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "scene/svm.h"
+dest = "scene/svm.h"
+upstream_sha256 = "5dbc75463e800606adf93641fcd5927872e014b1b21d7a9a5adae04076893e0c"
+sha256 = "5dbc75463e800606adf93641fcd5927872e014b1b21d7a9a5adae04076893e0c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/algorithm.h"
+dest = "util/algorithm.h"
+upstream_sha256 = "e4975066015a5e5966eb5f8502f12ac912b78d2a1bfa8c4b634d5d440b6a4b89"
+sha256 = "e4975066015a5e5966eb5f8502f12ac912b78d2a1bfa8c4b634d5d440b6a4b89"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/queue.h"
+dest = "util/queue.h"
+upstream_sha256 = "7d745041b96cda2fd8ff77a3d3c4de29bf8605d785e34dbff53b5f84fac3e9f1"
+sha256 = "7d745041b96cda2fd8ff77a3d3c4de29bf8605d785e34dbff53b5f84fac3e9f1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/random_access_iterator_mixin.h"
+dest = "util/random_access_iterator_mixin.h"
+upstream_sha256 = "297401323e1987d3def132cada29f3531312e5c7d19481320b4d05a33f2fc6ea"
+sha256 = "297401323e1987d3def132cada29f3531312e5c7d19481320b4d05a33f2fc6ea"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/set.h"
+dest = "util/set.h"
+upstream_sha256 = "201ea84b62dd88eb5971a52343586538f54dc869cc4ce94504220c319d9e54f7"
+sha256 = "201ea84b62dd88eb5971a52343586538f54dc869cc4ce94504220c319d9e54f7"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/unique_ptr_vector.h"
+dest = "util/unique_ptr_vector.h"
+upstream_sha256 = "63a41c6d0c84516c6360b843ba3e9693f6a9b64aad559c7caec3a0c6ef38ad1f"
+sha256 = "63a41c6d0c84516c6360b843ba3e9693f6a9b64aad559c7caec3a0c6ef38ad1f"
+patched = false
+
 [[fragment]]
 name = "kernel/svm/svm_h/svm_case/NODE_END"
 upstream = "cycles"
@@ -1181,3 +1269,1055 @@ kind = "svm_case"
 anchor = "NODE_MIX_VECTOR_NON_UNIFORM"
 upstream_lines = [610, 613]
 sha256 = "69b9544cb0088fd7ea94c2b3b9f8763f964d0c5274e8a977548bbf656d2f4935"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/AttributeNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "AttributeNode"
+upstream_lines = [6167, 6179]
+sha256 = "8fcca49f47b8d8defe68a4c976179a0be547b56d39014ee0fc9929c9085b3fe7"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/BumpNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "BumpNode"
+upstream_lines = [7208, 7230]
+sha256 = "4e80b0e7fff184be7008bf981a9e3015a6297e5bdf0fb37b8d93baa1f5b7fbd9"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/ClampNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "ClampNode"
+upstream_lines = [6751, 6767]
+sha256 = "14e6dc0f56ffa8d481c92fbe03652edfabbd40b6e0dd0caa6a39dab17376d49a"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/ColorNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "ColorNode"
+upstream_lines = [5254, 5262]
+sha256 = "cc4f7873e7a61e23aab1b3a864c4683f923e6e4d5f27f540721e51fbaf20428c"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/EmissionNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "EmissionNode"
+upstream_lines = [3056, 3068]
+sha256 = "e7a5f3fcb2e6997b3e359e0626f8b9757080c41a4b5f869f65128253e31c266c"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/GeometryNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "GeometryNode"
+upstream_lines = [3810, 3825]
+sha256 = "cbc9df50d3032a7d2e0019d22e821ab19d21a7796d3b8aa99a15684ff73c49f5"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/MathNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "MathNode"
+upstream_lines = [6863, 6920]
+sha256 = "9a06562705f78caaec4480423ccba146a598c9848c3e570bd0dcc0bfba1d1748"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/MixClosureWeightNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "MixClosureWeightNode"
+upstream_lines = [5384, 5395]
+sha256 = "3059838ee8c806fcbfb87335f6a2038a8df0ce77016e5189e99836233364afdf"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/OutputNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "OutputNode"
+upstream_lines = [6559, 6569]
+sha256 = "0626bc9f51037632e38315e9b2b6323b2d3d29b0679e96b54d3cc7fa84f50d46"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/SetNormalNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "SetNormalNode"
+upstream_lines = [7579, 7587]
+sha256 = "be91f910ba19d15d6f4e04ec768560b66192d910d6d1e62100a7f51bf8c3d1ad"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/TextureCoordinateNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "TextureCoordinateNode"
+upstream_lines = [4026, 4043]
+sha256 = "c8e7873695bd8bb089c88868c1e934dd8c128eff5e7e805d5348dcd2d484c544"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/ValueNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "ValueNode"
+upstream_lines = [5224, 5232]
+sha256 = "0e849597ffa7c1475385be502e8598b7ba805d2480b26b301861c9d3a975e998"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/VectorMathNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "VectorMathNode"
+upstream_lines = [6991, 7042]
+sha256 = "401e13557de7b34c200cc3c4abf3689d324bf2319f86c9815b97a803e6594bcd"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/VectorTransformNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "VectorTransformNode"
+upstream_lines = [7160, 7181]
+sha256 = "277c3f71abe6cf30fd26c293c2c42a75c5e50c13fe5468ad5035bbcb50043c88"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::compile"
+params = "SVMCompiler"
+upstream_lines = [6228, 6298]
+sha256 = "06bde6e3aa68204b941e9998c6b2e1f049c3dba31a6091d435b7cbbde3d1e1f2"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BumpNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BumpNode::compile"
+params = "SVMCompiler"
+upstream_lines = [7237, 7252]
+sha256 = "db8e58c193ba85d746a220beb2158f84781d2cbbcb75ed5ab9cd5f5fcc7d7b86"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ClampNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ClampNode::compile"
+params = "SVMCompiler"
+upstream_lines = [6783, 6794]
+sha256 = "c1dbabe10900db069cfe718b9d1b9594f9d444e6a3ea8046010aac8c8f0a2c9a"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ColorNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ColorNode::compile"
+params = "SVMCompiler"
+upstream_lines = [5271, 5278]
+sha256 = "bb35afa3c65c0536258e07d9eefcf0dc80444ea2435e112613242d7b566ce284"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::compile"
+params = "SVMCompiler"
+upstream_lines = [2106, 2135]
+sha256 = "32de27de212119b66eb3cab5994a6d2cc85bf56ecd277a29a13030665e4e5282"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/EmissionNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "EmissionNode::compile"
+params = "SVMCompiler"
+upstream_lines = [3072, 3099]
+sha256 = "8de8d75d2874910e85d08ae15870ad27d31cdcdbe913e728077d6cc536461e2e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GeometryNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GeometryNode::compile"
+params = "SVMCompiler"
+upstream_lines = [3866, 4006]
+sha256 = "669b00485ad2a9f60c2f503a6de61e60b197f1f2d1114ebffc910c867b3489fe"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::compile"
+params = "SVMCompiler"
+upstream_lines = [6970, 6981]
+sha256 = "20751ba73861d1a8c7400adf458362d1d7d8345076b7a9868dce7666cf0d9495"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MixClosureWeightNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MixClosureWeightNode::compile"
+params = "SVMCompiler"
+upstream_lines = [5399, 5409]
+sha256 = "ca8e0fb567547d02331d7191aef142312bad92829bd037e83298f2f47e898b01"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/OutputNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "OutputNode::compile"
+params = "SVMCompiler"
+upstream_lines = [6576, 6587]
+sha256 = "e98ddb8f7f106cd9a9f4242998d926c457dba975173534c9c5958ced0d722747"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/SetNormalNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "SetNormalNode::compile"
+params = "SVMCompiler"
+upstream_lines = [7591, 7599]
+sha256 = "9b23beb2ef546cc2c2a3ef71eca436aec2e132b437577e7d08f00138d7d7d0d0"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureCoordinateNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureCoordinateNode::compile"
+params = "SVMCompiler"
+upstream_lines = [4076, 4258]
+sha256 = "c2faa69b9648072c94ff1ea1a614f6a72eb64e4a90604bbd207499e65a70cad5"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ValueNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ValueNode::compile"
+params = "SVMCompiler"
+upstream_lines = [5241, 5244]
+sha256 = "7545424a165a7b90540345ba8d7696c451627ac1eea70530e2fedb05edcfc7a9"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorMathNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorMathNode::compile"
+params = "SVMCompiler"
+upstream_lines = [7086, 7099]
+sha256 = "35836d1f7b8428b84735a7224fb28f2aa0566283df6ca40c94648af6b21878b5"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorTransformNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorTransformNode::compile"
+params = "SVMCompiler"
+upstream_lines = [7185, 7196]
+sha256 = "086da132d9b2a502381a84c5f0d5f0eba61345961212587473ed04410c046400"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::compile"
+params = "OSLCompiler"
+upstream_lines = [6300, 6321]
+sha256 = "6162258e832ac726b8b17e2888e145cd59114f60e09ed2e47495ee7d1af6b292"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BumpNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BumpNode::compile"
+params = "OSLCompiler"
+upstream_lines = [7254, 7259]
+sha256 = "2aea4f824e3d410c3d69dc7b4f2f51c322dc581133fcc258a7598012736f6e3f"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ClampNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ClampNode::compile"
+params = "OSLCompiler"
+upstream_lines = [6796, 6800]
+sha256 = "493fdd2419cc50bc7259f21912677a5090f2e893b266e66ece463547e34a64cc"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ColorNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ColorNode::compile"
+params = "OSLCompiler"
+upstream_lines = [5280, 5285]
+sha256 = "abad825116ca2d9f726526a35e5a018e43d69448b1159bbb6773b58f3eb1f29e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::compile"
+params = "OSLCompiler"
+upstream_lines = [2137, 2163]
+sha256 = "cd70d985e637e2586516e13c3f6041edc053024bfff7ed3876865db25eef8dd8"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/EmissionNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "EmissionNode::compile"
+params = "OSLCompiler"
+upstream_lines = [3101, 3104]
+sha256 = "ebee8e3354f4008d6b4eab0eb759e60de7e0742c4e733a7799b05a2190616a12"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GeometryNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GeometryNode::compile"
+params = "OSLCompiler"
+upstream_lines = [4008, 4022]
+sha256 = "0e00ba4af94ab228726ce6146f3263eb25aa23eacee10f327ce472d3b01fc919"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::compile"
+params = "OSLCompiler"
+upstream_lines = [6983, 6987]
+sha256 = "88c7967da6eb2e5176681b4a2b69889237b9f941c6612f8fa5acfce4db3d02f2"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MixClosureWeightNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MixClosureWeightNode::compile"
+params = "OSLCompiler"
+upstream_lines = [5411, 5414]
+sha256 = "6b2801ead0a52b6ee94e1dd841f10ac4fad3168eae35a78815643d0398a4c16d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/OutputNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "OutputNode::compile"
+params = "OSLCompiler"
+upstream_lines = [6589, 6600]
+sha256 = "6acda68b9009aa06d43bc6538c65022b42801183be0523403d450ef3431e16dc"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/SetNormalNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "SetNormalNode::compile"
+params = "OSLCompiler"
+upstream_lines = [7601, 7604]
+sha256 = "3eb04b5205d9b2da0a1bd2600d59598baa6dd059ec620cab4b1787133bf2ee8a"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureCoordinateNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureCoordinateNode::compile"
+params = "OSLCompiler"
+upstream_lines = [4260, 4286]
+sha256 = "1c79fe2491bc787fc3c738f175d46f3fe095813b386299285e2d45734f3d622b"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ValueNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ValueNode::compile"
+params = "OSLCompiler"
+upstream_lines = [5246, 5250]
+sha256 = "6b6f438eb93ade8fbc8553e1b45e76b846550646d8b40e9450f113d7b454b31e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorMathNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorMathNode::compile"
+params = "OSLCompiler"
+upstream_lines = [7101, 7105]
+sha256 = "62d72b3e8e43d60b93b1ac317f59b41d09ea04f55c7ec4ddf2b2a56ccca48f75"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorTransformNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorTransformNode::compile"
+params = "OSLCompiler"
+upstream_lines = [7198, 7204]
+sha256 = "31e948f048b36661a10f08c3389537f212d5e1049d05645f49901bf1acb0127b"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.AttributeNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::AttributeNode"
+upstream_lines = [6181, 6181]
+sha256 = "c5c29ca3a5c97d3359ea8b4a07f451feb83fafec6f008f035fb9451122c65fbd"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.attributes"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::attributes"
+upstream_lines = [6183, 6197]
+sha256 = "50b9badfcc037bc751bb8aa44452be2c6e1e36067716552640e83075e9367580"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.add_named_attribute_request"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::add_named_attribute_request"
+upstream_lines = [6199, 6221]
+sha256 = "9ab7fc553930aadccde287596f087ec203e0b483263ab78991d68db2b415a3bd"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/AttributeNode.shader_node_type"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "AttributeNode::shader_node_type"
+upstream_lines = [6223, 6226]
+sha256 = "cfb9cbab324d4b9fbdfc3039c251f0cadd3cfc50f5964cd0a0b414ee558cc736"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BumpNode.BumpNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BumpNode::BumpNode"
+upstream_lines = [7232, 7235]
+sha256 = "b5e22479eca5fa69a13b34115b5fd4d3bc83370e9750179e8605b05c343cdb5e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BumpNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BumpNode::constant_fold"
+upstream_lines = [7261, 7276]
+sha256 = "bf1b04f44a4ad1b449877d140308252edb8b3dead396ba368889943137d34791"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ClampNode.ClampNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ClampNode::ClampNode"
+upstream_lines = [6769, 6769]
+sha256 = "9fb488a357088f0a23d8488b5702c9455e0d00f72b31c39d588d34b0517cdcd4"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ClampNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ClampNode::constant_fold"
+upstream_lines = [6771, 6781]
+sha256 = "cbd42923c67bb440b24cd9f51f9c03598d3f067ea4a820eaada4531c3db555bb"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ColorNode.ColorNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ColorNode::ColorNode"
+upstream_lines = [5264, 5264]
+sha256 = "c9c05d79d57186f6f81f2915c4449a348ab419dc79ee63a3edbb5832956b362e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ColorNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ColorNode::constant_fold"
+upstream_lines = [5266, 5269]
+sha256 = "cc78883ec486a61f3f52a48caf2b827b556bfd1feef9bd9487497ef9a352b6ca"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.get_node_types"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::get_node_types"
+upstream_lines = [1924, 1972]
+sha256 = "eb4ce2dcadff0a5e5c5c25257ce47565b7bd18bf200aceabefedda8ae259e0a6"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.register_on_init"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::register_on_init"
+upstream_lines = [1974, 1977]
+sha256 = "04448d93fc6dc07292150f4d8abebae20a6a3ebb5f22a23bf410a441bed3da96"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.create"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::create"
+upstream_lines = [1979, 1982]
+sha256 = "0fa664007dd721454438257182b4fa6ef3633eba1757429e73db4fade025842f"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::constant_fold"
+upstream_lines = [2008, 2067]
+sha256 = "d002dadd012bcdfe8e4f89a10d01afb2380a885ec9c514c668c649bf6a826b8d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.convert_type"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::convert_type"
+upstream_lines = [2069, 2104]
+sha256 = "b7e4e49bef1f5ba1cf431ed719a6af9d9476ef9b795998adb28fe8fee9f0722d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/EmissionNode.EmissionNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "EmissionNode::EmissionNode"
+upstream_lines = [3070, 3070]
+sha256 = "f9b093863ad5fd0313b5608188466c8f89957e103bbd53da0f744f7ba5d23acf"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/EmissionNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "EmissionNode::constant_fold"
+upstream_lines = [3106, 3114]
+sha256 = "c7b219dbf60b6f137183123c1ad3da3360dfa85cd8fc71e835b52099cfc52ace"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GeometryNode.GeometryNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GeometryNode::GeometryNode"
+upstream_lines = [3827, 3830]
+sha256 = "7e02eae55ebe0afa9e0f80628022810eac37b7c582fffbe586cdfd38efc3b863"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GeometryNode.attributes"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GeometryNode::attributes"
+upstream_lines = [3832, 3847]
+sha256 = "458659aed4d49a61347812da81dcf2861c5693423ca07f37e865162383bbb86f"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GeometryNode.shader_node_type"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GeometryNode::shader_node_type"
+upstream_lines = [3849, 3852]
+sha256 = "f43c857413a3d260a555510dff7c0e04226be892b4fcc84cba22cabdf4884f00"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.MathNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::MathNode"
+upstream_lines = [6922, 6922]
+sha256 = "f97592da3cca8ea0b279a614b5a28108c7ba81b7c4579a925661ec876834835e"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.expand"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::expand"
+upstream_lines = [6924, 6937]
+sha256 = "70e4e61c099d1164e2032e893c75ca4896995ff52375a12e46069f2cb5450cde"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::constant_fold"
+upstream_lines = [6939, 6947]
+sha256 = "5552a714903fcb0d8b815e03f2ee3cfc1291a3d69d56ec61673d85bb4c0a5a05"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MathNode.is_linear_operation"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MathNode::is_linear_operation"
+upstream_lines = [6949, 6968]
+sha256 = "5700398a57751cd4725bf9e159177c6d7e1e9b95aa33cb318850799fe5d0b374"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MixClosureWeightNode.MixClosureWeightNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MixClosureWeightNode::MixClosureWeightNode"
+upstream_lines = [5397, 5397]
+sha256 = "7dd5c0b41a70518647cfa436408f5094b24c7dd86925d65040b19103aba6240c"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/OutputNode.OutputNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "OutputNode::OutputNode"
+upstream_lines = [6571, 6574]
+sha256 = "4bb2833f1645fae584dca3c17d444692163c707e58a3397c178623fdfefaca84"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/SetNormalNode.SetNormalNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "SetNormalNode::SetNormalNode"
+upstream_lines = [7589, 7589]
+sha256 = "4a3d1cc43c6011a1e6e1bbb92a7acf5a6a8881d4ffd5fedb7f94d5988469c5ad"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureCoordinateNode.TextureCoordinateNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureCoordinateNode::TextureCoordinateNode"
+upstream_lines = [4045, 4045]
+sha256 = "085a864ea3b9a3f4ee4909d5a87cffdf39680bfaad3934cd5e26acd6f7743cff"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureCoordinateNode.attributes"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureCoordinateNode::attributes"
+upstream_lines = [4047, 4069]
+sha256 = "39dd8403369c825b947fda9d852663f602c13dcdb5c81b99d8cc4c9577c0ee46"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureCoordinateNode.shader_node_type"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureCoordinateNode::shader_node_type"
+upstream_lines = [4071, 4074]
+sha256 = "5367ddc8beb9ddfd1f932f443b8b2a447087eb296c9145e7a1e0881803fb4fdc"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ValueNode.ValueNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ValueNode::ValueNode"
+upstream_lines = [5234, 5234]
+sha256 = "6233f1e3c6a4312c40a405e1a7f1d43cb5b5d9fc105a646b437c9b052f74ca45"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ValueNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ValueNode::constant_fold"
+upstream_lines = [5236, 5239]
+sha256 = "20bbd29d9ebed21c6e70531071cb0bd7b4d79b819778bdeeda5954270fad2d5d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorMathNode.VectorMathNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorMathNode::VectorMathNode"
+upstream_lines = [7044, 7044]
+sha256 = "4c6644710aa2b26e62ba651f10cac8f8048d9289df2de6663afe355375df9473"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorMathNode.constant_fold"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorMathNode::constant_fold"
+upstream_lines = [7046, 7063]
+sha256 = "41132086a332750c9cdd466e8fb23e58fbd80e874f7ac95d4f01570ddd666866"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorMathNode.is_linear_operation"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorMathNode::is_linear_operation"
+upstream_lines = [7065, 7084]
+sha256 = "fcf551ce02a55273e8f4010d26c5cdfc95d32c2a718b7b156a1c85e23655685d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VectorTransformNode.VectorTransformNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VectorTransformNode::VectorTransformNode"
+upstream_lines = [7183, 7183]
+sha256 = "1346206e9599f832d304219d54ffb037389cc50c78a2c49e8c2269c08118b87f"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.ConvertNode-SocketType"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::ConvertNode"
+params = "SocketType"
+upstream_lines = [1984, 1996]
+sha256 = "bf73f4a0355a1094740b1a75d7c43e16fcd349e6c8bc55ef8b256be1d70913b3"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/ConvertNode.ConvertNode-const"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "ConvertNode::ConvertNode"
+params = "const"
+upstream_lines = [1999, 2006]
+sha256 = "2687cadd70191a386920f41c0aa22d77ada81d6eb715e9c18920450a50d47460"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/function/shader_bump_to_node_bump_offset"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "function"
+anchor = "shader_bump_to_node_bump_offset"
+upstream_lines = [3854, 3864]
+sha256 = "68b5708653870aa747f02814c35ae1434e15410a573ef8944f364d4d845e25fe"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_clear_offset"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_clear_offset"
+upstream_lines = [245, 252]
+sha256 = "acbcd4859be7812f6c4ea6389617ef7269552b167d916a6b0f8e56915a4ef192"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.input_int"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::input_int"
+upstream_lines = [300, 308]
+sha256 = "7128ca7f93c8232bd497facfb6179767bd763967469c0650c47cee5cc6761368"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.input_float"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::input_float"
+upstream_lines = [310, 322]
+sha256 = "f58c73c44b6f19ece107030d452b0f81b794abfddd46869888f537e9f6b87855"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.input_float3"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::input_float3"
+upstream_lines = [324, 341]
+sha256 = "7f17e9942c7ad88e150b00b4ce502c744c24b4ea53cd7085dbddb673b722e7ca"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.input_float3_from_offset"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::input_float3_from_offset"
+upstream_lines = [343, 346]
+sha256 = "926ce0a3dff04879521fcc251486804979dbfb234f5f807f3667a129838abd48"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.input_link"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::input_link"
+upstream_lines = [348, 358]
+sha256 = "d43ff76618baf759551231ec44a8e3d19bddc834a5940bf4354d8d84fad8823b"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_link"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_link"
+upstream_lines = [371, 384]
+sha256 = "14109b8964e25cf411b83f47f8e93efdfcdec28f6c428e155367db9989a2e507"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.is_sole_user"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::is_sole_user"
+upstream_lines = [386, 400]
+sha256 = "cb8be7f19701f3b27aa9cdc9fc2e4cefa4438f6fe0530da7104675667a8a66b8"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_clear_users"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_clear_users"
+upstream_lines = [402, 422]
+sha256 = "b0bd385bff885bf8aa9ef400c1f698b43af1ad7c3c2a1ed894878deb5526638f"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_clear_temporary"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_clear_temporary"
+upstream_lines = [424, 432]
+sha256 = "1727c65e08d7c97c3856f0440361c96d58c50733c3c81abcd93f46de28f4abfc"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.add_node"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::add_node"
+upstream_lines = [434, 438]
+sha256 = "386ec8eb52cfd7f66de5c688985abedafd9e209824e55c759be76bf32a64e38d"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.node_type"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::node_type"
+upstream_lines = [455, 465]
+sha256 = "9397173ec37bc7c3898c6f974316644a98316c9bbffe6d02e51e7eba5fa00363"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.add_node_data_float4"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::add_node_data_float4"
+upstream_lines = [467, 473]
+sha256 = "0acbb4fa12408d0e8abeebce2600c6a2f27ac9c7018160fba8ebb4138d25fdb4"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.add_node_data_float"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::add_node_data_float"
+upstream_lines = [475, 478]
+sha256 = "497ee4f9390250f53789248d6fddb14ad40ec0c0e2b43617a14304dc10a8688f"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_zero_incomplete_derivatives"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_zero_incomplete_derivatives"
+upstream_lines = [504, 534]
+sha256 = "8744fa8db551f051f40493bd7d626548930df2274ec473bcc6f9ac9d0f8cebd1"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.attribute_standard"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::attribute_standard"
+upstream_lines = [546, 550]
+sha256 = "917444191d46f1a2af9d35059df6059c760a6eca58a0ef3b9f2d2b6a50a6ec9c"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_size-SocketType"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_size"
+params = "SocketType"
+upstream_lines = [172, 196]
+sha256 = "73da39ae84617b6b48fb23f0aa9ece3e7111e2d2ff83235f4bc7b406159f1db0"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_size-const"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_size"
+params = "const"
+upstream_lines = [198, 204]
+sha256 = "b948e4b66be80573a807e76e7822a0d3c5d8246c98aa52d9b2a2113e3c7fda0e"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.output-const"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::output"
+params = "const"
+upstream_lines = [360, 364]
+sha256 = "917f41c022ee4d7ff70a84947b80dd9e5bb82e556f0c8c727dbd98c000f51173"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_find_offset-const_int"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_find_offset"
+params = "const int"
+upstream_lines = [206, 238]
+sha256 = "695af502c4ffaf62f5f81f750c1e8880eb63a95e13b20901b6df7daffaa32a1f"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_find_offset-const_ShaderIO"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_find_offset"
+params = "const ShaderIO"
+upstream_lines = [240, 243]
+sha256 = "9f4e7babcbafac67685bab74006c2fa97f7e74a3d3109be620791eeebbcf6a3c"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_assign-ShaderInput"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_assign"
+params = "ShaderInput"
+upstream_lines = [254, 288]
+sha256 = "d0cd8baebe5a61f2e18ecd35dae5f53897026b7cfbaf79f699d2f79b387c8fd8"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_assign-ShaderOutput"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_assign"
+params = "ShaderOutput"
+upstream_lines = [290, 298]
+sha256 = "0ab9ab720bc7b460a22ff3ffbc593e0a227ab91cfc645d9cf0127724930e11b4"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.output-ShaderOutput"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::output"
+params = "ShaderOutput"
+upstream_lines = [366, 369]
+sha256 = "c4d16d00de14e33c2f8a28b5c4a399f24fb26e7742319dc736fa6f5ad3cd2d62"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.add_value_node-ShaderNode_shader_node_const_float"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::add_value_node"
+params = "ShaderNode *shader_node, const float"
+upstream_lines = [480, 490]
+sha256 = "e06185a7b18b1095157266c141ab6b2f96d9a527981a3d0cfe9d1d58f9690db2"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.add_value_node-ShaderNode_shader_node_const_float3"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::add_value_node"
+params = "ShaderNode *shader_node, const float3"
+upstream_lines = [492, 502]
+sha256 = "79db6394cc76112741b2eb56a3304c8ca686057f41483ae4340b589bd509c4ce"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.attribute-ustring"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::attribute"
+params = "ustring"
+upstream_lines = [536, 539]
+sha256 = "fcefc2648347378b3b027b2124b1d304ef6b7bc852991da776a57e394522d96c"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.attribute-AttributeStandard"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::attribute"
+params = "AttributeStandard"
+upstream_lines = [541, 544]
+sha256 = "20d4d54ce9bb4caf20be6fe51d70c9fd4f331e7de5b67d36742c01097667b805"
+
+[[fragment]]
+name = "scene/svm_cpp/function/svm_node_type_with_derivatives"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "function"
+anchor = "svm_node_type_with_derivatives"
+upstream_lines = [440, 453]
+sha256 = "abb709443e240aec639b328c73499df696d6218d3cc9676187930ab8f61d9569"

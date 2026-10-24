@@ -4,9 +4,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* Modified by the Painterly project: defines only string_to_wstring, which path_fopen calls on
- * Windows. The function is copied from upstream util/string.cpp (lines 244-250). The other helpers
- * of upstream's file are not declared in the shim util/string.h, so they are not defined here. */
+/* Modified by the Painterly project: defines only string_endswith, which
+ * scene/shader_nodes.cpp:6216 calls, and string_to_wstring, which path_fopen calls on Windows. The
+ * functions are copied from upstream util/string.cpp (lines 120-135 and 244-250). The other
+ * helpers of upstream's file are not declared in the shim util/string.h, so they are not defined
+ * here. */
 
 #include "util/string.h"
 
@@ -15,6 +17,23 @@
 #endif
 
 CCL_NAMESPACE_BEGIN
+
+bool string_endswith(const string_view s, const string_view end)
+{
+  const size_t len = end.size();
+  if (len > s.size()) {
+    return false;
+  }
+
+  const size_t offset = s.size() - len;
+  for (size_t i = 0; i < len; i++) {
+    if (s[offset + i] != end[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 #ifdef _WIN32
 

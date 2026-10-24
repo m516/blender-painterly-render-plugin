@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <functional>
 #include <mutex>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -53,6 +54,20 @@ class ustring {
   bool empty() const
   {
     return str_->empty();
+  }
+
+  /* The characters as a string_view. OpenImageIO's ustring converts implicitly too, and
+   * scene/shader_nodes.cpp:6216 relies on it. */
+  operator std::string_view() const
+  {
+    return string();
+  }
+
+  /* The ustring of the characters [pos, pos + n), as OpenImageIO's ustring::substr()
+   * (scene/shader_nodes.cpp:6217). */
+  ustring substr(size_t pos, size_t n) const
+  {
+    return ustring(std::string_view(string()).substr(pos, n));
   }
 
   /* Hash of the interned pointer: equal strings have equal hashes, which is all unordered
@@ -106,6 +121,12 @@ class ustring {
 };
 
 using ustringhash = ustring;
+
+/* Writes the characters; an empty ustring writes nothing. */
+inline std::ostream &operator<<(std::ostream &os, const ustring &s)
+{
+  return os << s.string();
+}
 
 CCL_NAMESPACE_END
 

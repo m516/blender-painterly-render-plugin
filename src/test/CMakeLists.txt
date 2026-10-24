@@ -79,3 +79,7 @@ target_link_libraries(painterly_tests PRIVATE cycles_kernel painterly_test_kerne
 # T6.3: Cycles' generated SVM interpreter (cycles_svm) and the stack-node doctests.
 target_sources(painterly_tests PRIVATE test_cycles_svm_stack_nodes.cpp)
 target_link_libraries(painterly_tests PRIVATE cycles_svm)
+
+# T6.4: vendored shader graph, constant folding and the core shader nodes.
+target_sources(painterly_tests PRIVATE test_cycles_shader_graph.cpp)
+target_link_libraries(painterly_tests PRIVATE cycles_scene)

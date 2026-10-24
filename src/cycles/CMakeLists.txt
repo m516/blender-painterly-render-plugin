@@ -146,3 +146,34 @@ target_link_libraries(cycles_svm_headers_check PRIVATE cycles_kernel)
 if(NOT MSVC)
   target_compile_options(cycles_kernel INTERFACE -fno-strict-aliasing)
 endif()
+
+# T6.4: vendored shader graph, constant folding and the core shader nodes. tools/gen_fragment_units.py
+# assembles one translation unit per fragmented upstream file (src/cycles/fragment_units.toml); the
+# shader_nodes unit also defines the node type registry (shader_node_registry.h).
+set(PAINTERLY_FRAGMENT_UNITS_DIR ${CMAKE_CURRENT_BINARY_DIR}/fragment_units)
+set(PAINTERLY_FRAGMENT_UNIT_SOURCES)
+foreach(unit shader_nodes svm)
+  add_custom_command(
+    OUTPUT ${PAINTERLY_FRAGMENT_UNITS_DIR}/${unit}.cpp
+    COMMAND ${Python_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+            --manifest ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+            --vendored ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+            --unit ${unit}
+            --output ${PAINTERLY_FRAGMENT_UNITS_DIR}/${unit}.cpp
+    DEPENDS ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+            ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+    COMMENT "Generating Cycles fragment unit ${unit}.cpp"
+    VERBATIM)
+  list(APPEND PAINTERLY_FRAGMENT_UNIT_SOURCES ${PAINTERLY_FRAGMENT_UNITS_DIR}/${unit}.cpp)
+endforeach()
+add_library(cycles_scene STATIC
+  ${PROJECT_SOURCE_DIR}/third_party/cycles/scene/constant_fold.cpp
+  ${PROJECT_SOURCE_DIR}/third_party/cycles/scene/shader_graph.cpp
+  shim/scene/attribute.cpp
+  shim/scene/shader.cpp
+  ${PAINTERLY_FRAGMENT_UNIT_SOURCES})
+target_link_libraries(cycles_scene PUBLIC cycles_graph cycles_kernel)
+# Opus decision (T6.4): upstream names its namespace through the CCL_NAMESPACE_* macros and, at
+# scene/shader_nodes.h:992, through the bare token ccl. This maps the token to painterly too.
+target_compile_definitions(cycles_scene PUBLIC ccl=painterly)
