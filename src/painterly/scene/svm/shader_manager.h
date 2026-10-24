@@ -9,15 +9,16 @@
 
 #pragma once
 
-/* PainterlyShaderManager: Cycles' SVM shader manager for painterly (card T6.5). Header-only and
- * in no build target during M6a; M6b moves it into a library.
+/* PainterlyShaderManager: Cycles' SVM shader manager for painterly (card T6.5). Header-only
+ * until M6b gives painterly/scene a library.
  *
  * Cycles compiles shaders in SVMShaderManager (scene/svm.cpp:33-153) and in the
  * ShaderManager::device_update_* members (scene/shader.cpp:520-760). They need a Device, a
- * TaskPool, the LightManager, scene statistics and the BSDF lookup tables, so they are not
- * vendored (card T6.4). This class ports them. Each function names the upstream lines it ports;
- * code is upstream's except where a comment says what is left out and why. SVMCompiler itself is
- * vendored verbatim (scene/svm.cpp:157-1279, fragments of cards T6.4 and T6.5). */
+ * TaskPool, the LightManager and scene statistics, so they are not vendored (card T6.4). This
+ * class ports them. Each function names the upstream lines it ports; code is upstream's except
+ * where a comment says what is left out and why. SVMCompiler itself is vendored verbatim
+ * (scene/svm.cpp:157-1279, fragments of cards T6.4 and T6.5). The BSDF lookup tables are
+ * uploaded by ShaderManager::device_update_lookup_tables() of the shim (card T6.7). */
 
 #include <algorithm>
 #include <cassert>
@@ -29,6 +30,8 @@
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include "scene/svm.h"
+
+#include "kernel/globals.h"
 
 #include "util/array.h"
 #include "util/log.h"
@@ -124,11 +127,28 @@ class PainterlyShaderManager final : public ShaderManager {
   }
 
   /* SVMShaderManager::device_free and ShaderManager::device_free_common (scene/svm.cpp:148-153,
-   * scene/shader.cpp:750-760) without the lookup tables, which painterly does not upload. */
-  void device_free(Device * /*device*/, DeviceScene *dscene, Scene * /*scene*/) override
+   * scene/shader.cpp:750-760). */
+  void device_free(Device * /*device*/, DeviceScene *dscene, Scene *scene) override
   {
+    device_free_lookup_tables(scene);
     dscene->shaders.clear();
     dscene->svm_nodes.clear();
+  }
+
+  /* Points the kernel arrays that shader evaluation reads at `dscene`, and copies its KernelData
+   * (card T6.7): svm_nodes (the byte code), shaders (KernelShader::flags) and lookup_table (the
+   * BSDF and thin-film tables that kernel_data.tables indexes). Cycles' CPU device does the same
+   * in CPUDevice::global_alloc() and const_copy_to() (device/cpu/device_impl.cpp:178-216). M6b's
+   * PainterlyScene binds the other arrays. `globals` keeps pointers into `dscene`. */
+  static void bind_kernel_globals(const DeviceScene &dscene, KernelGlobalsCPU &globals)
+  {
+    globals.svm_nodes.data = reinterpret_cast<const uint *>(dscene.svm_nodes.data());
+    globals.svm_nodes.width = int(dscene.svm_nodes.size());
+    globals.shaders.data = dscene.shaders.data();
+    globals.shaders.width = int(dscene.shaders.size());
+    globals.lookup_table.data = dscene.lookup_table.data();
+    globals.lookup_table.width = int(dscene.lookup_table.size());
+    globals.data = dscene.data;
   }
 
  protected:
@@ -311,12 +331,20 @@ class PainterlyShaderManager final : public ShaderManager {
       has_transparent_shadow |= (flag & SD_HAS_TRANSPARENT_SHADOW) != 0;
     }
 
-    /* Left out: the BSDF lookup tables (:714-729). They need scene/shader.tables and the
-     * LookupTables of scene/tables.h, which no M6a node before the closure evaluators reads. */
+    /* lookup tables (:714-729): ShaderManager::device_update_lookup_tables() of the shim, which
+     * includes scene/shader.tables. The caller runs it after device_update_post() (card T6.7). */
 
     /* integrator */
     KernelIntegrator *kintegrator = &dscene->data.integrator;
     kintegrator->transparent_shadows = has_transparent_shadow;
+    /* Not upstream's place (card T6.7): Cycles' Integrator::device_update writes these from its
+     * sockets "Reflective Caustics" and "Refractive Caustics", which default to true
+     * (scene/integrator.cpp:119-120, 267-268). Painterly has no Cycles Integrator. Both stay true,
+     * so that __CAUSTICS_TRICKS__ (kernel/features.h:138) never drops a glossy, glass or
+     * refraction closure (kernel/svm/closure.h:280-285, 354-359, 565-571, 669-675, 742-748,
+     * 785-796). */
+    kintegrator->caustics_reflective = true;
+    kintegrator->caustics_refractive = true;
 
     /* film: of the color space (:736-747), only rgb_to_y (:742). The shim ShaderManager keeps
      * no other color-space member (card T6.4); NODE_CONVERT reads rgb_to_y

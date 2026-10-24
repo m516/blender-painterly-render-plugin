@@ -90,3 +90,6 @@ target_sources(painterly_tests PRIVATE test_cycles_svm_compiler.cpp)
 # T6.6: texture and texture-coordinate SVM nodes (cycles_svm) and the texture node classes (cycles_scene).
 target_sources(painterly_tests PRIVATE test_cycles_svm_textures.cpp test_cycles_texture_nodes.cpp)
 target_link_libraries(painterly_tests PRIVATE cycles_svm cycles_scene)
+
+# T6.7: closure SVM nodes, the BSDF lookup tables and the painterly closure collector (cycles_svm, cycles_scene).
+target_sources(painterly_tests PRIVATE test_cycles_svm_closures.cpp)

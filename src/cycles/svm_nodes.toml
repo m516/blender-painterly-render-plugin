@@ -102,4 +102,10 @@ cases = [
   "NODE_TEX_CHECKER",
   "NODE_TEX_BRICK",
   "NODE_TEX_WHITE_NOISE",
+  # T6.7: the BSDF and background closures, the weight of a linked BSDF Color, and the Mix Shader
+  # weights (scene/shader_nodes.cpp:2189-2214, 3133-3160, 5399-5409).
+  "NODE_CLOSURE_BSDF",
+  "NODE_CLOSURE_BACKGROUND",
+  "NODE_CLOSURE_WEIGHT",
+  "NODE_MIX_CLOSURE",
 ]

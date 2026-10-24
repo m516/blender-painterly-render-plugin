@@ -217,3 +217,20 @@ add_custom_command(
   COMMENT "Generating Cycles fragment unit transform.cpp"
   VERBATIM)
 target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/transform.cpp)
+
+# T6.7: LookupTables of scene/tables.cpp (the BSDF lookup tables), without device_update() and device_free(), which need a
+# Device. Assembled from fragments into the generated unit "tables" (src/cycles/fragment_units.toml) and compiled into
+# cycles_scene. The shim scene/shader.cpp, already a cycles_scene source, includes the vendored scene/shader.tables.
+add_custom_command(
+  OUTPUT ${PAINTERLY_FRAGMENT_UNITS_DIR}/tables.cpp
+  COMMAND ${Python_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          --manifest ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          --vendored ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+          --unit tables
+          --output ${PAINTERLY_FRAGMENT_UNITS_DIR}/tables.cpp
+  DEPENDS ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+  COMMENT "Generating Cycles fragment unit tables.cpp"
+  VERBATIM)
+target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/tables.cpp)

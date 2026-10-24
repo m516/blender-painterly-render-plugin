@@ -20,6 +20,9 @@ includes = [
   "util/math_float3.h",
   "util/string.h",
   "util/transform.h",
+  # T6.7: scene/shader_nodes.cpp:33, for PrincipledBsdfNode::has_surface_transparent
+  # (bsdf_thin_glass_transmission_roughness, roughness_is_almost_specular).
+  "kernel/closure/bsdf_microfacet.h",
   "kernel/svm/math_util.h",
   "<cassert>",
   "<limits>",
@@ -65,5 +68,17 @@ upstream_path = "util/transform.cpp"
 includes = [
   "util/transform.h",
   "util/projection.h",
+]
+node_registry = false
+
+[unit.tables]
+upstream_path = "scene/tables.cpp"
+# scene/tables.cpp:5-11, keeping the headers that the T6.7 fragments need. Card T6.7: LookupTables without
+# device_update() and device_free(), which need a Device.
+includes = [
+  "scene/tables.h",
+  "scene/scene.h",
+  "<cassert>",
+  "<cstring>",
 ]
 node_registry = false
