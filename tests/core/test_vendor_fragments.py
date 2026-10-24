@@ -613,6 +613,58 @@ def test_manifest_round_trip(tmp_path: Path) -> None:
     assert manifest.read_bytes() == before
 
 
+def test_member_without_params(tmp_path: Path) -> None:
+    """A member or function entry without `params` is valid; a present `params` must be a string.
+
+    T6.2 makes `params` optional: "a valid anchor (with `params` a string, if present) or a valid
+    id". Card T6.4's step 4 adds members and functions without --params, and its fragment names
+    carry no -<params> suffix for them. ToyNode::attributes has one definition, so no `params` is
+    needed to select it.
+    """
+    manifest, checkouts = _tree(tmp_path)
+    name = "scene/toy_nodes_cpp/member/ToyNode.attributes"
+    assert vs.add_fragments(
+        manifest, checkouts, "cycles", "scene/toy_nodes.cpp", "member", ["ToyNode::attributes"]
+    ) == [name]
+    # The name has no -<params> suffix. Had step 4 passed --params, the empty parameter text would
+    # have given "ToyNode.attributes-void" instead (fragment_name's suffix rule).
+    assert (
+        vs.fragment_name("scene/toy_nodes.cpp", "member", "ToyNode::attributes", params="")
+        == f"{name}-void"
+    )
+
+    # The entry has no `params` key, and its other fields are the member's.
+    text = _lines(NODES, 50, 57).encode("utf-8")
+    with manifest.open("rb") as handle:
+        data = tomllib.load(handle)
+    assert data["fragment"] == [
+        {
+            "name": name,
+            "upstream": "cycles",
+            "upstream_path": "scene/toy_nodes.cpp",
+            "kind": "member",
+            "anchor": "ToyNode::attributes",
+            "upstream_lines": [50, 57],
+            "sha256": hashlib.sha256(text).hexdigest(),
+        }
+    ]
+    # load_manifest runs the rules, so they accept the entry; the writer reproduces the file.
+    assert vs.render_manifest(vs.load_manifest(manifest)) == manifest.read_text(encoding="utf-8")
+    assert (manifest.parent / "fragments" / f"{name}.inc").read_bytes() == text
+    assert vs.check_fragments(manifest, checkouts) == []
+
+    # A `params` that is present must still be a string, with the same message as before.
+    bad = manifest.parent / "VENDORED.bad.toml"
+    bad.write_bytes(
+        manifest.read_bytes().replace(
+            b'anchor = "ToyNode::attributes"\n',
+            b'anchor = "ToyNode::attributes"\nparams = 1\n',
+        )
+    )
+    with pytest.raises(vs.FragmentError, match="the key 'params' must be a string"):
+        vs.load_manifest(bad)
+
+
 def test_committed_manifest_survives_the_writer() -> None:
     """The committed VENDORED.toml is what every later sync, add and remove writes back."""
     path = REPO_ROOT / "third_party" / "cycles" / "VENDORED.toml"

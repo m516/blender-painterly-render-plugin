@@ -405,7 +405,13 @@ def check_fragment_rules(manifest: Manifest) -> None:
             pattern = MEMBER_RE if kind == "member" else IDENTIFIER_RE
             if pattern.fullmatch(anchor) is None:
                 raise FragmentError(f"[[fragment]] {name}: anchor {anchor!r} is not a valid {kind}")
-            params = _fragment_string(table, "params") if kind in PARAM_KINDS else None
+            # `params` is optional: present only when the anchor was selected with it (T6.2,
+            # "Rules": "a valid anchor (with `params` a string, if present) or a valid id").
+            params = (
+                _fragment_string(table, "params")
+                if kind in PARAM_KINDS and "params" in table
+                else None
+            )
             fragment_id = None
         first, last = _fragment_lines(table)
         digest = _fragment_string(table, "sha256")
