@@ -36,12 +36,12 @@ jobs:
         os: [ubuntu-24.04, windows-2022, macos-14]
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Only the Embree source is cached. cibuildwheel compiles it inside each build, so no object file is reused.
       - name: Cache the Embree source
         id: embree-src
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/src/embree
           key: embree-src-${{ hashFiles('cmake/painterly_embree.cmake') }}
@@ -62,7 +62,7 @@ jobs:
         run: python tools/symbol_audit.py wheelhouse/*.whl
 
       - name: Upload the wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheel-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -87,15 +87,15 @@ jobs:
             platform: macos-arm64
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Download the wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: wheel-${{ matrix.os }}
           path: wheel
@@ -181,7 +181,7 @@ jobs:
 
       - name: Upload the coexistence results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coexist-${{ matrix.os }}
           path: |

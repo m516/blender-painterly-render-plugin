@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -23,7 +23,7 @@ jobs:
           enable-cache: true
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/dev/_deps
           key: fetchcontent-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}
@@ -49,11 +49,11 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Cache the Embree source
         id: embree-src
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/src/embree
           key: embree-src-${{ hashFiles('cmake/painterly_embree.cmake') }}
@@ -67,7 +67,7 @@ jobs:
       # configure line below names this interpreter, as the Makefile names .venv/bin/python.
       - name: Set up Python for the build-time generators
         id: python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
