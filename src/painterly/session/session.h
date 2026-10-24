@@ -13,6 +13,14 @@
  * the thread that called start(). progress(), buffers_copy() and wait() may be called from any
  * thread. Only one render runs at a time.
  *
+ * A Session and its Scene are used from one thread at a time (TQ.3 F13): start(), cancel(), the
+ * constructor and the destructor must all run on the same thread, and no second thread may call
+ * start() while that one is inside start(). The guard against two renders only sees the state
+ * once start() has set STATE_RENDERING, and start() takes the snapshot before that, so two
+ * threads that start together would both pass it and overwrite device_scene_ under the running
+ * worker. The bindings' start() releases the GIL (T3.15), so Python code must serialise its
+ * Sessions on the Python side; nothing here does it.
+ *
  * Output is bit-identical for any thread count and batch size (SPEC §3, docs/architecture.md
  * "Determinism contract"), so the batches decide only how often the progress and the buffers are
  * published, and how promptly cancel() is observed. */
@@ -76,11 +84,14 @@ class PainterlySession {
    * render_passes(b, min(b + batch, passes)) per batch. After each batch it publishes passes_done
    * and a copy of the buffers.
    * Throws std::logic_error while a render is running, and std::invalid_argument for passes < 1 or
-   * batch < 1. */
+   * batch < 1. If the render thread cannot be created, the session is left exactly as it was and
+   * the exception propagates (TQ.3 F14). */
   void start(int passes, int batch);
 
   /* Blocks until the state is no longer STATE_RENDERING, or until `timeout_seconds` elapsed. A
-   * negative timeout waits forever. Returns true when the state is no longer STATE_RENDERING. */
+   * negative timeout waits forever, and so does a NaN, an infinite or a timeout too large for the
+   * clock (TQ.3 F15). Returns true when the state is no longer STATE_RENDERING, false when the
+   * timeout elapsed first. */
   bool wait(double timeout_seconds);
 
   /* Asks the render to stop. The worker observes the request between batches and between the

@@ -4,6 +4,7 @@
 #include "painterly/session/session.h"
 
 #include <algorithm>
+#include <cmath>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -54,8 +55,32 @@ void PainterlySession::start(const int passes, const int batch)
   scene_->device_update(device_scene_);
 
   const KernelPainterlyCamera &cam = device_scene_.data.cam;
+  /* The state this start() replaces. std::thread's constructor can throw (a thread resource
+   * failure), and then the session must look exactly as it did before the call: STATE_RENDERING
+   * with no worker would leave wait() blocked forever (TQ.3 F14). The published buffers are moved
+   * rather than copied, since start() resets them below and the previous render thread is joined
+   * above, so no reader holds them. */
+  struct PreviousState {
+    PainterlySessionState state;
+    int passes_done;
+    int passes_total;
+    std::string error;
+    double elapsed;
+    std::chrono::steady_clock::time_point start_time;
+    bool cancel_requested;
+    PainterlyRenderBuffers published;
+  };
+  PreviousState previous;
   {
     const std::lock_guard<std::mutex> lock(mutex_);
+    previous.state = state_;
+    previous.passes_done = passes_done_;
+    previous.passes_total = passes_total_;
+    previous.error = error_;
+    previous.elapsed = elapsed_;
+    previous.start_time = start_time_;
+    previous.cancel_requested = cancel_requested_.load();
+    previous.published = std::move(published_);
     published_.reset(cam.width, cam.height);
     passes_done_ = 0;
     passes_total_ = passes;
@@ -68,14 +93,41 @@ void PainterlySession::start(const int passes, const int batch)
     start_time_ = std::chrono::steady_clock::now();
     state_ = PainterlySessionState::STATE_RENDERING;
   }
-  render_thread_ = std::thread(&PainterlySession::render, this, passes, batch);
+  try {
+    render_thread_ = std::thread(&PainterlySession::render, this, passes, batch);
+  }
+  catch (...) {
+    /* std::thread threw, so no worker will ever leave STATE_RENDERING. Put back everything the
+     * block above changed, so the session reports what it reported before the call, and rethrow
+     * (TQ.3 F14). */
+    {
+      const std::lock_guard<std::mutex> lock(mutex_);
+      state_ = previous.state;
+      passes_done_ = previous.passes_done;
+      passes_total_ = previous.passes_total;
+      error_ = std::move(previous.error);
+      elapsed_ = previous.elapsed;
+      start_time_ = previous.start_time;
+      published_ = std::move(previous.published);
+    }
+    cancel_requested_.store(previous.cancel_requested);
+    throw;
+  }
 }
 
 bool PainterlySession::wait(const double timeout_seconds)
 {
   std::unique_lock<std::mutex> lock(mutex_);
   const auto finished = [this] { return state_ != PainterlySessionState::STATE_RENDERING; };
-  if (timeout_seconds < 0.0) {
+  /* A NaN, an infinite or a too-large timeout waits forever, like a negative one (TQ.3 F15).
+   * wait_for() converts the timeout to std::chrono::steady_clock::duration, whose largest count
+   * is duration::max(); a timeout above that duration's value in seconds overflows the
+   * conversion, which is undefined behaviour. The floor of that value in whole seconds is
+   * therefore always representable, and every longer wait waits forever. NaN compares false with
+   * everything, so the negated <= also sends it down the forever branch. */
+  const double max_seconds = std::floor(
+      std::chrono::duration<double>(std::chrono::steady_clock::duration::max()).count());
+  if (timeout_seconds < 0.0 || !(timeout_seconds <= max_seconds)) {
     state_changed_.wait(lock, finished);
   }
   else {

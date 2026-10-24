@@ -9,6 +9,26 @@
 //
 // The cancel latency is recorded and printed, with no threshold (D27): it is the wall-clock time
 // from cancel() to the return of wait(), and nothing asserts a bound on it.
+//
+// Two of the mutations TQ.3 lists have no test here, because a case that saw them would have to
+// assert what D27 forbids or to prove what no C++ test can observe:
+// - The destructor's cancel() (session.cpp:24, TQ.3 F2). Without it the destructor still joins the
+//   render thread, and the join is what waits for the worker's last publish() and finish(); the
+//   only difference is that the worker stops at its next cancel check instead of rendering the
+//   passes that are left, which is a latency and not a result. No final state, buffer or error
+//   differs, so only a bound on the destructor's duration could see it, and D27 forbids one. The
+//   difference is real: the destructor test's render of CANCEL_PASSES is far longer than the
+//   cancel, so the destructor returns much sooner with the cancel than without it. A test that
+//   saw it would have to compare two durations, which is exactly the latency bound D27 rules out.
+// - The buffers copy's lock (session.cpp:108 and :149, TQ.3 F3). The invariant a torn copy breaks
+//   is the one session.h states: a copy holds exactly the passes [0, passes_done) of one finished
+//   batch, with width * height * 3 combined values, width * height k_consumed values and
+//   width * height object ids, never a half-written batch. But the tear is a data race, and a data
+//   race on std::vector is undefined behaviour: the copy may pair a new data pointer with an old
+//   size, read freed memory, or see a batch half way through. An unlocked run can therefore pass
+//   any assertion this file could make, and a locked one can be told apart only by a thread
+//   sanitizer, which this build has not (TQ.3 "Open"). A test that read the buffers in a loop and
+//   asserted the sizes would be flaky in both directions, which is a weaker check than none.
 
 #include <doctest/doctest.h>
 
@@ -18,6 +38,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -66,6 +87,17 @@ constexpr int DONE_BATCH = 3;
  * while the render is running. */
 constexpr int CANCEL_PASSES = 1000;
 constexpr int CANCEL_BATCH = 1;
+
+/* The passes of the restart test's last render, in batches of 2 so that the last batch is clipped
+ * from 2 passes to 1. The count differs from DONE_PASSES and CANCEL_PASSES, so the passes_done and
+ * the buffers of an earlier render of the same session cannot pass for this one's. */
+constexpr int RESTART_PASSES = 5;
+constexpr int RESTART_BATCH = 2;
+
+/* How long the elapsed test waits between its two progress() calls, in seconds. It is not a bound
+ * on the session: it only makes a clock that keeps running visible, and any interval longer than
+ * the clock's resolution would do the same. */
+constexpr double ELAPSED_SLEEP_SECONDS = 0.05;
 
 /* How often the tests poll progress() while they wait for the first batch, in seconds. It only
  * bounds the waiting loop; the loop leaves as soon as the condition holds. */
@@ -308,6 +340,174 @@ TEST_CASE("painterly session: the destructor cancels and joins a running render"
   CHECK(second.wait(-1.0));
   CHECK(second.progress().state == PainterlySessionState::STATE_DONE);
   CHECK(second.progress().passes_done == DONE_PASSES);
+}
+
+TEST_CASE("painterly session: wait with a timeout returns false while a render runs (F1)")
+{
+  PainterlyScene scene;
+  build_reference_scene(scene);
+  PainterlySession session(scene, THREADS);
+
+  /* CANCEL_PASSES is far more than the render finishes in any test run, so at the return of
+   * start() the render is still running and the state is STATE_RENDERING. A zero timeout then
+   * cannot see a finished render: wait(0.0) must report false (TQ.3 F1). This is the report the
+   * add-on's loop branches on (src/blender/addon/session.py). No timing bound is asserted: the
+   * false is a state read, not a latency. */
+  session.start(CANCEL_PASSES, CANCEL_BATCH);
+  CHECK_FALSE(session.wait(0.0));
+  CHECK(session.progress().state == PainterlySessionState::STATE_RENDERING);
+
+  /* The cancel then finishes the render, and the same call reports true. */
+  session.cancel();
+  CHECK(session.wait(-1.0));
+  CHECK(session.progress().state == PainterlySessionState::STATE_CANCELLED);
+}
+
+TEST_CASE("painterly session: a restart renders afresh and keeps no earlier state (F4)")
+{
+  PainterlyScene scene;
+  build_reference_scene(scene);
+  PainterlySession session(scene, THREADS);
+
+  /* Phase 1: a render that fails on its thread, so that the session holds an error message and a
+   * final state of its own. */
+  scene.integrator.set_max_depth(0);
+  session.start(DONE_PASSES, DONE_BATCH);
+  CHECK(session.wait(-1.0));
+  const PainterlySessionProgress failed = session.progress();
+  REQUIRE(failed.state == PainterlySessionState::STATE_ERROR);
+  REQUIRE_FALSE(failed.error.empty());
+
+  /* Phase 2: the same Session starts again, on the repaired scene, with another pass count. The
+   * report of the new render carries nothing of the old one: start() clears the error (TQ.3 F4),
+   * so a reader of the running render sees the empty error of a render that has not failed. The
+   * first report is read while the render runs: CANCEL_PASSES is far more passes than a 32 x 32
+   * render of this scene finishes in a test run (the constant's comment), and the report follows
+   * the return of start() at once. No latency is asserted. */
+  scene.integrator.set_max_depth(MAX_DEPTH);
+  session.start(CANCEL_PASSES, CANCEL_BATCH);
+  const PainterlySessionProgress running = session.progress();
+  REQUIRE(running.state == PainterlySessionState::STATE_RENDERING);
+  CHECK(running.error.empty());
+  CHECK(running.passes_total == CANCEL_PASSES);
+
+  /* The cancel finishes phase 2, and leaves the cancel request set for the next start(). */
+  session.cancel();
+  CHECK(session.wait(-1.0));
+  CHECK(session.progress().state == PainterlySessionState::STATE_CANCELLED);
+
+  /* Phase 3: the restart itself. start() clears the cancel request (TQ.3 F4), so the render after
+   * a cancelled one runs to completion, and its passes and bits are those of its own pass count,
+   * not of the cancelled render's. The join of the finished thread before the new one replaces it
+   * is what lets this assignment happen at all: a joinable std::thread would terminate. */
+  session.start(RESTART_PASSES, RESTART_BATCH);
+  CHECK(session.wait(-1.0));
+  const PainterlySessionProgress restarted = session.progress();
+  CHECK(restarted.state == PainterlySessionState::STATE_DONE);
+  CHECK(restarted.passes_done == RESTART_PASSES);
+  CHECK(restarted.passes_total == RESTART_PASSES);
+  CHECK(restarted.error.empty());
+  const PainterlyRenderBuffers restarted_buffers = session.buffers_copy();
+  CHECK(restarted_buffers.passes_done == RESTART_PASSES);
+  check_buffers_equal(restarted_buffers, render_directly(scene, RESTART_PASSES, RESTART_BATCH));
+
+  /* Phase 4: a fresh Session on the same scene, with the same pass count and batches, renders the
+   * same bits: nothing of the restarted Session's earlier renders leaks into its buffers. */
+  PainterlySession fresh(scene, THREADS);
+  fresh.start(RESTART_PASSES, RESTART_BATCH);
+  CHECK(fresh.wait(-1.0));
+  const PainterlySessionProgress fresh_progress = fresh.progress();
+  CHECK(fresh_progress.state == PainterlySessionState::STATE_DONE);
+  CHECK(fresh_progress.passes_done == restarted.passes_done);
+  CHECK(fresh_progress.passes_total == restarted.passes_total);
+  check_buffers_equal(fresh.buffers_copy(), restarted_buffers);
+}
+
+TEST_CASE("painterly session: a restart after a finished render matches a fresh Session (F4)")
+{
+  PainterlyScene scene;
+  build_reference_scene(scene);
+  PainterlySession session(scene, THREADS);
+
+  /* One finished render, of DONE_PASSES passes in batches of DONE_BATCH. */
+  session.start(DONE_PASSES, DONE_BATCH);
+  CHECK(session.wait(-1.0));
+  REQUIRE(session.progress().state == PainterlySessionState::STATE_DONE);
+
+  /* A cancel() with no render running, then a second render of another pass count. The request
+   * belongs to no render, so the next start() clears it and the second render completes (TQ.3 F4,
+   * session.h: "the next start() clears the request"), with the passes and the bits of its own
+   * pass count. */
+  session.cancel();
+  session.start(RESTART_PASSES, RESTART_BATCH);
+  CHECK(session.wait(-1.0));
+  const PainterlySessionProgress second = session.progress();
+  CHECK(second.state == PainterlySessionState::STATE_DONE);
+  CHECK(second.passes_done == RESTART_PASSES);
+  CHECK(second.passes_total == RESTART_PASSES);
+  CHECK(second.error.empty());
+  const PainterlyRenderBuffers second_buffers = session.buffers_copy();
+  CHECK(second_buffers.passes_done == RESTART_PASSES);
+  check_buffers_equal(second_buffers, render_directly(scene, RESTART_PASSES, RESTART_BATCH));
+
+  /* A fresh Session on the same scene, with the second render's pass count and batches, renders
+   * the same bits: the restarted Session carries nothing of its first render into the second. */
+  PainterlySession fresh(scene, THREADS);
+  fresh.start(RESTART_PASSES, RESTART_BATCH);
+  CHECK(fresh.wait(-1.0));
+  CHECK(fresh.progress().state == PainterlySessionState::STATE_DONE);
+  CHECK(fresh.progress().passes_done == second.passes_done);
+  CHECK(fresh.progress().passes_total == second.passes_total);
+  check_buffers_equal(fresh.buffers_copy(), second_buffers);
+}
+
+TEST_CASE("painterly session: elapsed stops at the end of the render (F12)")
+{
+  PainterlyScene scene;
+  build_reference_scene(scene);
+  PainterlySession session(scene, THREADS);
+  session.start(DONE_PASSES, DONE_BATCH);
+  CHECK(session.wait(-1.0));
+  const PainterlySessionProgress first = session.progress();
+  REQUIRE(first.state == PainterlySessionState::STATE_DONE);
+  REQUIRE(first.elapsed > 0.0);
+
+  /* The report of a finished render is the elapsed time of that render, taken once when it
+   * finished, so two reports with time between them are equal bit for bit (TQ.3 F12). A clock
+   * read in progress() would grow with the sleep. */
+  std::this_thread::sleep_for(std::chrono::duration<double>(ELAPSED_SLEEP_SECONDS));
+  const PainterlySessionProgress second = session.progress();
+  CHECK(second.state == first.state);
+  CHECK(second.elapsed == first.elapsed);
+}
+
+TEST_CASE("painterly session: a non-finite or too-large timeout waits like a negative one (F15)")
+{
+  PainterlyScene scene;
+  build_reference_scene(scene);
+  PainterlySession session(scene, THREADS);
+
+  /* A NaN, an infinity and a timeout above the clock's largest duration all mean wait forever: a
+   * NaN compares false with everything, the others are longer than any render, and the last also
+   * overflows the conversion wait_for makes (undefined behaviour, TQ.3 F15). So each wait below
+   * returns only when its render finishes, and reports the finished render. A wait_for that took
+   * the timeout instead returns at once, and a 32 x 32, DONE_PASSES render of this scene is not
+   * over yet (doctest prints these cases' durations: tens of milliseconds each), so it reports
+   * false. Nothing asserts a duration: the checks are the state and the buffers of the render. */
+  const double forever[] = {std::numeric_limits<double>::quiet_NaN(),
+                            std::numeric_limits<double>::infinity(),
+                            std::numeric_limits<double>::max()};
+  for (const double timeout : forever) {
+    session.start(DONE_PASSES, DONE_BATCH);
+    CHECK(session.wait(timeout));
+    const PainterlySessionProgress finished_progress = session.progress();
+    CHECK(finished_progress.state == PainterlySessionState::STATE_DONE);
+    CHECK(finished_progress.passes_done == DONE_PASSES);
+    CHECK(finished_progress.error.empty());
+    check_buffers_equal(session.buffers_copy(), render_directly(scene, DONE_PASSES, DONE_BATCH));
+    /* The render is over, so the next start() is legal whether or not the wait above saw it. */
+    CHECK(session.wait(-1.0));
+  }
 }
 
 TEST_CASE("painterly session: an exception on the render thread becomes STATE_ERROR")
