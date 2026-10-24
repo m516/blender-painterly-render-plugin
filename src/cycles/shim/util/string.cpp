@@ -4,11 +4,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* Modified by the Painterly project: defines only string_endswith, which
+/* Modified by the Painterly project: defines only string_printf, which
+ * SVMCompiler::Summary::full_report() (scene/svm.cpp:1251-1267) calls, string_endswith, which
  * scene/shader_nodes.cpp:6216 calls, and string_to_wstring, which path_fopen calls on Windows. The
- * functions are copied from upstream util/string.cpp (lines 120-135 and 244-250). The other
- * helpers of upstream's file are not declared in the shim util/string.h, so they are not defined
- * here. */
+ * functions are copied from upstream util/string.cpp (lines 23-53, 120-135 and 244-250).
+ * string_printf calls the C library's vsnprintf on every platform; upstream maps it to _vsnprintf
+ * on Windows (lines 14-19), whose -1 on truncation the same loop handles. The other helpers of
+ * upstream's file are not declared in the shim util/string.h, so they are not defined here. */
+
+#include <cassert>
+#include <cstdarg>
+#include <cstdio>
 
 #include "util/string.h"
 
@@ -17,6 +23,38 @@
 #endif
 
 CCL_NAMESPACE_BEGIN
+
+string string_printf(const char *format, ...)
+{
+  vector<char> str(128, 0);
+
+  while (true) {
+    va_list args;
+    int result;
+
+    va_start(args, format);
+    result = vsnprintf(str.data(), str.size(), format, args);
+    va_end(args);
+
+    if (result == -1) {
+      /* not enough space or formatting error */
+      if (str.size() > 65536) {
+        assert(0);
+        return string("");
+      }
+
+      str.resize(str.size() * 2, 0);
+      continue;
+    }
+    if (result >= (int)str.size()) {
+      /* not enough space */
+      str.resize(result + 1, 0);
+      continue;
+    }
+
+    return string(str.data());
+  }
+}
 
 bool string_endswith(const string_view s, const string_view end)
 {

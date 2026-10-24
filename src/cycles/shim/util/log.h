@@ -3,13 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* Modified by the Painterly project: LOG_ERROR, LOG_WARNING, LOG_INFO and LOG_TRACE stream to
- * std::cerr, each prefixed with its level, instead of through upstream's LogMessage. LogLevel
- * (util/log.h:17-29), LOG_IS_ON (util/log.h:113) and the float3 stream operator
+/* Modified by the Painterly project: LOG_ERROR, LOG_WARNING, LOG_INFO, LOG_DEBUG and LOG_TRACE
+ * stream to std::cerr, each prefixed with its level, instead of through upstream's LogMessage.
+ * LogLevel (util/log.h:17-29), LOG_IS_ON (util/log.h:113) and the float3 stream operator
  * (util/log.cpp:137-141) are upstream's; LOG_LEVEL is upstream's variable (util/log.h:76,
- * util/log.cpp:17) as an inline variable. LOG_TRACE writes only when LOG_IS_ON(LOG_LEVEL_TRACE),
- * as upstream's LOG(LOG_LEVEL_TRACE) does (util/log.h:83-108). Upstream's log configuration is
- * not needed until a card vendors code that calls it. */
+ * util/log.cpp:17) as an inline variable. LOG_DEBUG and LOG_TRACE write only when LOG_IS_ON of
+ * their level, as upstream's LOG(LOG_LEVEL_DEBUG) and LOG(LOG_LEVEL_TRACE) do (util/log.h:83-108).
+ * Upstream's log configuration is not needed until a card vendors code that calls it. */
 
 #pragma once
 
@@ -55,6 +55,14 @@ inline LogLevel LOG_LEVEL = LOG_LEVEL_INFO_IMPORTANT;
   } \
   else \
     (std::cerr << "Trace: ")
+
+/* LOG_DEBUG writes only when LOG_IS_ON(LOG_LEVEL_DEBUG), as upstream's LOG(LOG_LEVEL_DEBUG) does
+ * (util/log.h:107). scene/svm.cpp:1022 and PainterlyShaderManager (card T6.5) use it. */
+#define LOG_DEBUG \
+  if (!LOG_IS_ON(LOG_LEVEL_DEBUG)) { \
+  } \
+  else \
+    (std::cerr << "Debug: ")
 
 inline std::ostream &operator<<(std::ostream &os, const float3 &value)
 {

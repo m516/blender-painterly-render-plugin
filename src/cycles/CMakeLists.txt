@@ -177,3 +177,26 @@ target_link_libraries(cycles_scene PUBLIC cycles_graph cycles_kernel)
 # Opus decision (T6.4): upstream names its namespace through the CCL_NAMESPACE_* macros and, at
 # scene/shader_nodes.h:992, through the bare token ccl. This maps the token to painterly too.
 target_compile_definitions(cycles_scene PUBLIC ccl=painterly)
+
+# T6.5: time_dt() of util/time.cpp, which SVMCompiler::compile (scene/svm.cpp:1184, 1229), util/time.h's scoped_timer and
+# util/progress.h call. Card T6.5 takes this one function as a fragment, assembled into the generated unit "time"
+# (src/cycles/fragment_units.toml) and compiled into cycles_scene; util/time.cpp is not vendored whole.
+add_custom_command(
+  OUTPUT ${PAINTERLY_FRAGMENT_UNITS_DIR}/time.cpp
+  COMMAND ${Python_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          --manifest ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          --vendored ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+          --unit time
+          --output ${PAINTERLY_FRAGMENT_UNITS_DIR}/time.cpp
+  DEPENDS ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+  COMMENT "Generating Cycles fragment unit time.cpp"
+  VERBATIM)
+target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/time.cpp)
+
+# T6.5: kernel/svm/closure.h and the kernel headers it reaches compile verbatim with the kernel definition set
+# (svm_closure_headers_check.cpp). An OBJECT library in ALL, like cycles_svm_headers_check (T6.3), so the wheel builds,
+# which build no tests, compile them with MSVC, Clang and GCC.
+add_library(cycles_svm_closure_headers_check OBJECT svm_closure_headers_check.cpp)
+target_link_libraries(cycles_svm_closure_headers_check PRIVATE cycles_kernel)

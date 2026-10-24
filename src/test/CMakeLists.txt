@@ -83,3 +83,6 @@ target_link_libraries(painterly_tests PRIVATE cycles_svm)
 # T6.4: vendored shader graph, constant folding and the core shader nodes.
 target_sources(painterly_tests PRIVATE test_cycles_shader_graph.cpp)
 target_link_libraries(painterly_tests PRIVATE cycles_scene)
+
+# T6.5: Cycles' SVM compiler end to end (cycles_scene, cycles_svm, PainterlyShaderManager).
+target_sources(painterly_tests PRIVATE test_cycles_svm_compiler.cpp)

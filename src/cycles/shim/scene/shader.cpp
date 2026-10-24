@@ -6,13 +6,40 @@
 
 /* Modified by the Painterly project: the ShaderManager constructor computes only rgb_to_y.
  * get_attribute_id() (both overloads) and linear_rgb_to_gray() are byte-for-byte copies of
- * scene/shader.cpp:483-502 and 894-897. */
+ * scene/shader.cpp:483-502 and 894-897. Shader::set_graph() is scene/shader.cpp:283-312 without
+ * the displacement hash (lines 290-293 and 296-305). */
 
 #include "scene/shader.h"
+#include "scene/shader_graph.h"
+#include "scene/shader_nodes.h"
 
 #include "util/transform.h"
 
 CCL_NAMESPACE_BEGIN
+
+/* Shader */
+
+Shader::~Shader() = default;
+
+/* scene/shader.cpp:283-312 without lines 290-293 and 296-305 (the displacement hash). */
+void Shader::set_graph(unique_ptr<ShaderGraph> &&graph_)
+{
+  /* do this here already so that we can detect if mesh or object attributes
+   * are needed, since the node attribute callbacks check if their sockets
+   * are connected but proxy nodes should not count */
+  if (graph_) {
+    graph_->remove_proxy_nodes();
+  }
+
+  /* assign graph */
+  graph = std::move(graph_);
+
+  /* Store info here before graph optimization to make sure that
+   * nodes that get optimized away still count. */
+  has_volume_connected = (graph->output()->input("Volume")->link != nullptr);
+}
+
+/* Shader Manager */
 
 ShaderManager::ShaderManager()
 {

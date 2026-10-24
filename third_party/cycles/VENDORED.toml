@@ -886,6 +886,366 @@ upstream_sha256 = "63a41c6d0c84516c6360b843ba3e9693f6a9b64aad559c7caec3a0c6ef38a
 sha256 = "63a41c6d0c84516c6360b843ba3e9693f6a9b64aad559c7caec3a0c6ef38ad1f"
 patched = false
 
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/bvh/util.h"
+dest = "kernel/bvh/util.h"
+upstream_sha256 = "887786bdffc8ae6970fcd9d70702ee78d909c85b29512d5b972d6727350206dd"
+sha256 = "887786bdffc8ae6970fcd9d70702ee78d909c85b29512d5b972d6727350206dd"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/camera/projection.h"
+dest = "kernel/camera/projection.h"
+upstream_sha256 = "cad9dc95eeee4995b6af99bca8b3d62262e36232f736733650d20580c0d49a1f"
+sha256 = "cad9dc95eeee4995b6af99bca8b3d62262e36232f736733650d20580c0d49a1f"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/alloc.h"
+dest = "kernel/closure/alloc.h"
+upstream_sha256 = "0c4d641007cce198cf98133fbf50f796c1ccd2bdcaf25d99f38302f63732f346"
+sha256 = "0c4d641007cce198cf98133fbf50f796c1ccd2bdcaf25d99f38302f63732f346"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf.h"
+dest = "kernel/closure/bsdf.h"
+upstream_sha256 = "e2a897f1d85bb5c1f1eea000565e257883674baa9c816e08725e41bf33401383"
+sha256 = "e2a897f1d85bb5c1f1eea000565e257883674baa9c816e08725e41bf33401383"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_ashikhmin_shirley.h"
+dest = "kernel/closure/bsdf_ashikhmin_shirley.h"
+upstream_sha256 = "f69275558ca7c199e917e8b687e3215a2d267185e48d984b5de90f4e8aa07f54"
+sha256 = "f69275558ca7c199e917e8b687e3215a2d267185e48d984b5de90f4e8aa07f54"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_ashikhmin_velvet.h"
+dest = "kernel/closure/bsdf_ashikhmin_velvet.h"
+upstream_sha256 = "f912820f6423ac979c407f620720b63d5464ecb192c5687fc62289c0e5ad3dc1"
+sha256 = "f912820f6423ac979c407f620720b63d5464ecb192c5687fc62289c0e5ad3dc1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_burley.h"
+dest = "kernel/closure/bsdf_burley.h"
+upstream_sha256 = "570c4506d61efd56e03d64440d1532ed7db05472cc7ad5417b5af91a0a9be486"
+sha256 = "570c4506d61efd56e03d64440d1532ed7db05472cc7ad5417b5af91a0a9be486"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_diffuse.h"
+dest = "kernel/closure/bsdf_diffuse.h"
+upstream_sha256 = "afe5fb64c21eaab7437b5839266f227026bf6483277f7927e2c330f73a0b35d4"
+sha256 = "afe5fb64c21eaab7437b5839266f227026bf6483277f7927e2c330f73a0b35d4"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_diffuse_ramp.h"
+dest = "kernel/closure/bsdf_diffuse_ramp.h"
+upstream_sha256 = "78a36dc58494bce25d9f0d9a6356af1cb6efadd8e504f60b63aa070b021352de"
+sha256 = "78a36dc58494bce25d9f0d9a6356af1cb6efadd8e504f60b63aa070b021352de"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_hair.h"
+dest = "kernel/closure/bsdf_hair.h"
+upstream_sha256 = "168fe42a930bc594e7a0ae6d4d360f7bbd0bd3be3902291be52a02af7aacd30c"
+sha256 = "168fe42a930bc594e7a0ae6d4d360f7bbd0bd3be3902291be52a02af7aacd30c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_microfacet.h"
+dest = "kernel/closure/bsdf_microfacet.h"
+upstream_sha256 = "be2f90dccd1498915e95c6db56c911fa581710d469c2d18b0e7d0dfe87e24965"
+sha256 = "be2f90dccd1498915e95c6db56c911fa581710d469c2d18b0e7d0dfe87e24965"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_oren_nayar.h"
+dest = "kernel/closure/bsdf_oren_nayar.h"
+upstream_sha256 = "0aca90135991177d12388c72a0271664a8e89287cbef6f55aed1e5769bb173ca"
+sha256 = "0aca90135991177d12388c72a0271664a8e89287cbef6f55aed1e5769bb173ca"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_phong_ramp.h"
+dest = "kernel/closure/bsdf_phong_ramp.h"
+upstream_sha256 = "b3c5702a702e8e387133f50569e127dc0d45b23aca2198717bff584a8d5708ec"
+sha256 = "b3c5702a702e8e387133f50569e127dc0d45b23aca2198717bff584a8d5708ec"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_principled_hair_chiang.h"
+dest = "kernel/closure/bsdf_principled_hair_chiang.h"
+upstream_sha256 = "9d581c6504c8a562df25432d19c89b896e1731b957ad24b044d969df720ff94d"
+sha256 = "9d581c6504c8a562df25432d19c89b896e1731b957ad24b044d969df720ff94d"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_principled_hair_huang.h"
+dest = "kernel/closure/bsdf_principled_hair_huang.h"
+upstream_sha256 = "8360288b0d4b1b0e2f4c6897a26bff9a1310cf321508403bdbf5f7809a92985e"
+sha256 = "8360288b0d4b1b0e2f4c6897a26bff9a1310cf321508403bdbf5f7809a92985e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_ray_portal.h"
+dest = "kernel/closure/bsdf_ray_portal.h"
+upstream_sha256 = "cf127182faa727bea536233cf177ce67eb65c07458c52e60c1e3b8c9044239c1"
+sha256 = "cf127182faa727bea536233cf177ce67eb65c07458c52e60c1e3b8c9044239c1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_sheen.h"
+dest = "kernel/closure/bsdf_sheen.h"
+upstream_sha256 = "caf8e13d816ec1fa1eba7730cde66c3abbb0f8e41e2a1f25139ef09bf2f06e2a"
+sha256 = "caf8e13d816ec1fa1eba7730cde66c3abbb0f8e41e2a1f25139ef09bf2f06e2a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_toon.h"
+dest = "kernel/closure/bsdf_toon.h"
+upstream_sha256 = "6460d5adceee095e5900db942f381104774b3d2f7b2d2fce619d3de4cb6470a9"
+sha256 = "6460d5adceee095e5900db942f381104774b3d2f7b2d2fce619d3de4cb6470a9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_transparent.h"
+dest = "kernel/closure/bsdf_transparent.h"
+upstream_sha256 = "0c962e9fc570bec559d77c1d28809fc2ac2327fbfa164f1b1da5c3ac60cf1b4c"
+sha256 = "0c962e9fc570bec559d77c1d28809fc2ac2327fbfa164f1b1da5c3ac60cf1b4c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bsdf_util.h"
+dest = "kernel/closure/bsdf_util.h"
+upstream_sha256 = "8ec1cdd7b124d33752f3fa0f95092ee749069ea26c0677d6bfcb69a5abac2dd7"
+sha256 = "8ec1cdd7b124d33752f3fa0f95092ee749069ea26c0677d6bfcb69a5abac2dd7"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/bssrdf.h"
+dest = "kernel/closure/bssrdf.h"
+upstream_sha256 = "c825d5c2bdedf7fb40cc5ef067e1da1e3b12e8cce79cc65b6c1ae0e34aeeb85a"
+sha256 = "c825d5c2bdedf7fb40cc5ef067e1da1e3b12e8cce79cc65b6c1ae0e34aeeb85a"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/emissive.h"
+dest = "kernel/closure/emissive.h"
+upstream_sha256 = "d828b557eecb6070af931f8c0ecfe45b07fe01689bbe8e8a7d47fc73d446d529"
+sha256 = "d828b557eecb6070af931f8c0ecfe45b07fe01689bbe8e8a7d47fc73d446d529"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume.h"
+dest = "kernel/closure/volume.h"
+upstream_sha256 = "446a8bf7e4d5595043704784315c9e104981c36f205217fc86f6b0cd0aa99a88"
+sha256 = "446a8bf7e4d5595043704784315c9e104981c36f205217fc86f6b0cd0aa99a88"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume_draine.h"
+dest = "kernel/closure/volume_draine.h"
+upstream_sha256 = "27055cb849a2bd7390b2d32750f7b78555c8acb8d66f181f23affba742efc5e4"
+sha256 = "27055cb849a2bd7390b2d32750f7b78555c8acb8d66f181f23affba742efc5e4"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume_fournier_forand.h"
+dest = "kernel/closure/volume_fournier_forand.h"
+upstream_sha256 = "6715d953debcd76b384f8c38807fa9030b1de6654aeb8ca92d4cdec311df1db7"
+sha256 = "6715d953debcd76b384f8c38807fa9030b1de6654aeb8ca92d4cdec311df1db7"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume_henyey_greenstein.h"
+dest = "kernel/closure/volume_henyey_greenstein.h"
+upstream_sha256 = "eaf02e1afb5158a2c5e527a830b58af635c5d2c42cff30d1d1a9cf796abd70c5"
+sha256 = "eaf02e1afb5158a2c5e527a830b58af635c5d2c42cff30d1d1a9cf796abd70c5"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume_rayleigh.h"
+dest = "kernel/closure/volume_rayleigh.h"
+upstream_sha256 = "bb2b6c0c4d26ee82365b6e666e917ba8b9323b3917fdcba8bc41ed09d76f1f8e"
+sha256 = "bb2b6c0c4d26ee82365b6e666e917ba8b9323b3917fdcba8bc41ed09d76f1f8e"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/closure/volume_util.h"
+dest = "kernel/closure/volume_util.h"
+upstream_sha256 = "15f88e80d14a7961767c9fe6e34d8bcd88d91c015b39f70599f38934567de2a2"
+sha256 = "15f88e80d14a7961767c9fe6e34d8bcd88d91c015b39f70599f38934567de2a2"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/attribute.h"
+dest = "kernel/geom/attribute.h"
+upstream_sha256 = "d7bb13740f1681664878d453c1cb214d733d51cf3510366f94444de041bd4d04"
+sha256 = "d7bb13740f1681664878d453c1cb214d733d51cf3510366f94444de041bd4d04"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/curve.h"
+dest = "kernel/geom/curve.h"
+upstream_sha256 = "9105084f9700c0f2d8e81dda46e2e737b52b59f4936be2cd90e03f9f7687c379"
+sha256 = "9105084f9700c0f2d8e81dda46e2e737b52b59f4936be2cd90e03f9f7687c379"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/motion_curve.h"
+dest = "kernel/geom/motion_curve.h"
+upstream_sha256 = "bf5e2501503e5b5c7ab8ef0a4c9a138cd64560a45df8f460ed45371377b38b98"
+sha256 = "bf5e2501503e5b5c7ab8ef0a4c9a138cd64560a45df8f460ed45371377b38b98"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/motion_point.h"
+dest = "kernel/geom/motion_point.h"
+upstream_sha256 = "15679b910e12f4fa05f73a81d10f0218784b421c7dbaad70e5111938375fc656"
+sha256 = "15679b910e12f4fa05f73a81d10f0218784b421c7dbaad70e5111938375fc656"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/object.h"
+dest = "kernel/geom/object.h"
+upstream_sha256 = "99604599cc09d42f77f6eeab3b0b61826ae12fe76559db6843aa886da3962f85"
+sha256 = "99604599cc09d42f77f6eeab3b0b61826ae12fe76559db6843aa886da3962f85"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/point.h"
+dest = "kernel/geom/point.h"
+upstream_sha256 = "f09ced4be12cf0a1a66ca92f7fec8b4c33df5ba23f09018f1d8af60ee4a9416b"
+sha256 = "f09ced4be12cf0a1a66ca92f7fec8b4c33df5ba23f09018f1d8af60ee4a9416b"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/primitive.h"
+dest = "kernel/geom/primitive.h"
+upstream_sha256 = "46d292f44caacd809e9ac097029b266bb889279c391ed0c8b6fffbe14204dddc"
+sha256 = "46d292f44caacd809e9ac097029b266bb889279c391ed0c8b6fffbe14204dddc"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/triangle.h"
+dest = "kernel/geom/triangle.h"
+upstream_sha256 = "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8"
+sha256 = "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/volume.h"
+dest = "kernel/geom/volume.h"
+upstream_sha256 = "03bd2959d12e0511fe774460034d2f5703c7066a941fc635628eff507dc72405"
+sha256 = "03bd2959d12e0511fe774460034d2f5703c7066a941fc635628eff507dc72405"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/integrator/state.h"
+dest = "kernel/integrator/state.h"
+upstream_sha256 = "bf3830e74df52b4716ef1f848f2ac5de21ba92dc6abf9346394759034d312c61"
+sha256 = "bf3830e74df52b4716ef1f848f2ac5de21ba92dc6abf9346394759034d312c61"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/sample/lcg.h"
+dest = "kernel/sample/lcg.h"
+upstream_sha256 = "8bae917b8c22bd2feeeb038f42ee1828fdc519ded250a3009856f83934c23fc9"
+sha256 = "8bae917b8c22bd2feeeb038f42ee1828fdc519ded250a3009856f83934c23fc9"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/sample/mapping.h"
+dest = "kernel/sample/mapping.h"
+upstream_sha256 = "3a7e9b2cfbbb0f22654874e23524b2965ac65ad527a9faf8e59667b76ae8adad"
+sha256 = "3a7e9b2cfbbb0f22654874e23524b2965ac65ad527a9faf8e59667b76ae8adad"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/closure.h"
+dest = "kernel/svm/closure.h"
+upstream_sha256 = "585a5e6a6a9507e76983a2cf2e5fdb757f70e9213c5f1b151e6b8ed47842c673"
+sha256 = "585a5e6a6a9507e76983a2cf2e5fdb757f70e9213c5f1b151e6b8ed47842c673"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/util/image_3d.h"
+dest = "kernel/util/image_3d.h"
+upstream_sha256 = "1d5a3e4b717d42e102039bea2d819e3928e79ee2d9e7aa820d897a779c1dc3f1"
+sha256 = "1d5a3e4b717d42e102039bea2d819e3928e79ee2d9e7aa820d897a779c1dc3f1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/util/lookup_table.h"
+dest = "kernel/util/lookup_table.h"
+upstream_sha256 = "dafa88cd989268fea9c73fb3fb256e433b007c2d45207f21d2e193bb0d1cfd00"
+sha256 = "dafa88cd989268fea9c73fb3fb256e433b007c2d45207f21d2e193bb0d1cfd00"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/progress.h"
+dest = "util/progress.h"
+upstream_sha256 = "72926d88b0dbb10079c4d3ab561ef122eab25bf682831251f0fd0191df2a4165"
+sha256 = "72926d88b0dbb10079c4d3ab561ef122eab25bf682831251f0fd0191df2a4165"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "util/time.h"
+dest = "util/time.h"
+upstream_sha256 = "f8842e5df6eb674d1233678f4e91921c746fcf24cb54db5ffae2ce0f5a132470"
+sha256 = "f8842e5df6eb674d1233678f4e91921c746fcf24cb54db5ffae2ce0f5a132470"
+patched = false
+
 [[fragment]]
 name = "kernel/svm/svm_h/svm_case/NODE_END"
 upstream = "cycles"
@@ -2321,3 +2681,174 @@ kind = "function"
 anchor = "svm_node_type_with_derivatives"
 upstream_lines = [440, 453]
 sha256 = "abb709443e240aec639b328c73499df696d6218d3cc9676187930ab8f61d9569"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CLOSURE_EMISSION"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CLOSURE_EMISSION"
+upstream_lines = [145, 151]
+sha256 = "692fbc4fdac16b5bfe73af71ac413e422dfaffad10eddccdbae02990322d2961"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_CLOSURE_SET_WEIGHT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_CLOSURE_SET_WEIGHT"
+upstream_lines = [159, 162]
+sha256 = "053b609bf4e0fad947bd9ee90aa9ac57d458d7fed0bc2f831188afaf4d5ff507"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_EMISSION_WEIGHT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_EMISSION_WEIGHT"
+upstream_lines = [167, 173]
+sha256 = "21fae0bb04e8070a99331653b45c1009c9e697fd311f7ed6c3621b6587f1b639"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::SVMCompiler"
+upstream_lines = [157, 170]
+sha256 = "c9c6d8fea7dd19c542ff442fc5230c0c3752cd8306cc8fbb81f151d755f9f707"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.find_dependencies"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::find_dependencies"
+upstream_lines = [552, 565]
+sha256 = "069038667f1ab292cea2078105e1f5d070deee352fe30e09e87c8aaa9174fde9"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.generate_node"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::generate_node"
+upstream_lines = [567, 592]
+sha256 = "0fe432f3a738fabbe7ada93b7971fe010f5b0c07d0ad0b888ec1710461caa6e0"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.stack_node_output_size"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::stack_node_output_size"
+upstream_lines = [594, 604]
+sha256 = "5946b34296ee0367ef800ef60114d0792675b744e9b56be1b1524882a3a96eba"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.generate_svm_nodes"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::generate_svm_nodes"
+upstream_lines = [606, 756]
+sha256 = "2e572c4a70526e0903ce82af92cd6823a6ce03cfbb8d288aca2cfb821c95d3f1"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.generate_closure_node"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::generate_closure_node"
+upstream_lines = [758, 807]
+sha256 = "e5afee582eccedfe1ca9387e9ef680f6d12af32659bf07376b7c7f144b5cb373"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.generated_shared_closure_nodes"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::generated_shared_closure_nodes"
+upstream_lines = [809, 824]
+sha256 = "750ea5e4943cbedc501edcdd8c99a490efcc6f82a551892cc5ce95f95d80eafd"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.find_aov_nodes_and_dependencies"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::find_aov_nodes_and_dependencies"
+upstream_lines = [826, 843]
+sha256 = "17e8425886dd21cdcff18b2ca4037453f806eb35db0f7e79459ec7b9fc5e4630"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.generate_multi_closure"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::generate_multi_closure"
+upstream_lines = [845, 997]
+sha256 = "2d904079f3b9f2acd37757f10caa57a43bbefc6c88fd3882d611648c2cae49c9"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.compile_type"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::compile_type"
+upstream_lines = [1036, 1172]
+sha256 = "2fd60b4c28eb9724bb2986d10342f1e80d25ab535c08454ed73b2e8f1629ffab"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.compile"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::compile"
+upstream_lines = [1174, 1236]
+sha256 = "3715a044ef12339083e48dd109e5cd170de98e977db3c74361d2b15b5e1fcb87"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.Summary.Summary"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::Summary::Summary"
+upstream_lines = [1240, 1249]
+sha256 = "e4563bd62bec7429fe12c1c3a432f1b419befa45b2261ffcbd20b726f2e8150e"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.Summary.full_report"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::Summary::full_report"
+upstream_lines = [1251, 1267]
+sha256 = "fd6338ce75c83f6942cb038c916b2c666a4203492a341cbd02595ae0bba1d15c"
+
+[[fragment]]
+name = "scene/svm_cpp/member/SVMCompiler.CompilerState.CompilerState"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "member"
+anchor = "SVMCompiler::CompilerState::CompilerState"
+upstream_lines = [1271, 1279]
+sha256 = "7971509ed566516cc11f44b4694c99edde14ddb1fb893b8a60c61b825b3af6e4"
+
+[[fragment]]
+name = "scene/svm_cpp/function/mark_nodes_requiring_derivatives"
+upstream = "cycles"
+upstream_path = "scene/svm.cpp"
+kind = "function"
+anchor = "mark_nodes_requiring_derivatives"
+upstream_lines = [999, 1034]
+sha256 = "9cd0b06a972ff9bb22ca36c930246f923c1b2f4bf4a1c922d341e54552aa8032"
+
+[[fragment]]
+name = "util/time_cpp/function/time_dt"
+upstream = "cycles"
+upstream_path = "util/time.cpp"
+kind = "function"
+anchor = "time_dt"
+upstream_lines = [31, 35]
+sha256 = "bbe3e7b106c49c3b34a25d4c20e0188991acb89aede83f6c03e1bcf2111ac513"

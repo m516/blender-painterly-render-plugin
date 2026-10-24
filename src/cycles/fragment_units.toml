@@ -42,5 +42,18 @@ includes = [
   "util/log.h",
   "util/map.h",
   "util/math_float3.h",
+  # T6.5: scene/svm.cpp:25-26, for SVMCompiler::compile (time_dt) and mark_nodes_requiring_derivatives (queue).
+  "util/progress.h",
+  "util/queue.h",
+]
+node_registry = false
+
+[unit.time]
+upstream_path = "util/time.cpp"
+# util/time.cpp:5-7. Card T6.5: only time_dt(), which util/progress.h and util/time.h's scoped_timer call;
+# util/time.cpp is not vendored whole.
+includes = [
+  "util/time.h",
+  "<chrono>",
 ]
 node_registry = false

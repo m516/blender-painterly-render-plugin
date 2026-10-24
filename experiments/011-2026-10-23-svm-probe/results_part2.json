@@ -1,0 +1,133 @@
+{
+  "H4": {
+    "build_exit": 0,
+    "closure_paths": 113,
+    "closure_shims_reached": [
+      "src/cycles/shim/kernel/device/cpu/globals.h",
+      "src/cycles/shim/util/string.h",
+      "src/cycles/shim/util/thread.h"
+    ],
+    "closure_uncovered": [
+      "kernel/util/nanovdb.h",
+      "util/guiding.h"
+    ],
+    "closure_unresolved": [
+      "../../guardedalloc/MEM_guardedalloc.h"
+    ],
+    "closure_upstream_lines": 29367,
+    "patches": 0,
+    "shim_deleted": [],
+    "shim_modified": [
+      "src/cycles/shim/scene/scene.h",
+      "src/cycles/shim/scene/shader.cpp",
+      "src/cycles/shim/scene/shader.h",
+      "src/cycles/shim/util/log.h",
+      "src/cycles/shim/util/string.cpp",
+      "src/cycles/shim/util/string.h"
+    ],
+    "shim_new": [],
+    "supported": true,
+    "svm_cpp_definitions": 44,
+    "svm_cpp_extra": [],
+    "svm_cpp_fragments": 44,
+    "svm_cpp_uncovered": [],
+    "vendor_check_upstream_exit": 0
+  },
+  "H5": {
+    "byte code": {
+      "failed": 0,
+      "passed": 4
+    },
+    "folded evaluation": {
+      "failed": 0,
+      "passed": 21
+    },
+    "registered": {
+      "failed": 0,
+      "passed": 6
+    },
+    "supported": true,
+    "two shaders": {
+      "failed": 0,
+      "passed": 12
+    },
+    "unfolded evaluation": {
+      "failed": 0,
+      "passed": 9
+    }
+  },
+  "H6": {
+    "independent reference": {
+      "failed": 0,
+      "passed": 33
+    },
+    "supported": true
+  },
+  "M4": {
+    "EmissionNode": {
+      "host_fragments": 5,
+      "kernel_cases": 3,
+      "manifest_lines": 50,
+      "upstream_lines": 55
+    },
+    "MathNode": {
+      "host_fragments": 7,
+      "kernel_cases": 1,
+      "manifest_lines": 66,
+      "upstream_lines": 119
+    },
+    "OutputNode": {
+      "host_fragments": 4,
+      "kernel_cases": 0,
+      "manifest_lines": 38,
+      "upstream_lines": 39
+    },
+    "ValueNode": {
+      "host_fragments": 5,
+      "kernel_cases": 2,
+      "manifest_lines": 49,
+      "upstream_lines": 23
+    }
+  },
+  "M5": {
+    "card_minutes": 514.3,
+    "end": "2026-10-24T15:17:16Z",
+    "start": "2026-10-24T06:43:00Z"
+  },
+  "M6": {
+    "compile_seconds": [
+      18.42,
+      18.51,
+      9.44
+    ],
+    "compile_seconds_median": 18.42,
+    "deps_generated": 0,
+    "deps_shim": 0,
+    "deps_src_painterly": 0,
+    "deps_third_party_cycles": 0,
+    "deps_third_party_cycles_lines": 0,
+    "deps_total": 0
+  },
+  "M7": {
+    "fragments_total": 173,
+    "generated_header_lines": 306,
+    "generated_header_sha256": "9b576212bf4eaeb8c3457f2b529091cd271b265b0172bfe9f16777254e83e9db",
+    "svm_case_fragment_lines": 192,
+    "svm_case_fragments": 42,
+    "svm_cpp_fragment_lines": 1076,
+    "svm_cpp_fragments": 44,
+    "svm_unit_lines": 1190,
+    "svm_unit_sha256": "d748be2c8fb3c1f9c848bc5a1bc2447107f69c8e5e3089c953756de919dd82ad",
+    "time_unit_lines": 22,
+    "time_unit_sha256": "145c1c19124d24519188b58d571eb53d5c778956291bbfca52b4ebee2d5506ff",
+    "vendored_files_added": 45,
+    "vendored_lines_added": 12956
+  },
+  "build_dir": "/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.tmp/steward/sprints/S1/svm/repo/build/q",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "gate_G2_svm": true,
+  "gate_part2": true,
+  "part1_gate": true,
+  "registration": "2026-10-09, card T6.5 (Opus)",
+  "run_date": "2026-10-24"
+}

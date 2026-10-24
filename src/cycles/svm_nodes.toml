@@ -26,6 +26,8 @@ includes = [
   "kernel/svm/sepcomb_color.h",
   "kernel/svm/sepcomb_vector.h",
   "kernel/svm/value.h",
+  # T6.5: the evaluators of the cases that EmissionNode::compile emits (kernel/svm/svm.h:45).
+  "kernel/svm/closure.h",
 ]
 cases = [
   "NODE_END",
@@ -68,4 +70,8 @@ cases = [
   "NODE_MIX_FLOAT",
   "NODE_MIX_VECTOR",
   "NODE_MIX_VECTOR_NON_UNIFORM",
+  # T6.5: the cases that EmissionNode::compile emits (scene/shader_nodes.cpp:3077-3098).
+  "NODE_CLOSURE_EMISSION",
+  "NODE_CLOSURE_SET_WEIGHT",
+  "NODE_EMISSION_WEIGHT",
 ]

@@ -32,6 +32,15 @@ using string_view = std::string_view;
 /* Defined in src/cycles/shim/util/string.cpp. */
 bool string_endswith(string_view s, string_view end);
 
+/* Defined in src/cycles/shim/util/string.cpp. The lines below are util/string.h:27-33. */
+#ifdef __GNUC__
+#  define PRINTF_ATTRIBUTE __attribute__((format(printf, 1, 2)))
+#else
+#  define PRINTF_ATTRIBUTE
+#endif
+
+string string_printf(const char *format, ...) PRINTF_ATTRIBUTE;
+
 #ifdef _WIN32
 using std::wstring;
 
