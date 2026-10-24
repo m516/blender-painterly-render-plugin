@@ -57,3 +57,13 @@ includes = [
   "<chrono>",
 ]
 node_registry = false
+
+[unit.transform]
+upstream_path = "util/transform.cpp"
+# util/transform.cpp:5-6. Card T6.6: only transform_transposed_inverse(), which TextureMapping::compute_transform()
+# calls; util/transform.cpp is not vendored whole (card T3.2).
+includes = [
+  "util/transform.h",
+  "util/projection.h",
+]
+node_registry = false

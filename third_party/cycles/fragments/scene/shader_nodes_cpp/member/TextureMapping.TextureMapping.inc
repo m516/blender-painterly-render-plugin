@@ -1,0 +1,1 @@
+TextureMapping::TextureMapping() = default;

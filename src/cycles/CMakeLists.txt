@@ -200,3 +200,20 @@ target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/time.cpp)
 # which build no tests, compile them with MSVC, Clang and GCC.
 add_library(cycles_svm_closure_headers_check OBJECT svm_closure_headers_check.cpp)
 target_link_libraries(cycles_svm_closure_headers_check PRIVATE cycles_kernel)
+
+# T6.6: transform_transposed_inverse() of util/transform.cpp, which TextureMapping::compute_transform() calls. Card T3.2
+# left util/transform.cpp unvendored; Opus decided (T6.6) to take this one function as a fragment, assembled into the
+# generated unit "transform" (src/cycles/fragment_units.toml) and compiled into cycles_scene.
+add_custom_command(
+  OUTPUT ${PAINTERLY_FRAGMENT_UNITS_DIR}/transform.cpp
+  COMMAND ${Python_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          --manifest ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          --vendored ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+          --unit transform
+          --output ${PAINTERLY_FRAGMENT_UNITS_DIR}/transform.cpp
+  DEPENDS ${PROJECT_SOURCE_DIR}/tools/gen_fragment_units.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/fragment_units.toml
+          ${PROJECT_SOURCE_DIR}/third_party/cycles/VENDORED.toml
+  COMMENT "Generating Cycles fragment unit transform.cpp"
+  VERBATIM)
+target_sources(cycles_scene PRIVATE ${PAINTERLY_FRAGMENT_UNITS_DIR}/transform.cpp)

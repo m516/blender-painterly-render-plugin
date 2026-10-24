@@ -1246,6 +1246,134 @@ upstream_sha256 = "f8842e5df6eb674d1233678f4e91921c746fcf24cb54db5ffae2ce0f5a132
 sha256 = "f8842e5df6eb674d1233678f4e91921c746fcf24cb54db5ffae2ce0f5a132470"
 patched = false
 
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/camera/camera.h"
+dest = "kernel/camera/camera.h"
+upstream_sha256 = "d07501cbe0f488ad8f04b0573508489ca8ee1953c0cedc4a74dfb1281516f321"
+sha256 = "d07501cbe0f488ad8f04b0573508489ca8ee1953c0cedc4a74dfb1281516f321"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/geom/motion_triangle.h"
+dest = "kernel/geom/motion_triangle.h"
+upstream_sha256 = "16022c1ccba6fd0a00e24fc8ac29e5365f3577737cb5363e1ce0ddef51e8b446"
+sha256 = "16022c1ccba6fd0a00e24fc8ac29e5365f3577737cb5363e1ce0ddef51e8b446"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/attribute.h"
+dest = "kernel/svm/attribute.h"
+upstream_sha256 = "b18231e27a87e9fe5b482735677594f8ec25f5df4189c5f9451a025fbf95a861"
+sha256 = "b18231e27a87e9fe5b482735677594f8ec25f5df4189c5f9451a025fbf95a861"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/brick.h"
+dest = "kernel/svm/brick.h"
+upstream_sha256 = "ebddc2ab0a6729325638f8736646c994e7f1787c7d82f6db1804e57a2a981411"
+sha256 = "ebddc2ab0a6729325638f8736646c994e7f1787c7d82f6db1804e57a2a981411"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/checker.h"
+dest = "kernel/svm/checker.h"
+upstream_sha256 = "2e75f5622ff6f1e7f7eaaaa9f70145c47d54d6e922958a2dba414efde7771be4"
+sha256 = "2e75f5622ff6f1e7f7eaaaa9f70145c47d54d6e922958a2dba414efde7771be4"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/fractal_noise.h"
+dest = "kernel/svm/fractal_noise.h"
+upstream_sha256 = "430f0ed87be7db13442e85bf2b406e48c62657436b1a160bf4ecb8d7af8c838c"
+sha256 = "430f0ed87be7db13442e85bf2b406e48c62657436b1a160bf4ecb8d7af8c838c"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/geometry.h"
+dest = "kernel/svm/geometry.h"
+upstream_sha256 = "6c9c36dd94b327d51d939f7bf05595bee7cbf93d53850e7eeb47768e52ce9090"
+sha256 = "6c9c36dd94b327d51d939f7bf05595bee7cbf93d53850e7eeb47768e52ce9090"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/gradient.h"
+dest = "kernel/svm/gradient.h"
+upstream_sha256 = "caab452311e37e167bc36a981fb6e1ea1e872559a79bd370eede4a454e0ba46b"
+sha256 = "caab452311e37e167bc36a981fb6e1ea1e872559a79bd370eede4a454e0ba46b"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/magic.h"
+dest = "kernel/svm/magic.h"
+upstream_sha256 = "4a0b91861aeb29d21c806236c26d2c69772939e695e2a5a05cb88f6a8e42eaec"
+sha256 = "4a0b91861aeb29d21c806236c26d2c69772939e695e2a5a05cb88f6a8e42eaec"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/noise.h"
+dest = "kernel/svm/noise.h"
+upstream_sha256 = "465a600a17434b610d563eb26013b876629ff9b48b8015c6479418b3e7674732"
+sha256 = "465a600a17434b610d563eb26013b876629ff9b48b8015c6479418b3e7674732"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/noisetex.h"
+dest = "kernel/svm/noisetex.h"
+upstream_sha256 = "966308bf72ea56dda1f651ac5be26160fb21dd7a38896eef562a61e2216b44a1"
+sha256 = "966308bf72ea56dda1f651ac5be26160fb21dd7a38896eef562a61e2216b44a1"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/tex_coord.h"
+dest = "kernel/svm/tex_coord.h"
+upstream_sha256 = "52c145fea4b0631787355b525ad0279299d3d638f9f8bac0c6639648bef3ec13"
+sha256 = "52c145fea4b0631787355b525ad0279299d3d638f9f8bac0c6639648bef3ec13"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/voronoi.h"
+dest = "kernel/svm/voronoi.h"
+upstream_sha256 = "68511e52e595faf833a8c43cc2bbef147ebf77685a0c358e8dd976336a4c87bf"
+sha256 = "68511e52e595faf833a8c43cc2bbef147ebf77685a0c358e8dd976336a4c87bf"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/wave.h"
+dest = "kernel/svm/wave.h"
+upstream_sha256 = "a3401a1e39c791dbfc090df33b99bf8a701dd1b6ffdc5d0a37bd1b838f1172be"
+sha256 = "a3401a1e39c791dbfc090df33b99bf8a701dd1b6ffdc5d0a37bd1b838f1172be"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/svm/white_noise.h"
+dest = "kernel/svm/white_noise.h"
+upstream_sha256 = "c4f8cecea821440f074fbfe916c9cf8448e1638802fc79c366da1f3187a6c568"
+sha256 = "c4f8cecea821440f074fbfe916c9cf8448e1638802fc79c366da1f3187a6c568"
+patched = false
+
+[[file]]
+upstream = "cycles"
+upstream_path = "kernel/util/differential.h"
+dest = "kernel/util/differential.h"
+upstream_sha256 = "f7d9b67af1710d6f021e30fdc7c4e0630e5379fb2dcce27f25214ac139472c6b"
+sha256 = "f7d9b67af1710d6f021e30fdc7c4e0630e5379fb2dcce27f25214ac139472c6b"
+patched = false
+
 [[fragment]]
 name = "kernel/svm/svm_h/svm_case/NODE_END"
 upstream = "cycles"
@@ -2852,3 +2980,516 @@ kind = "function"
 anchor = "time_dt"
 upstream_lines = [31, 35]
 sha256 = "bbe3e7b106c49c3b34a25d4c20e0188991acb89aede83f6c03e1bcf2111ac513"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_GEOMETRY"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_GEOMETRY"
+upstream_lines = [193, 195]
+sha256 = "9557048c4f1d2fefd6f8c22a37528823c2157b7396f9de4dbc536c22367de3d4"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_GEOMETRY_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_GEOMETRY_DERIVATIVE"
+upstream_lines = [196, 201]
+sha256 = "3b74d8789a7b11396ce1e2f50c5433c6be587e68699e4f4e8591ed263f70c8b5"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_COORD"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_COORD"
+upstream_lines = [211, 216]
+sha256 = "ffbaa1a18d4421357d1442734952fadf7fa3de0b35ba268067d2ddfe849dbfc5"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_COORD_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_COORD_DERIVATIVE"
+upstream_lines = [217, 223]
+sha256 = "1d68fa78d776bddaba467b2b585e99919d72e6728af777c0ebb30deb396eb88f"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_ATTR"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_ATTR"
+upstream_lines = [242, 252]
+sha256 = "8a312bd9727e3d23844e4d429b87c33acecb2f1659cb078968e909d5549c2e85"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_ATTR_DERIVATIVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_ATTR_DERIVATIVE"
+upstream_lines = [253, 258]
+sha256 = "69093d77cf6da34e6b35c18a1ce8833d0373758d6efbae8d84208ebf3e504cca"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_NOISE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_NOISE"
+upstream_lines = [300, 302]
+sha256 = "fb6dfc8072a5e0c6c73f616d99eb2c8b3fa2afe52c8bd261d47633855d966557"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_GRADIENT"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_GRADIENT"
+upstream_lines = [457, 459]
+sha256 = "b648204c2f5ecadd17fb8f89d26638fd37e3b0d9c134723c5d7992bd33494682"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_VORONOI"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_VORONOI"
+upstream_lines = [460, 462]
+sha256 = "65f92b4ce2014396b4f45b5106d53c804195685c4fbcfab293fc5082fd779b0c"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_WAVE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_WAVE"
+upstream_lines = [466, 468]
+sha256 = "e8037fadb785f10301c639b63ef4833a98c383fae00490da69459d709f5ed87f"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_MAGIC"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_MAGIC"
+upstream_lines = [469, 471]
+sha256 = "4fc072abf153d25f4faa970b093e438416f3c7dc7fe7de7bafe6cab73cbe248b"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_CHECKER"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_CHECKER"
+upstream_lines = [472, 474]
+sha256 = "6c55a0f3de09a24e8a702560d391828d6d987e78c1553440537786c1def3315e"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_BRICK"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_BRICK"
+upstream_lines = [475, 477]
+sha256 = "d292ecf0e77e010774bfbe7465436d0aedb88d585cf299aec389a207e0b47544"
+
+[[fragment]]
+name = "kernel/svm/svm_h/svm_case/NODE_TEX_WHITE_NOISE"
+upstream = "cycles"
+upstream_path = "kernel/svm/svm.h"
+kind = "svm_case"
+anchor = "NODE_TEX_WHITE_NOISE"
+upstream_lines = [478, 480]
+sha256 = "34398a3fae71060709ffa36c076251c1d408d406233de7e88270dc180c98c746"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/define/TEXTURE_MAPPING_DEFINE"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "define"
+anchor = "TEXTURE_MAPPING_DEFINE"
+upstream_lines = [47, 77]
+sha256 = "d9be3713ef005ee62711ff0281315324679fa9e6f9dcaebda39a19c74b67514a"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/GradientTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "GradientTextureNode"
+upstream_lines = [1118, 1140]
+sha256 = "9543259ab27c1e3bb30f2b1a91582560e9588476bc1bb0d9ec596611027acc98"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/NoiseTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "NoiseTextureNode"
+upstream_lines = [1171, 1208]
+sha256 = "8a6de54d5c74880acf8466a3ab9d5d0826f45225295707306c29d1b8982af453"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/VoronoiTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "VoronoiTextureNode"
+upstream_lines = [1311, 1358]
+sha256 = "8affd0bd4d634c6857d9f1b82428b0714f1e30326576c66e1ec74d3413e6ff51"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/WhiteNoiseTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "WhiteNoiseTextureNode"
+upstream_lines = [1492, 1510]
+sha256 = "7f45886901284a3fe49bedc8de2f39bef8fb9db80a18ea1ba3b59fd7cf690d82"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/WaveTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "WaveTextureNode"
+upstream_lines = [1535, 1579]
+sha256 = "78b889cca33069e61b72c10240b537da03e0ca38c7f0f42013406edc0938f3f9"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/MagicTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "MagicTextureNode"
+upstream_lines = [1623, 1639]
+sha256 = "d36c6257af1a77918e540c66cd4a9a1bf5f340baa66e9e9240a7701b5b876155"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/CheckerTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "CheckerTextureNode"
+upstream_lines = [1672, 1687]
+sha256 = "905f09d357ea244aa8bc97958da0c23c98021ceef2f237dc77896d15dc6346be"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/node_define/BrickTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "node_define"
+anchor = "BrickTextureNode"
+upstream_lines = [1719, 1746]
+sha256 = "9c485a12d2af30f288d982da0f3bbd3dd476bccb7f8488c9e9f16591e8b04588"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.TextureMapping"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::TextureMapping"
+upstream_lines = [79, 79]
+sha256 = "38d76d34e7e8a462f7ff8a850d7f4a3bed9d49dbc724d0104ef12f713d2561cb"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.compute_transform"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::compute_transform"
+upstream_lines = [81, 142]
+sha256 = "2d90c77ad3e586bf287a0ec2c067eb89a14fd6e15635c61265180092b503d9c8"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.skip"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::skip"
+upstream_lines = [144, 164]
+sha256 = "46aff117313b319e0521129e1cb5045827b2cf6d76cc183c29a66f2b06611098"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.compile_begin"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::compile_begin"
+upstream_lines = [208, 223]
+sha256 = "8b0685a91b3302e7b1b188706f2e2714bac202ceabe67fc201c346effd1cbc7f"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.compile_end"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::compile_end"
+upstream_lines = [225, 232]
+sha256 = "9c349c5542f67aa028599cbfe7b7560504603364cbefe121dfa17b4a1be0d893"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GradientTextureNode.GradientTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GradientTextureNode::GradientTextureNode"
+upstream_lines = [1142, 1142]
+sha256 = "879d993ee88fa57885e2f5e1b7943b83588a545d0aa0eb3ec51ce5966876d573"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/NoiseTextureNode.NoiseTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "NoiseTextureNode::NoiseTextureNode"
+upstream_lines = [1210, 1210]
+sha256 = "527e8133154c3a9943ad4b930a413e2095529dd18f5c8c8d83ec4fd7f7871860"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VoronoiTextureNode.VoronoiTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VoronoiTextureNode::VoronoiTextureNode"
+upstream_lines = [1360, 1360]
+sha256 = "7277713a8acdca4cdc617562c500f96ce688bb92d3224ddd4e5d4c01abc08c42"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WhiteNoiseTextureNode.WhiteNoiseTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WhiteNoiseTextureNode::WhiteNoiseTextureNode"
+upstream_lines = [1512, 1512]
+sha256 = "e58c8bba90a3b696d3cfe2847f0a51fdb93b03373ea0fcc37e008b0fe8e4daed"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WaveTextureNode.WaveTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WaveTextureNode::WaveTextureNode"
+upstream_lines = [1581, 1581]
+sha256 = "eadb4f185f69b7fe90cc1010c3ee52c7f14a300c49316c74a07d86379b66ca10"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MagicTextureNode.MagicTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MagicTextureNode::MagicTextureNode"
+upstream_lines = [1641, 1641]
+sha256 = "4d239f6ab219dcc4e79700b6de477ddd8099d019a7b601fb32759dc267712fbc"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/CheckerTextureNode.CheckerTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "CheckerTextureNode::CheckerTextureNode"
+upstream_lines = [1689, 1689]
+sha256 = "0ea6d25b1f99c963351d453650403d6a221891182853dc295f59948c71bf545a"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BrickTextureNode.BrickTextureNode"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BrickTextureNode::BrickTextureNode"
+upstream_lines = [1748, 1748]
+sha256 = "380cd33875e157ccf18d5f09d2ac471894d3cafbcf7f6efa834ce90c6be30116"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::compile"
+params = "SVMCompiler"
+upstream_lines = [166, 204]
+sha256 = "fc2f14896e387e7bca00dd96b3057405ae8bedcec77b10f955fd574f0c67f945"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GradientTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GradientTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1144, 1159]
+sha256 = "cd982862b961d3fae0587f092d756fb31548bcd553480895fe25a1d81e33f786"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/NoiseTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "NoiseTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1212, 1238]
+sha256 = "ce7de4b3185507f0f53cc02c091729b3b165750d39b8f8119232bbf984ddad3c"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VoronoiTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VoronoiTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1362, 1391]
+sha256 = "b2aa616df66fd4893ae704a80c71df24cdbedee7fd15bdd10fe6e5dfcdb692d9"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WhiteNoiseTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WhiteNoiseTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1514, 1525]
+sha256 = "ce3577d98cbd328ceb977cc39ec37f786b8b0689178aa2c79b73cbcd184157b2"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WaveTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WaveTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1583, 1607]
+sha256 = "649670d099d83c354bcfe33c24eeff68d3314726fbff8408f074a2fb21de6afe"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MagicTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MagicTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1643, 1660]
+sha256 = "880b6c547bf71fe8b3d00cd613840e53ed69d1364f5ee6f9ed190910607620a3"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/CheckerTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "CheckerTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1691, 1708]
+sha256 = "9f55671fdaa4b4a19965a9f44b77ec0879365ca5befe711d9953b80ccd3d0c17"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BrickTextureNode.compile-SVMCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BrickTextureNode::compile"
+params = "SVMCompiler"
+upstream_lines = [1750, 1777]
+sha256 = "1c1df262827cd0a64e83b110317bd57a4a862e44b103ed93bb7748e40748d999"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/TextureMapping.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "TextureMapping::compile"
+params = "OSLCompiler"
+upstream_lines = [234, 240]
+sha256 = "bc92da1f95f611526fbd5edfd2fa58cbbc8e563a3384b6c82959123e0d6e89c0"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/GradientTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "GradientTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1161, 1167]
+sha256 = "5c083e380219757c589104674a202676bc1029cd17423dfe3c0f824ecd97650d"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/NoiseTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "NoiseTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1240, 1247]
+sha256 = "2ccb75b3a8db52caf459350b944500687e2003166c8f078f4e6f9a5f98d55fa0"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/VoronoiTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "VoronoiTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1393, 1402]
+sha256 = "4e9a374b8c22b57af24d02eb2db78640dfb8d7de06141f5ff8f9a40c52c994b2"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WhiteNoiseTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WhiteNoiseTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1527, 1531]
+sha256 = "3a3c76291fc37fc1ada6e0ae2248d56eaa5f7d5c09fa37fb0f7c56cc5b1483d1"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/WaveTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "WaveTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1609, 1619]
+sha256 = "3092c2cc6c37023466eecafb1afe545d764bfd3719cc7e7a8464a2010ccbee95"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/MagicTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "MagicTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1662, 1668]
+sha256 = "714e4c72c4b11ece480b200cab2f19750c018bb144c21565f0c0ce2784802d62"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/CheckerTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "CheckerTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1710, 1715]
+sha256 = "9340448f3b31d9ab8025e9df3d0b3a985b18b06357af7ec1f8ff6edeb4638094"
+
+[[fragment]]
+name = "scene/shader_nodes_cpp/member/BrickTextureNode.compile-OSLCompiler"
+upstream = "cycles"
+upstream_path = "scene/shader_nodes.cpp"
+kind = "member"
+anchor = "BrickTextureNode::compile"
+params = "OSLCompiler"
+upstream_lines = [1779, 1788]
+sha256 = "680ee6c118655246ea378af9eb554a13432a1ddb323aa5cce70b271fefde056e"
+
+[[fragment]]
+name = "util/transform_cpp/function/transform_transposed_inverse"
+upstream = "cycles"
+upstream_path = "util/transform.cpp"
+kind = "function"
+anchor = "transform_transposed_inverse"
+upstream_lines = [15, 19]
+sha256 = "fbb9c6824d3b6e9702829cb490372d9b81378475b63351dbf20a3936c7e539bb"

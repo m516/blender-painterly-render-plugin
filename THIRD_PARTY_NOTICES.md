@@ -9,5 +9,7 @@
 | nanobind | BSD-3-Clause (full text `LICENSES/BSD-3-Clause-nanobind.txt`) | `src/blender/python.cpp` (nanobind module `_painterly`) | https://github.com/wjakob/nanobind |
 | tsl::robin_map | MIT (full text `LICENSES/MIT-robin-map.txt`) | header-only hash map bundled with nanobind 3.1.0 (`ext/robin_map`); nanobind's static library (`NB_STATIC`, `src/blender/CMakeLists.txt`) compiles it into `_painterly` | https://github.com/Tessil/robin-map |
 | doctest | MIT | `src/test/` (C++ unit tests) | https://github.com/doctest/doctest |
+| Open Shading Language code in Cycles | BSD-3-Clause (full text `LICENSES/BSD-3-Clause-osl.txt`) | `third_party/cycles/kernel/svm/noise.h`, `third_party/cycles/kernel/camera/projection.h` and `third_party/cycles/kernel/sample/mapping.h`, vendored verbatim from Blender v5.2.2 `intern/cycles`; code adapted from Open Shading Language, copyright Sony Pictures Imageworks Inc., et al. and the Blender Foundation (their SPDX headers) | https://github.com/AcademySoftwareFoundation/OpenShadingLanguage |
+| Voronoi code by Inigo Quilez in Cycles | MIT (full text `LICENSES/MIT-voronoi.txt`) | `third_party/cycles/kernel/svm/voronoi.h`, vendored verbatim from Blender v5.2.2 `intern/cycles`; its Voronoi code is marked `SPDX-License-Identifier: MIT`, "Original code is copyright (c) 2013 Inigo Quilez" (`voronoi.h:13-28`) | https://www.iquilezles.org/www/articles/voronoilines/voronoilines.htm |
 
 The combined work is distributed under GPL-3.0-or-later (see LICENSE).

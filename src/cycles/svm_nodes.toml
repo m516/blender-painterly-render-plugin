@@ -28,6 +28,19 @@ includes = [
   "kernel/svm/value.h",
   # T6.5: the evaluators of the cases that EmissionNode::compile emits (kernel/svm/svm.h:45).
   "kernel/svm/closure.h",
+  # T6.6: the attribute, geometry, texture-coordinate and texture evaluator headers, in the order of
+  # kernel/svm/svm.h:36-80.
+  "kernel/svm/attribute.h",
+  "kernel/svm/brick.h",
+  "kernel/svm/checker.h",
+  "kernel/svm/geometry.h",
+  "kernel/svm/gradient.h",
+  "kernel/svm/magic.h",
+  "kernel/svm/noisetex.h",
+  "kernel/svm/tex_coord.h",
+  "kernel/svm/voronoi.h",
+  "kernel/svm/wave.h",
+  "kernel/svm/white_noise.h",
 ]
 cases = [
   "NODE_END",
@@ -74,4 +87,19 @@ cases = [
   "NODE_CLOSURE_EMISSION",
   "NODE_CLOSURE_SET_WEIGHT",
   "NODE_EMISSION_WEIGHT",
+  # T6.6: Geometry, Texture Coordinate and Attribute with their derivative variants, and the eight textures.
+  "NODE_GEOMETRY",
+  "NODE_GEOMETRY_DERIVATIVE",
+  "NODE_TEX_COORD",
+  "NODE_TEX_COORD_DERIVATIVE",
+  "NODE_ATTR",
+  "NODE_ATTR_DERIVATIVE",
+  "NODE_TEX_NOISE",
+  "NODE_TEX_GRADIENT",
+  "NODE_TEX_VORONOI",
+  "NODE_TEX_WAVE",
+  "NODE_TEX_MAGIC",
+  "NODE_TEX_CHECKER",
+  "NODE_TEX_BRICK",
+  "NODE_TEX_WHITE_NOISE",
 ]
