@@ -90,6 +90,16 @@ the draft quotes this brief's interface, and the approving review writes the con
     `max_closures = MAX_CLOSURE`, and every array has width 0.
   - Link `painterly_kernel` -> `cycles_svm` and `painterly_scene` -> `cycles_scene`.
   - Add the layout record for the new consumer.
+  - TQ.4 F3: enforce T6.1's definition-set rule instead of relying on the `#error` in the shim `globals.h`. Either
+    define `__MAX_CLOSURE__` PUBLIC on `cycles_util` (it puts `third_party/cycles` on every include path), or add a check
+    that every object depending on `kernel/types.h` has one `-D__MAX_CLOSURE__`. Run the layout-skew canary
+    (`PAINTERLY_TEST_LAYOUT_SKEW`, `test_cycles_kernel_layout.cpp:14-15`) as a `WILL_FAIL` ctest.
+  - TQ.4 F6(c): `ccl=painterly` is a PUBLIC object-like macro of `cycles_scene` (`src/cycles/CMakeLists.txt:179`),
+    and `_painterly` would inherit it next to nanobind and the Python headers. Scope it to the files that need it.
+  - TQ.4 F11: the module calls `painterly_cycles_shader_node_types()` once, under `std::call_once`, before any
+    `NodeType::find`, because the vendored getter's double-checked read races on a concurrent first call. The
+    header comment `shader_node_registry.h:6-13` is reworded to say what the call does: it keeps the unit in the
+    library and builds every type eagerly.
 - Interface: `const KernelGlobalsCPU *PainterlyGlobalsCPU::cycles` (CONTRACT `globals.h`), and
   `const KernelGlobalsCPU &PainterlyDeviceScene::cycles_globals() const`.
 - Acceptance:
@@ -106,6 +116,13 @@ the draft quotes this brief's interface, and the approving review writes the con
   - The device update compiles every referenced shader, fills the jump table, `KernelShader` flags and the lookup
     tables, sets each node material's `cycles_shader` to its shader id, and binds them into `cycles_globals()`.
   - Constant materials keep `cycles_shader = -1`.
+  - TQ.4 F5: `PainterlyShaderManager` gets one public entry point that runs pre, post and the table upload in order;
+    the three steps become protected. It reports a null graph or a shader whose `id` is not its index as an error,
+    not an assert, and binding happens after the last `add_table`.
+  - TQ.4 F4: `device_update_common` also writes the `KernelData` members that the vendored SVM reads and that Cycles
+    without OCIO sets: `film.is_rec709 = true`, the `rec709_to_*` rows as identity, `xyz_to_*` from the matrix that
+    shim `shader.cpp:60-71` builds, and `max_closures = MAX_CLOSURE`. `painterly_svm_test_shader_data` reads
+    `num_closure_left` from `kernel_data.max_closures`.
 - Acceptance (doctests on scenes built in C++):
   - for a node material with one Diffuse BSDF of a dyadic colour, `cycles_shader` equals the shader id;
   - `svm_nodes[cycles_shader * jump_node_size]` is that shader's `NODE_SHADER_JUMP`;
