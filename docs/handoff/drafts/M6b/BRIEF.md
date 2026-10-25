@@ -94,7 +94,8 @@ the draft quotes this brief's interface, and the approving review writes the con
     define `__MAX_CLOSURE__` PUBLIC on `cycles_util` (it puts `third_party/cycles` on every include path), or add a check
     that every object depending on `kernel/types.h` has one `-D__MAX_CLOSURE__`. Run the layout-skew canary
     (`PAINTERLY_TEST_LAYOUT_SKEW`, `test_cycles_kernel_layout.cpp:14-15`) as a `WILL_FAIL` ctest.
-  - TQ.4 F6(c): `ccl=painterly` is a PUBLIC object-like macro of `cycles_scene` (`src/cycles/CMakeLists.txt:179`),
+  - TQ.4 F6(c): `ccl=painterly` is a PUBLIC object-like macro of `cycles_scene` (its `target_compile_definitions` in
+    `src/cycles/CMakeLists.txt`; M6a-FIX-TQ4b moves the lines),
     and `_painterly` would inherit it next to nanobind and the Python headers. Scope it to the files that need it.
   - TQ.4 F11: the module calls `painterly_cycles_shader_node_types()` once, under `std::call_once`, before any
     `NodeType::find`, because the vendored getter's double-checked read races on a concurrent first call. The

@@ -1281,6 +1281,10 @@ Do:
     `io.TextIOWrapper(io.BytesIO(), encoding="utf-8", newline="\r\n")` (what Windows text mode does to "\n"): the bytes
     behind it equal the fragment's LF bytes, and their sha256 is the one on stderr. Mutation: `cmd_extract` writes
     `fragment.text` to `sys.stdout` again.
+- TQ.3 F27 (`docs/audits/TQ.3.md`): every git failure is reported as a path that is not in upstream (`_not_in_upstream`,
+  `tools/vendor_sync.py:596-597`) or a root that is not a directory (`:701`). Report a git failure that is not a missing
+  path as what it is, with git's stderr, and test it on a fixture whose blob is deleted from `.git/objects`. Mutation: the
+  old message back.
 - Change no existing assertion. The edits to existing tests are the fixtures above, step 6 (its mechanism, not its
   outcomes), B3, and the added parametrized cases.
 Outcome:
@@ -1554,6 +1558,309 @@ Outcome:
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
 allowedPaths: `THIRD_PARTY_NOTICES.md`, `LICENSES/BSD-3-Clause-oiio.txt`, `LICENSES/BSD-3-Clause-intel.txt`, `LICENSES/BSD-3-Clause-ilm.txt`, `LICENSES/Zlib-aladdin.txt`, `tests/core/test_third_party_notices.py`
 Depends on: M6a-T6.8.
+
+## M6a-FIX-TQ4a: assertions run in the doctests, and an opcode the SVM cannot run is an error (TQ.4 F1, F2, F14)
+Why (audit TQ.4, `docs/audits/TQ.4.md`, 2026-10-25; line numbers are at 846f166, and the items before this one shift lines in
+`tests/core/test_gen_svm_switch.py` and in `src/test`, so find those by name):
+- F1. Every build is Release, so NDEBUG removes each `assert` and `kernel_assert` (`third_party/cycles/kernel/device/cpu/compat.h:20`)
+  from `painterly_tests` too. The bounds check of `kernel_array::fetch` (`src/cycles/shim/kernel/device/cpu/globals.h:34`) never
+  runs, and the widths that `PainterlyShaderManager::bind_kernel_globals` sets (`src/painterly/scene/svm/shader_manager.h:146-150`)
+  are dead data: `width = 0` at `:146` or `:148` passes every doctest.
+- F2, F14. Vendored `compile()` code emits eight node types that the generated `svm_eval_nodes()` has no case for: NODE_LIGHT_PATH
+  (Geometry with Backfacing linked), NODE_VECTOR_TRANSFORM, NODE_SET_BUMP, NODE_CLOSURE_SET_NORMAL, NODE_ENTER_BUMP_EVAL,
+  NODE_LEAVE_BUMP_EVAL, NODE_SET_DISPLACEMENT and NODE_AOV_START. Such a word reaches the interpreter's `default:`, whose assert is
+  gone (`third_party/cycles/fragments/kernel/svm/svm_h/span/svm_eval_nodes_tail.inc:1-3`), so evaluation returns without a
+  message, no closure is allocated, and `painterly_svm_collect` falls back to a weight-0 diffuse lobe
+  (`src/painterly/kernel/svm/collect.h:205-210`): a black material with every doctest green. A shader that runs out of SVM stack is
+  as silent: `compile_type` clears its program (`third_party/cycles/fragments/scene/svm_cpp/member/SVMCompiler.compile_type.inc:126-130`)
+  and `stack_find_offset` only prints `LOG_ERROR` (`SVMCompiler.stack_find_offset-const_int.inc:26-30`, same directory).
+  `compile_failed` is a protected member that `compile_type` has reset when `compile()` returns, and `SVMCompiler::Summary` has no
+  failure field (`third_party/cycles/scene/svm.h:51-77`), so the manager can see the failure only through that `LOG_ERROR`.
+
+Measured while drafting, in a scratch copy of 846f166 (GCC 15.2, the prebuilt Embree; nothing is committed): with `-UNDEBUG` on the
+test sources alone, all 146 test cases (90,633 assertions) of `painterly_tests` pass, so the first change should not fail. Then
+`svm_nodes.width = 0` at `:146` aborts the run in `kernel_assert`, but `shaders.width = 0` at `:148` and `width + 1` at either line
+still pass: no doctest fetches `kg->shaders` (so no change of `:148` fails), and no fetch is out of range. The binder test below covers
+them. Graphs for the four node types reproduce the silent opcode, and a graph whose values are live at once reproduces the silent
+overflow (a chain of 254 compiles, 255 does not; the doctest uses lengths far from that edge).
+
+Do:
+- F1, asserts. In `src/test/CMakeLists.txt`, right after `painterly_target_warnings(painterly_tests)` (`:51`), add
+  `target_compile_options(painterly_tests PRIVATE ...)` with `/UNDEBUG` under `if(MSVC)` (that also covers clang-cl) and
+  `-UNDEBUG` otherwise; CMake puts a target's options after the `-DNDEBUG` of the Release flags, so the `U` wins. Comment why
+  (the build type is Release, `Makefile:21`) and what it reaches: the sources of `painterly_tests` and the headers they include
+  (`kernel_array::fetch`, the interpreter's `default:`, `shader_manager.h`'s `assert`), not the sources of the `cycles_*` libraries,
+  whose asserts (`LookupTables::~LookupTables`, `string_printf`) stay compiled out.
+  - With NDEBUG undefined, the pragma at `compat.h:10-13` no longer silences GCC's `-Wmaybe-uninitialized` in the vendored kernel
+    headers (about 15 warnings from `kernel/closure/bsdf_microfacet.h`, no error). For GCC only (`CMAKE_CXX_COMPILER_ID STREQUAL "GNU"`)
+    add `-Wno-maybe-uninitialized` to `painterly_tests`, with a comment that cites `compat.h:10-13`. Do not edit the vendored header.
+  - If an assert fires in any test with the option on, do not remove or silence it, and do not change the test to avoid it: call
+    `report_blocked` with the test case's name and the assert's text.
+  - `src/cycles/shim/scene/shader.cpp:140`: `assert(sizeof(table_thin_film_cmf) == 6 * THIN_FILM_TABLE_SIZE * sizeof(float))` becomes a
+    `static_assert` (the table is a `float[512][6]`, `third_party/cycles/scene/shader.tables:1287`).
+- F2, F14, the table. `tools/gen_svm_switch.py` writes `#include <array>` after `#pragma once` (one blank line each side) and, after the
+  tail fragment, one blank line, this block, one blank line, and `CCL_NAMESPACE_END`. The `table[...] = true;` lines are the `cases`
+  in the order of the switch (upstream order, as `generate` already sorts the blocks):
+  ```
+  /* The node types that svm_eval_nodes() has a case for: the `cases` of
+   * src/cycles/svm_nodes.toml. Generated, not upstream text. */
+  inline constexpr std::array<bool, NODE_NUM> painterly_svm_has_case = [] {
+    std::array<bool, NODE_NUM> table{};
+    table[NODE_END] = true;
+    return table;
+  }();
+  ```
+  (the `NODE_END` line stands for one line per case). Use exactly this text, so that the golden of `tests/core/test_gen_svm_switch.py` can be
+  written by hand from it. Array designators (`[NODE_END] = true`) are not C++20, and MSVC rejects them. The text must not contain
+  `SVM_CASE(`: `test_committed_inputs` counts that string.
+- F2, F14, the manifest. `src/cycles/svm_nodes.toml` gains `unsupported`, an array of inline tables `{ node = "NODE_X", reason = "..." }`,
+  one per entry the pytest below finds, with a comment that says what the list is. The reasons are factual (who emits the type):
+  - NODE_LIGHT_PATH: GeometryNode::compile, for the Backfacing output
+  - NODE_VECTOR_TRANSFORM: VectorTransformNode::compile
+  - NODE_SET_BUMP: BumpNode::compile
+  - NODE_CLOSURE_SET_NORMAL: SetNormalNode::compile
+  - NODE_ENTER_BUMP_EVAL: SVMCompiler::compile_type, for the bump program of a shader whose displacement method is "both"
+  - NODE_LEAVE_BUMP_EVAL: SVMCompiler::compile_type, for the same program
+  - NODE_SET_DISPLACEMENT: OutputNode::compile, for the displacement program, when Output.Displacement is linked
+  - NODE_AOV_START: SVMCompiler::compile_type, when the graph has AOV Output nodes; no such node type is registered
+
+  `gen_svm_switch.py` accepts `unsupported` as an optional third key (`includes` and `cases` stay required, so the fixtures of
+  `test_gen_svm_switch.py` stay valid) and exits 1 with its usual message for: a value that is not an array of tables; a table without
+  exactly the keys `node` and `reason`; a `node` that does not match `NODE_[A-Z0-9_]+`; an empty or non-string `reason`; a node listed
+  twice; a node that is also in `cases`. It emits nothing for the key: the header text does not depend on it. Update the module docstring and the comment at
+  `tools/gen_svm_switch.py:35` ("The manifest's exactly two keys").
+- F2, F14, the refusal. In `src/painterly/scene/svm/shader_manager.h`:
+  - Include `<stdexcept>`, `<string>` and `"svm_eval_nodes.h"` (generated; `painterly_svm_has_case` is in it). Every target that includes
+    the manager now links `cycles_svm` (`painterly_tests` does, `src/test/CMakeLists.txt:81`), and a test source that includes it must include
+    `cycles_svm_test_support.h` first, as every one does now: that header redefines `kernel_data_fetch` before `svm_eval_nodes.h`.
+  - Add `painterly_svm_node_name(uint type)`: the name of a node type, from a table built out of `kernel/svm/node_types_template.h` with
+    `#define SHADER_NODE_TYPE(name) #name,` and `#define SHADER_NODE_TYPE_DERIVATIVE(name) #name, #name "_DERIVATIVE",` (the two macros of the enum,
+    `third_party/cycles/kernel/svm/types.h:51-55`, so the order is the enum's; the template `#undef`s them itself). `static_assert` that the
+    table has `NODE_NUM` entries; return "?" for a type outside it.
+  - `device_update_specific` (`:156-227`): right after `device_free(device, dscene, scene)` (`:166`) set `scene->dscene.data.svm_usage = {}`. The
+    compiler marks every node type it emits in that member and nothing clears it
+    (`third_party/cycles/fragments/scene/svm_cpp/member/SVMCompiler.SVMCompiler.inc:13`, `third_party/cycles/scene/svm.h:105`), so a rerun would see
+    the types of shaders that are gone. It is `scene->dscene`, whatever `dscene` the caller passes: that is where the compiler writes.
+  - `device_update_shader` (`:230-248`): read `painterly_log_error_count()` before `compiler.compile(...)` (`:243`). After it, first, if the
+    count changed, throw `std::runtime_error` with `shader "<name>": the SVM compiler ran out of stack space`; second, read `svm_usage` as the
+    `NODE_NUM` ints it is (as `src/test/test_cycles_svm_compiler.cpp:287-300` does) and, for the lowest `type` with `usage[type]` and no
+    `painterly_svm_has_case[type]`, throw `std::runtime_error` with `shader "<name>" uses <NODE_X>, which svm_eval_nodes() has no case for`.
+    `<name>` is `shader->name.string()`. The stack check comes first, because an out-of-stack compile leaves stale marks. The throw leaves
+    `dscene` as `device_free` left it (empty `svm_nodes` and `shaders`). Leave the `assert` at `:238` alone. Say in the class comment that
+    the update throws and why.
+- F2, F14, the count. `src/cycles/shim/util/log.h`: `LOG_ERROR` (`:22`) becomes
+  `(painterly_count_log_error(), std::cerr << "Error: ")`, with `painterly_log_error_count()` (an `inline int &` over a
+  function-local `static thread_local int`) and `painterly_count_log_error()` defined inside `CCL_NAMESPACE_BEGIN`, before the log levels.
+  Comment why (the failure is otherwise invisible, see Why) and that the count is per thread, so an error on another thread cannot refuse
+  this thread's shader. Leave the three spans that `tests/core/test_shim_upstream_copies.py` pins (the `LogLevel` enum, `LOG_IS_ON`, the
+  `float3` `operator<<`) as they are.
+- Tests, C++. New `src/test/test_cycles_svm_unsupported.cpp`, registered with `target_sources(painterly_tests PRIVATE ...)` in
+  `src/test/CMakeLists.txt`. It opens with the two-line SPDX header that `tests/core/test_cpp_file_headers.py` requires and defines the helpers
+  it needs in an unnamed namespace (the other files do; M6a-FIX-TQ4c hoists them). Name every case `cycles svm unsupported: ...` or
+  `cycles svm binder: ...`: the verify lines of M6a-T6.1 to M6a-T6.8 count the cases that match `cycles kernel*`, `cycles svm stack nodes:*`,
+  `cycles shader graph*`, `cycles svm compiler:*`, `cycles svm textures:*`, `cycles texture nodes:*`, `cycles svm closures:*` and `cycles svm images:*`,
+  and none of those may match a new case. A scene is `Scene` with a `PainterlyShaderManager` and `painterly_cycles_shader_node_types()`
+  called first; each update is `device_update_pre` then `device_update_post` (public), with a `Shader` that has a name, a graph and `reference()`.
+  - A node type without a case. Four graphs, each in its own scene; the update throws `std::runtime_error`, whose message contains the shader's
+    name and the node type's name, and `scene->dscene.svm_nodes.size() == 0` afterwards. The wiring (checked while drafting; `connect` inserts
+    the conversions):
+    - shader "backfacing", NODE_LIGHT_PATH: `geometry`.Backfacing -> `emission`.Strength; `emission`.Emission -> Output.Surface.
+    - shader "vector_transform", NODE_VECTOR_TRANSFORM: `geometry`.Position -> `vector_transform`.Vector; `vector_transform`.Vector -> `emission`.Color; Emission -> Surface.
+    - shader "set_normal", NODE_CLOSURE_SET_NORMAL: `geometry`.Normal -> `set_normal`.Direction; `set_normal`.Normal -> `diffuse_bsdf`.Normal; `diffuse_bsdf`.BSDF -> Surface.
+    - shader "bump", NODE_SET_BUMP: `texture_coordinate`.Generated -> `vector_math`.Vector1 and `texture_coordinate`.Normal -> `vector_math`.Vector2, with the parameter `math_type` of the
+      `vector_math` node set to "dot_product"; `vector_math`.Value -> `bump`.Height; `bump`.Normal -> `diffuse_bsdf`.Normal; BSDF -> Surface.
+    Both dot operands are linked on purpose: with one unlinked operand the Height folds to a constant and the Bump node is never compiled.
+  - A stack that overflows. `SVM_STACK_SIZE` is 255 (`third_party/cycles/kernel/svm/types.h:41`). Build `live_values(n)`: `geometry`.Position and
+    .Normal -> `vector_math` "dot_product" (not constant); a chain of `n` `math` "add" nodes, each with Value1 from the previous value and
+    Value2 = 1; then a second chain that sums the chain's values in reverse order (acc = last; for i = n - 2 down to 0, acc = add(acc, value i)); acc ->
+    `emission`.Strength. All `n` values stay live until the second chain reaches them. `live_values(2 * SVM_STACK_SIZE)` throws, and the message
+    contains the shader's name and "stack"; `live_values(SVM_STACK_SIZE / 2)` updates without a throw and leaves `svm_nodes` non-empty. Both
+    lengths come from the constant, and the case does not assert where the edge lies: that depends on Cycles' scheduler (vendored).
+  - Stale marks. A scene with a supported graph (`live_values(4)`), after `svm_usage[NODE_LIGHT_PATH] = 1` is written through the `int` view, updates without a throw.
+  - The table. `painterly_svm_has_case` is true at NODE_END, NODE_MATH and NODE_TEX_IMAGE_BOX_DERIVATIVE and false at NODE_LIGHT_PATH, NODE_SET_BUMP and
+    NODE_PAD1; `painterly_svm_node_name` gives "NODE_LIGHT_PATH" and "NODE_TEX_COORD_DERIVATIVE".
+  - The binder, `cycles svm binder: ...`. Two supported shaders, one update; then `bind_kernel_globals`: `svm_nodes`, `shaders` and `lookup_table` each
+    have `data` equal to the device scene's array and `width` equal to its `size()`. `REQUIRE` each width before any fetch, so that a wrong width fails
+    the case and does not abort the binary; then `globals.shaders.fetch(1).flags` equals `scene->dscene.shaders[1].flags`.
+- Tests, Python.
+  - New `tests/core/test_svm_nodes_manifest.py`. Scan every `*.inc` under `third_party/cycles/fragments/scene/` and `third_party/cycles/scene/svm.h` for the
+    regex `\badd_node\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)?(NODE_[A-Z0-9_]+)` (the opcode is the first or second argument: `add_node(NODE_AOV_START)`,
+    `compiler.add_node(this, NODE_X, ...)`, `add_node(nullptr, NODE_X, ...)`; the definition `add_node(ShaderNodeType type)` has none). That covers the
+    `*.compile-SVMCompiler*` fragments and `SVMCompiler.compile_type` named in the audit, and also `add_value_node`, `generate_multi_closure`, `compile` and
+    `add_bsdf_node`. Tests: (a) every emitted type is in `cases` or in `unsupported`; (b) no `unsupported` node is also in `cases`, and each is emitted by
+    a scanned file; (c) the `svm_case` fragments of VENDORED.toml (`kernel/svm/svm_h/svm_case/NODE_X`) are exactly `cases`. Your answer quotes what the scan
+    finds (drafting found 231 files, 38 distinct types, 30 in `cases`, the 8 above). Mutations: an `unsupported` entry deleted (a); `NODE_MATH` added to
+    `unsupported` (b); a case deleted from `cases` (c).
+  - `tests/core/test_gen_svm_switch.py`: write the new `EXPECTED` by hand from the block above and set the sha256 literal of `test_golden` to the
+    sha256 of that hand-written text (`hashlib`); then show that the generator reproduces it. Add a test that the committed inputs generate exactly one
+    `table[NODE_X] = true;` line per case; and the `unsupported` cases above (accepted, output unchanged by it, each bad shape exits 1). Mutations: the
+    generator emits only the first case's line (golden and table test fail); each validation of `unsupported` deleted (its case fails).
+- Change no existing assertion, except these, which the new output and key set force:
+  - `tests/core/test_gen_svm_switch.py`: `EXPECTED` and the sha256 literal in `test_golden` (the header gains the include and the table).
+  - `tests/core/test_cycles_svm.py:140`: `set(manifest) == {"includes", "cases"}` gains `"unsupported"`.
+- Mutations to show (first failing check each). The ones in `shader_manager.h`, `log.h` and `shader.cpp` are made in files you also changed, so save your
+  finished files under `.cache/` first and put them back afterwards (`git checkout` would discard your work).
+  - Asserts are live: `svm_nodes.width = 0` (`:146`) aborts `painterly_tests --test-case='cycles svm closures:*'` with the option on (`kernel_assert` on
+    `index >= 0 && index < width`), and passes it with the option removed.
+  - `shader_manager.h`: the has-case check deleted; the `svm_usage` reset deleted; the stack check deleted; `svm_nodes.width` and `shaders.width` each set to
+    0 and to `size() + 1`.
+  - `log.h`: `LOG_ERROR` without the count.
+  - `shader.cpp:140`: `6` changed to `7` (the build fails).
+Outcome:
+- `CHECK` exits 0, with the option on for the whole of `painterly_tests`. Your answer says how many test cases and assertions `painterly_tests` ran before
+  and after (drafting: 146 cases and 90,633 assertions before).
+- `build/q/src/test/painterly_tests --test-case='cycles svm unsupported:*,cycles svm binder:*'` passes, and the doctest filters of the verify lines of M6a-T6.1 to
+  M6a-T6.8 still print their counts.
+- `git diff -U0 HEAD -- src/test tests | grep -E '^-[^-]'` lists only lines of `EXPECTED`, the sha256 literal and `tests/core/test_cycles_svm.py:140`;
+  `git status --porcelain` lists only allowedPaths.
+- Host only, after landing (Opus): the Windows job builds `painterly_tests` with `/UNDEBUG` and compiles the table with MSVC.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/test/CMakeLists.txt`, `src/test/test_cycles_svm_unsupported.cpp`, `src/painterly/scene/svm/shader_manager.h`, `src/cycles/shim/util/log.h`, `src/cycles/shim/scene/shader.cpp`, `tools/gen_svm_switch.py`, `src/cycles/svm_nodes.toml`, `tests/core/test_svm_nodes_manifest.py`, `tests/core/test_gen_svm_switch.py`, `tests/core/test_cycles_svm.py`
+Depends on: M6a-FIX-SVMT, M6a-FIX-VS1.
+
+## M6a-FIX-TQ4b: every wheel build compiles the vendored SVM, and the build regenerates what changed (TQ.4 F6, F13, F15, F16, F18, F26)
+Why (audit TQ.4, `docs/audits/TQ.4.md`, 2026-10-25; line numbers are at 846f166, and M6a-FIX-TQ4a has since edited `tools/gen_svm_switch.py`,
+`src/cycles/shim/scene/shader.cpp`, `src/test/CMakeLists.txt` and `tests/core/test_gen_svm_switch.py`, so find code in those by name):
+- F13. T6.3 and T6.5 added OBJECT header checks so that the wheel builds compile the SVM headers with MSVC and Clang on macOS (`src/cycles/CMakeLists.txt:137,201`).
+  T6.6 and T6.8 added 12 evaluator headers (`src/cycles/svm_nodes.toml:31-45`) and their dependencies, and only `painterly_tests` compiles
+  them: GCC and MSVC in `.github/workflows/ci.yml:14-86`. The wheel builds run with tests off (`pyproject.toml:17-19`), so Clang and arm64 (NEON through sse2neon,
+  `third_party/cycles/kernel/svm/noise.h:45-49`) never compile them, nor the generated switch.
+- F15. The five generated units depend on the generator, the manifests and VENDORED.toml but not on the 301 `.inc` files
+  (`src/cycles/CMakeLists.txt:112-113,122-124,163-165,191-193,214-216,231-233`), so an edit of an `.inc` without VENDORED.toml re-runs nothing and the sha256 check never runs. And both generators
+  rewrite their output on every run (`tools/gen_svm_switch.py:180-186`, `tools/gen_fragment_units.py:219-224`), so touching VENDORED.toml, which every card does, recompiles all
+  five unit objects with identical bytes.
+- F16, F6(a). The five units are kept by hand in five places: `[unit.*]` in `src/cycles/fragment_units.toml`, one `foreach` and three pasted rules in `src/cycles/CMakeLists.txt`
+  (`:155-169,184-196,207-219,224-236`), the `.cpp` paths of the fragments, and the freshness tests, which cover 4 of 5 units (`shader_nodes` has none).
+- F6(b), (d), (e). About 1,000 lines of our own C++ in `src/cycles/` build without warning flags (`cmake/painterly_warnings.cmake:5-9`); `if(NOT MSVC)` at `src/cycles/CMakeLists.txt:146`
+  also skips clang-cl, for which Blender sets the flag (`platform_win32.cmake:207`); `src/test/CMakeLists.txt:81,85,92,99` link `cycles_svm` and `cycles_scene` three times each.
+- F18. The wheels PR path filter lacks the generators (`.github/workflows/wheels.yml:12-19`) that the wheel builds run, and `src/cycles/CMakeLists.txt:135-136` says they "never run the generator".
+- F26. `check --upstream` runs only by hand; CI runs the offline check, whose hashes the same tool wrote.
+
+Measured while drafting, in a scratch copy of 846f166 with the changes below (nothing is committed): `touch third_party/cycles/VENDORED.toml` re-runs six generators and recompiles the five unit objects at 846f166,
+and recompiles nothing with the changes; a changed byte in an `.inc` fails the generator's sha256 check with them; `svm_eval_check.cpp` compiles with GCC 15.2 and with clang++ 21.1.8 (x86-64), with the project's flags, without a warning; with `-Wall -Wextra -Wshadow`
+our ten sources give one warning, at `src/cycles/shim/scene/shader.cpp:202` (`-Wsign-compare`: `size_t` against the unnamed enum of `third_party/cycles/scene/tables.h:17`).
+
+Do:
+- F13, the build check. New `src/cycles/svm_eval_check.cpp` (the SPDX header of `svm_headers_check.cpp`; say in its comment what it is for, as that file does) that includes
+  `"svm_eval_nodes.h"` and explicitly instantiates `svm_eval_nodes<KERNEL_FEATURE_NODE_MASK_SURFACE & ~KERNEL_FEATURE_NODE_RAYTRACE, SHADER_TYPE_SURFACE, std::nullptr_t>`
+  with the parameter list of its definition (the instantiation of `painterly_svm_test_run`, `src/test/cycles_svm_test_support.h:335-336,350-351`; every case compiles under that mask). In `src/cycles/CMakeLists.txt`:
+  `add_library(cycles_svm_eval_check OBJECT svm_eval_check.cpp)` and `target_link_libraries(cycles_svm_eval_check PRIVATE cycles_svm)`, in ALL like its two siblings. It gets no warning flags (the generated header has
+  unused parameters in this instantiation). Correct the comments that this makes stale: `src/cycles/svm_headers_check.cpp:6-9` and `src/cycles/svm_closure_headers_check.cpp:7-9` say the generated switch is compiled
+  only in builds with tests. Change only comments there and keep the `add_library(cycles_svm_closure_headers_check OBJECT svm_closure_headers_check.cpp)` line as it is: existing tests read the `#include` lists of both files and that line
+  (`tests/core/test_cycles_svm.py:145-149`, `tests/core/test_cycles_svm_compiler.py:191-201`).
+- F16, F6(a), the units. In `src/cycles/CMakeLists.txt`, one `function(painterly_fragment_unit unit)` holds the `add_custom_command` (the command, the `DEPENDS` and the `COMMENT` of today's rules) and appends the unit's
+  `.cpp` to `PAINTERLY_FRAGMENT_UNIT_SOURCES` (`PARENT_SCOPE`). Call it once per line, the name alone in the parentheses: `painterly_fragment_unit(shader_nodes)`, `svm`, `time`, `transform`, `tables` (a test parses these lines). Keep each
+  unit's rationale comment (T6.5 `time_dt`, T6.6 `transform_transposed_inverse`, T6.7 `LookupTables`) beside its call. `cycles_scene` takes `${PAINTERLY_FRAGMENT_UNIT_SOURCES}` (all five) and the three later `target_sources`
+  of generated units go.
+- F15, the dependencies. After `find_package(Python ...)` (`:114`): `file(GLOB_RECURSE PAINTERLY_FRAGMENT_INC_FILES CONFIGURE_DEPENDS ${PAINTERLY_CYCLES_VENDOR}/fragments/*.inc)`; the switch's rule and the function's rule both list
+  `${PAINTERLY_FRAGMENT_INC_FILES}` in `DEPENDS`. Correct the comment at `:110-113` ("Every fragment change rewrites its sha256 in VENDORED.toml, so these DEPENDS cover the fragments too" is false for an edit or a
+  revert) and the one at `:134-136` (the generator runs in the wheel builds since T6.4).
+  - `tools/gen_svm_switch.py` (`_write`) and `tools/gen_fragment_units.py` (`main`) write the output only when the file is absent or its bytes differ. CMake sets `restat` on every custom command with Ninja, so an unchanged output stops
+    the recompile; say so in a comment.
+- F6(b), the warnings. `cmake/painterly_warnings.cmake`: one function that gives the flag list (`/W4 /wd4702` for MSVC, `-Wall -Wextra -Wshadow` otherwise), read by `painterly_target_warnings` and by a new
+  `painterly_source_warnings(<source>...)` that appends it to the `COMPILE_OPTIONS` property of those sources (as `src/cycles/CMakeLists.txt:71-72` does for `transform_avx2.cpp`). Call it in `src/cycles/CMakeLists.txt` for the ten sources:
+  `shim/util/{path,string,system,thread}.cpp`, `shim/scene/{attribute,shader,image}.cpp`, `shim_markers.cpp`, `svm_headers_check.cpp`, `svm_closure_headers_check.cpp`. Not for vendored sources, the generated units, or `svm_eval_check.cpp`. Update the
+  comment of the file (it says the `cycles_*` targets never get the flags). Fix the one warning at `shader.cpp:202` with `size_t(TABLE_OFFSET_INVALID)`, the conversion that `:53` and `:217` apply implicitly. A line that
+  `tests/core/test_shim_upstream_copies.py` pins stays byte for byte; if a flag reports one, switch that flag off for that source with a comment that names the span, and say so. MSVC's `/W4` reports are for the Windows job (host only).
+- F6(d), clang-cl. New `cmake/painterly_toolchain.cmake` with `painterly_no_strict_aliasing_option(<out_var>)`, a function of `CMAKE_CXX_COMPILER_ID`, `CMAKE_CXX_COMPILER_FRONTEND_VARIANT` and `MSVC` only: `/clang:-fno-strict-aliasing` when the ID is
+  "Clang" and the front end is "MSVC" (clang-cl), empty for cl.exe, `-fno-strict-aliasing` otherwise. Blender v5.2.2 sets exactly `/clang:-fno-strict-aliasing` for clang-cl at `build_files/cmake/platform/platform_win32.cmake:207`, inside `if(MSVC_CLANG)` (read at
+  `raw.githubusercontent.com/blender/blender/v5.2.2/...` while drafting; the sparse `.cache/vendor` checkout has no `build_files/`). `src/cycles/CMakeLists.txt:146-148` uses it for `cycles_kernel` instead of `if(NOT MSVC)`, after `include(painterly_toolchain)` (`CMAKE_MODULE_PATH` already holds `cmake/`, `CMakeLists.txt:17`). Keep its comment (`:140-145`).
+- F6(e), duplicate links. `src/test/CMakeLists.txt`: link `cycles_svm` and `cycles_scene` once each (keep `:81` and `:85`, delete the two later `target_link_libraries(painterly_tests PRIVATE cycles_svm cycles_scene)` at `:92` and `:99`; their comments stay).
+- F18, the wheels filter. `.github/workflows/wheels.yml:12-19`: add `"tools/gen_fragment_units.py"` and `"tools/gen_svm_switch.py"` to `paths`, and say why in the comment at `:10-11`.
+  Add too what TQ.3 F28 found missing (`docs/audits/TQ.3.md`): `tools/fetch_blender.py`, experiment 005's directory and
+  `tests/core/test_import.py`, which the wheel jobs run.
+- F26, CI. In `.github/workflows/ci.yml`, job `linux`, after the step "Symbol audit": a step "Check the vendored sources against the pinned upstream" that runs `.venv/bin/python -I tools/vendor_sync.py check --upstream`. It names no tag and clones nothing itself: the
+  tool reads the repository, tag and commit from `[upstream.cycles]` (`third_party/cycles/VENDORED.toml:6-10`) and `ensure_checkout` (`tools/vendor_sync.py:662-703`) makes the shallow, blobless, sparse clone of that tag into `.cache/vendor/blender-<tag>`
+  (`_clone_tag`, `:633-652`), refusing a checkout whose HEAD is not the pin. Say so in a comment. It needs the network, so you cannot run it: write "host-only, not run".
+- Tests. New `tests/core/test_cycles_build.py` (find `ninja` and `cmake` next to `sys.executable` first, then on `PATH`; `make` puts the venv's `bin` on `PATH`). Each fails under the mutation named after it. The mutations are made in files you
+  also changed, so save your finished files under `.cache/` first and put them back afterwards (`git checkout` would discard your work); show each mutation and its first failing check in your answer.
+  - `test_generated_unit_is_current[unit]`, one per `[unit.*]` of `fragment_units.toml`: `build_dir/src/cycles/fragment_units/<unit>.cpp` exists and `tools/gen_fragment_units.py --unit <unit> --check` accepts it. Delete the three tests it replaces,
+    `test_generated_units_are_current` (`tests/core/test_cycles_svm_compiler.py:204-227`), `test_transform_unit_is_current` (`tests/core/test_cycles_svm_textures.py:193-213`) and `test_tables_unit_is_current`
+    (`tests/core/test_cycles_svm_closures.py:150-170`), and the imports that become unused. Mutation: one byte appended to the built `shader_nodes.cpp` fails that parameter only (delete the file and rebuild to restore).
+  - `test_units_are_one_set`: the names in the `painterly_fragment_unit(...)` lines, the `[unit.*]` names, and the units' `upstream_path`s against the `.cpp` `upstream_path`s of VENDORED.toml's fragments are the same set; no `upstream_path` is used by
+    two units; no unit is declared twice. Mutations: a sixth call; a call deleted; two units with one `upstream_path`.
+  - `test_generated_files_depend_on_every_fragment_file`: `ninja -C <build_dir> -t inputs --no-shell-escape <target>` for `src/cycles/generated/svm_eval_nodes.h` and each unit lists every `*.inc` under `third_party/cycles/fragments`. (Without
+    `--no-shell-escape`, ninja quotes the path of `LookupTables.~LookupTables.inc`. Compare the part of each path below `third_party/cycles/fragments/`, because ninja prints the source directory as CMake spelled it.) Mutation: `${PAINTERLY_FRAGMENT_INC_FILES}` dropped from the function's `DEPENDS`.
+  - `test_svm_eval_check_is_built`: `ninja -t inputs --no-shell-escape all` lists `src/cycles/svm_eval_check.cpp`. Mutation: `EXCLUDE_FROM_ALL` on the library.
+  - `test_shim_sources_have_warning_flags`: for the ten sources above (a glob of `src/cycles/shim/**/*.cpp` plus the three top-level ones), the command in `ninja -t commands all` that compiles it (match the part of the path below `src/cycles/`) contains `-Wshadow` or `/W4`. Mutation: one source dropped from the call.
+  - `test_aliasing_option_per_toolchain`: `cmake -DCMAKE_CXX_COMPILER_ID=... -DCMAKE_CXX_COMPILER_FRONTEND_VARIANT=... [-DMSVC=1] -P` of a script that includes the module and prints the function's result gives, for GNU/GNU, Clang/GNU, AppleClang/GNU, MSVC/MSVC and
+    Clang/MSVC, `-fno-strict-aliasing` three times, the empty string, and `/clang:-fno-strict-aliasing`. Mutation: `if(MSVC)` first in the function.
+  - `test_painterly_tests_links_each_library_once`: no library appears twice in the `target_link_libraries(painterly_tests ...)` calls of `src/test/CMakeLists.txt`. Mutation: the duplicate put back.
+  - `test_wheels_filter_lists_the_generators`: every `tools/<name>.py` that a `COMMAND` of `src/cycles/CMakeLists.txt` runs is in `on.pull_request.paths` of `wheels.yml`. PyYAML reads the key `on` as `True` (YAML 1.1): look up `workflow.get("on", workflow.get(True))`.
+    Mutation: one path removed.
+  - `test_ci_checks_the_pinned_upstream`: the `linux` job of `ci.yml` has a step whose `run` is `.venv/bin/python -I tools/vendor_sync.py check --upstream`. Mutation: the step deleted.
+  - In `tests/core/test_gen_svm_switch.py` and `tests/core/test_gen_fragment_units.py`, a test that a second run of the generator on unchanged inputs leaves the output's mtime alone (`os.utime` the output to an old time, run, compare `st_mtime_ns`)
+    and that a changed output is rewritten. Mutation: the unconditional write back.
+- Change no existing assertion, except the deletion of the three freshness tests above (the new parametrized test covers them and `shader_nodes`).
+Outcome:
+- `CHECK` exits 0.
+- After a full build in `build/q`, `touch third_party/cycles/VENDORED.toml` and `touch third_party/cycles/fragments/kernel/svm/svm_h/span/svm_eval_nodes_tail.inc`, each followed by `cmake --build build/q`: your answer quotes both outputs, which show
+  the six `Generating` steps and no `Building CXX` line.
+- A full rebuild of `cycles_util` and `cycles_scene` prints no `warning:` line for the ten sources (GCC).
+- `git status --porcelain` lists only allowedPaths.
+- Host only, after landing (Opus): `python -I tools/vendor_sync.py check --upstream` exits 0; the Windows and macOS jobs compile `svm_eval_check.cpp`.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/cycles/CMakeLists.txt`, `src/cycles/svm_eval_check.cpp`, `src/cycles/svm_headers_check.cpp`, `src/cycles/svm_closure_headers_check.cpp`, `src/cycles/shim/scene/shader.cpp`, `cmake/painterly_warnings.cmake`, `cmake/painterly_toolchain.cmake`, `src/test/CMakeLists.txt`, `tools/gen_svm_switch.py`, `tools/gen_fragment_units.py`, `tests/core/test_cycles_build.py`, `tests/core/test_gen_svm_switch.py`, `tests/core/test_gen_fragment_units.py`, `tests/core/test_cycles_svm_compiler.py`, `tests/core/test_cycles_svm_textures.py`, `tests/core/test_cycles_svm_closures.py`, `.github/workflows/wheels.yml`, `.github/workflows/ci.yml`
+Depends on: M6a-FIX-TQ4a.
+
+## M6a-FIX-TQ4c: test helpers, logs, ustring and generator hygiene (TQ.4 F7-F10, F12, F17, F21-F24)
+Why (audit TQ.4, `docs/audits/TQ.4.md`, 2026-10-25): Low findings in test code, the log and `ustring` shims, the docs and the two generators, one bullet each. Line numbers
+are at 846f166; M6a-FIX-SVMT, -VS1, -X011, -TQ4a and -TQ4b have edited most of these files, so find code by name.
+
+Do:
+- F7, helpers. Each of these has one definition in `src/test` and the others call it: `create_node_by_name` (with the `REQUIRE`; the copy in `test_cycles_svm_compiler.cpp:58` lacks it, so a mistyped type name is a null
+  dereference that kills the binary), `make_scene`, `shader_manager`, `add_shader` (`test_cycles_svm_compiler.cpp:43,51,101`, `test_cycles_svm_closures.cpp:47,55,78`, and the copies in `test_cycles_svm_unsupported.cpp`), `new_program`
+  (`test_cycles_svm_stack_nodes.cpp:51`, `test_cycles_svm_textures.cpp:46`, `test_cycles_svm_images.cpp:63`), `run_and_check`/`run_program_and_check` (`test_cycles_svm_stack_nodes.cpp:41`, `test_cycles_svm_textures.cpp:33`, `test_cycles_svm_images.cpp:50`),
+  `c` and `c3` (`test_cycles_svm_stack_nodes.cpp:17,21`, `test_cycles_svm_textures.cpp:60,65`), and the `create_node_by_name` of `test_cycles_shader_graph.cpp:29` and `test_cycles_texture_nodes.cpp:27`. They go to `src/test/cycles_scene_fixture.h` and
+  `src/test/cycles_svm_test_support.h`, which exists for this. The constraint is that header's include-order rule (it redefines `kernel_data_fetch` before `svm_eval_nodes.h`, which `shader_manager.h` now includes): a header that needs
+  `PainterlyShaderManager` includes it after the redefinition, and `cycles_scene_fixture.h`, which two sources include without the support header, does not include it. `eval_surface` (`test_cycles_svm_compiler.cpp:170-177`) calls
+  `PainterlyShaderManager::bind_kernel_globals` instead of binding by hand, so the compiler tests cover the production binder. Mutation: `svm_nodes.width = 0` in `bind_kernel_globals` now fails `cycles svm compiler:*` (it did not).
+  Where the copies differ, keep the stricter one and say what differed.
+- F8, docs. `docs/architecture.md`: an `src/cycles/` layout paragraph that names `shader_node_registry.h`, `fragment_units.toml`, `svm_nodes.toml`, `shim_markers.cpp`, `svm_headers_check.cpp`, `svm_closure_headers_check.cpp`, `svm_eval_check.cpp`, the generators
+  `tools/gen_svm_switch.py` and `tools/gen_fragment_units.py` and the build-tree files they write, the libraries `cycles_kernel`, `cycles_svm` and `cycles_scene`, the definition-set rule (T6.1, `docs/handoff/drafts/M6a/T6.1-vendor-kernel-types.md:80-85`) and
+  `src/painterly/{kernel,scene}/svm/`; "declared" versus "searched" include order at `:37-38` (declared: shim, third_party, sse2neon, src; searched: shim, src, third_party, as `:39-42` and `src/cycles/CMakeLists.txt:22-23` say). Leave `:61-63`
+  to the M6b brief (TQ.4 F3 is card B1's). Rewrite the header comment of `src/cycles/CMakeLists.txt` (`:1-3`, "the static library cycles_util") to list what the file builds now.
+- F9, log shim. `src/cycles/shim/util/log.h`: `LOG_ERROR`, `LOG_WARNING` and `LOG_INFO` are gated by `LOG_IS_ON(LOG_LEVEL_ERROR)`, `LOG_LEVEL_WARNING` and `LOG_LEVEL_INFO`, in the dangling-else-safe form of `LOG_DEBUG` (upstream's go through `LOG_IF(level <= LOG_LEVEL)`,
+  `.cache/vendor/blender-v5.2.2/intern/cycles/util/log.h:83-97`; its default level 6 hides `LOG_INFO`, `util/log.cpp:17`). The count that M6a-FIX-TQ4a added to `LOG_ERROR` stays outside the gate: it counts at every level (the shader manager's stack check depends on it).
+  Rewrite the header comment (`:6-12`) so that it says how the five relate. `src/cycles/shim/scene/image.h:171-174` justifies the error with `scene/image_cache.cpp:237-244`, which logs nothing; cite upstream's `scene/image.cpp:870` ("Failed to load N image files"). Tests in
+  `src/test/test_cycles_svm_images.cpp`, named `cycles shim log: ...`, with a capture of `std::cerr` (swap its `rdbuf`, restored at the end): the invalid-image case (`wrong_size`, as at `test_cycles_svm_images.cpp:572-586`)
+  logs a line that contains "Image texture" and the reason `a float or converted image needs width * height floats and no bytes` (`src/cycles/shim/scene/image.cpp:138`); with `LOG_LEVEL` set to `LOG_LEVEL_FATAL` (restored at the end), `LOG_ERROR` and
+  `LOG_WARNING` write nothing and `painterly_log_error_count()` still rises; `LOG_INFO` writes nothing at the default level and writes at `LOG_LEVEL_INFO`. Mutations: the `LOG_ERROR` in `add_image` deleted; the gate of `LOG_ERROR` removed;
+  the count moved inside the gate.
+- F10, ustring. `src/cycles/shim/util/param.h`: `hash()` (`:73-78`) is the hash of the characters, `std::hash<std::string_view>()(string())` (or that value computed once and stored with the interned copy, as OpenImageIO does), so it does not depend on an
+  address and unordered containers of ustrings iterate in the same order in every run. `intern` (`:150-159`) allocates its table with `new` and never destroys it, so a `ustring` read in a static destructor stays valid. Correct the comments at `:8-12`, `:43` and `:73-78`.
+  A test case `ustring hashes its characters` in `src/test/test_graph.cpp` after `:175`: `ustring("abc").hash()` equals `std::hash<std::string_view>()("abc")`, two ustrings built from different buffers with equal characters hash equal, and `std::hash<ustring>` agrees with `hash()`. Mutation: the pointer
+  hash back. No test can see the destruction order without a sanitizer: say so in your answer.
+- F12, the count. `src/test/test_cycles_svm_compiler.cpp:483-491`: `CHECK(inputs.size() == 4162)` states a number that came from running the code, and it moves with `hash_uint2` (CLAUDE.md rule 2). Replace it by a comparison with
+  `std::size(special) * std::size(special)` plus a count of the finite hashed pairs taken in the loop that skips the others; the case keeps its assertion count. Show that `num_hashed = 100` passes the new check (it failed the old), and that a loop
+  that pushes a pair twice fails it.
+- F17, pinned manifests. `tests/core/test_cycles_svm_compiler.py` (`units["time"] == {...}`), `tests/core/test_cycles_svm_textures.py` (`units["transform"] == {...}`) and `tests/core/test_cycles_svm_closures.py` (`units["tables"] == {...}` and the neighbours of
+  `bsdf_microfacet.h` by position) assert `upstream_path` and `node_registry` equal and the card's headers a subset of `includes`, as `src/cycles/fragment_units.toml:3-4` says a later card may add includes. These three assertions are the ones this item changes
+  in those files. Mutations: a required header removed from `includes` fails; an unrelated header added passes.
+- F21, provenance text. `tools/gen_svm_switch.py:42-51` and `tools/gen_fragment_units.py:24-34` take "Blender <tag>" from `[upstream.cycles].tag` of the VENDORED.toml they read. The SPDX line becomes a constant whose comment lists the upstream files it was checked
+  against (`kernel/svm/svm.h`, `scene/shader_nodes.cpp`, `scene/svm.cpp`, `util/time.cpp`, `util/transform.cpp`, `scene/tables.cpp`): read the first three lines of each in `MAIN/.cache/vendor/blender-v5.2.2/intern/cycles/` and quote them in your answer (drafting found the same three lines in all six). Tests in both generators'
+  test files: a manifest with `tag = "v9.9.9"` gives a header with "Blender v9.9.9" and not "v5.2.2". The existing goldens stay as they are (their tag is v5.2.2). Mutation: the literal back.
+- F22, malformed input. `gen_svm_switch.py` (`_fragments`, `:104-116`) rejects two entries of one name. `gen_fragment_units.py` checks in `_fragments` (`:127-143`) that `upstream_lines` is two integers (not bools) and that `anchor` is a string where the registry needs
+  it (`kind == "node_define"`), and turns a `UnicodeDecodeError` at `:184` into its `gen_fragment_units:` message; every failure exits 1 with that prefix and no traceback. Negative tests in `tests/core/test_gen_svm_switch.py` and `tests/core/test_gen_fragment_units.py` (a hand-edited
+  VENDORED.toml in the fixture, with the sha256 kept consistent so that the check under test is the one reached). Mutation: each check deleted (the case then shows a traceback or exit 0).
+- F23, hygiene. Delete `SHA256_HEX_LEN` (`tools/gen_svm_switch.py:41`). `tools/vendor_sync.py:1567`: name the unused loop variable `_` and drop `del table`. Drop the `noqa` from `tools/gen_fragment_units.py:38` and keep the sentence. Rename `SVN_NODES` to `SVM_NODES` in
+  `tests/core/test_cycles_svm_compiler.py:17,162`. Leave `MANIFEST_HEADER` (`tools/vendor_sync.py:89-94`) as it is: changing it rewrites `third_party/cycles/VENDORED.toml`, a
+  guarded path (Opus, 2026-10-25). One-line docstrings on
+  `tests/core/test_cycles_svm_images.py:45,50,57` and `tests/core/test_shim_upstream_copies.py:111,121`.
+- F24, portability. `tests/core/test_cycles_svm_compiler.py:182,186,188,193,200`: `read_text(encoding="utf-8")`. At the two hash-seed runs (`tests/core/test_gen_svm_switch.py:319-342`, `tests/core/test_gen_fragment_units.py:427-452`) a comment says why the generator runs
+  without `-I`: `-I` implies `-E` and drops `PYTHONHASHSEED`, while CMake runs the same tools with `-I`.
+- Mutations. Those in files you changed (`log.h`, `param.h`, the generators, the tests) are made after saving your finished files under `.cache/`, and undone by putting them back (`git checkout` would discard your work). Those in
+  `src/cycles/shim/scene/image.cpp`, which is not in allowedPaths, are made in the file and undone with `git checkout -- <file>`. Your answer lists each mutation and its first failing check.
+- Change no existing assertion, except the three of F17 and the one of F12 (their cases keep their assertion counts), and the `eval_surface` of F7. Run the doctest filters of the verify lines of M6a-T6.1 to M6a-T6.8: each prints its counts as before,
+  and no new case matches one of them (name the F10 case `ustring ...` and the F9 cases `cycles shim log: ...`).
+Outcome:
+- `CHECK` exits 0.
+- `git grep -n -E '^(static )?[A-Za-z_][A-Za-z_:<>&* ]*[ *&](create_node_by_name|make_scene|shader_manager|add_shader|new_program|run_and_check|run_program_and_check)\(' -- src/test` prints at most one definition of each name (it prints 16 lines at 846f166; `run_program_and_check` may become `run_and_check`).
+- `for n in shader_node_registry.h fragment_units.toml svm_nodes.toml shim_markers.cpp svm_headers_check.cpp svm_closure_headers_check.cpp svm_eval_check.cpp gen_svm_switch.py gen_fragment_units.py cycles_kernel cycles_svm cycles_scene; do grep -q "$n" docs/architecture.md || echo "missing $n"; done` prints nothing.
+- `git diff --quiet HEAD -- third_party experiments` exits 0; `python -I tools/vendor_sync.py check` exits 0; `git status --porcelain` lists only allowedPaths.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/test/cycles_scene_fixture.h`, `src/test/cycles_svm_test_support.h`, `src/test/test_cycles_shader_graph.cpp`, `src/test/test_cycles_texture_nodes.cpp`, `src/test/test_cycles_svm_stack_nodes.cpp`, `src/test/test_cycles_svm_textures.cpp`, `src/test/test_cycles_svm_closures.cpp`, `src/test/test_cycles_svm_compiler.cpp`, `src/test/test_cycles_svm_images.cpp`, `src/test/test_cycles_svm_unsupported.cpp`, `src/test/test_graph.cpp`, `src/cycles/shim/util/log.h`, `src/cycles/shim/util/param.h`, `src/cycles/shim/scene/image.h`, `docs/architecture.md`, `src/cycles/CMakeLists.txt`, `tools/gen_svm_switch.py`, `tools/gen_fragment_units.py`, `tools/vendor_sync.py`, `tests/core/test_gen_svm_switch.py`, `tests/core/test_gen_fragment_units.py`, `tests/core/test_cycles_svm_compiler.py`, `tests/core/test_cycles_svm_textures.py`, `tests/core/test_cycles_svm_closures.py`, `tests/core/test_cycles_svm_images.py`, `tests/core/test_shim_upstream_copies.py`
+Depends on: M6a-FIX-TQ4b, M6a-FIX-SVMT, M6a-FIX-VS1.
 
 ## REVIEW-M7-M9: report-only review of the drafted M7-M9 cards
 Why: cards T7.1-T9.3 (`docs/handoff/drafts/M7-M9/`) are drafted, but only T7.1 and T7.2 have been reviewed
