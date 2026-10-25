@@ -1,10 +1,21 @@
-"""The render loop end to end: the PAINTERLY engine's Render Result equals the core's film (T4.3).
+"""The render loop end to end: the PAINTERLY engine's Render Result equals SPEC §8 (T4.3).
 
-The engine renders SPEC §9 in reference mode (``reference_scene = True``) with the ``scene_linear``
-output mode, and the Render Result is read back through a float32 OpenEXR file. The pixels must be
-exactly ``film.to_blender_rows(film.scene_linear(core_sum, passes, exposure))``, where ``core_sum``
-is a direct ``_painterly`` render of the same configuration: it is the same core, so the two are
+The engine renders SPEC §9 in reference mode (``reference_scene = True``), and the Render Result is
+read back through a float32 OpenEXR file. The pixels must be exactly SPEC §8's mapping of a direct
+``_painterly`` render of the same configuration (``core_sum``): it is the same core, so the two are
 bit-identical. The EXR stores float32, which is exact, so there is no tolerance anywhere.
+
+The expectation is built here, from SPEC §8's own formula and IEC 61966-2-1's own numbers, and
+never through :mod:`painterly.film`: a defect in ``film.py`` must fail these tests. Four cases run
+end to end, one for each branch the render loop takes:
+
+- ``scene_linear`` at 100 % and frame 1 (the card's step 1);
+- ``display_referred``, the other output mode (``session._write_result``'s else branch);
+- a ``resolution_percentage`` below 100, which halves the image (``session.resolution``);
+- ``seed_per_frame`` at a non-zero frame (``session.integrator_knobs``).
+
+Row order is SPEC §0's: our row 0 is the top row and Blender's buffer row 0 is the bottom row, so
+the expectation is reversed by hand.
 
 Two further tests cover the two paths on which the render loop reports an error instead of
 rendering: a non-square image in reference mode, and the Blender-scene sync, which is the M5 stub.
@@ -27,7 +38,7 @@ import numpy as np
 import painterly.sync.reference as reference
 import pytest
 
-from painterly import film, sync
+from painterly import sync
 
 # The render of the card's step 1: a 48 px square image of SPEC §9, the lane chain with lanes of
 # 16 px, 2 passes and the scene_linear output mode at exposure 1. 48 px is the parity tests' fast
@@ -37,6 +48,28 @@ SIZE = 48
 PASSES = 2
 LANE_LENGTH = 16
 EXPOSURE = 1.0
+
+# SPEC §8's byte scale: ``L/255``, where L is the mean radiance over the completed passes and the
+# core's ``combined()`` returns their sum.
+BYTE_MAX = 255.0
+
+# The sRGB EOTF of IEC 61966-2-1:1999 (§5.2 and Annex A), as the standard gives it. The
+# expectation of the display_referred case is computed from these literals, not from ``film.py``.
+SRGB_JUNCTION = 0.04045
+SRGB_LINEAR_SLOPE = 12.92
+SRGB_OFFSET = 0.055
+SRGB_SCALE = 1.055
+SRGB_EXPONENT = 2.4
+
+# The two frames of the seed_per_frame case: SPEC §8 adds the frame number to ``seed`` when
+# ``seed_per_frame`` is on, so the frame-7 render is the core's seed+7 render, not its seed render.
+SEED = 3
+FRAME = 7
+
+# The resolution_percentage of the reduced case: 50 % of SIZE is 24 px, and Blender's own integer
+# division of BKE_render_resolution gives the same 24.
+PERCENTAGE = 50
+REDUCED_SIZE = SIZE * PERCENTAGE // 100
 
 # Blender 5.2's float32 OpenEXR setting. The card's `use_exr_half = False` was the 2.x name of this
 # setting; 5.2 expresses it as the color depth, "32" being float32 and "16" half (R2: the current
@@ -48,21 +81,51 @@ EXR_COLOR_DEPTH = "32"
 REFERENCE_NOT_SQUARE = "the reference scene needs a square image"
 
 
-def _core_sum() -> np.ndarray:
+def _core_sum(size: int = SIZE, seed: int = 0) -> np.ndarray:
     """The (H, W, 3) radiance sums of a direct ``_painterly`` render of the same configuration.
 
     The scene is SPEC §9 with the reference knobs, as the render loop builds it in reference mode,
-    and the two knobs of the card's step 1: the lane chain and 16-px lanes. The session runs with
-    one thread and batch 1; SPEC §3 makes the output bit-identical for any thread count and batch.
+    and the two knobs of the card's step 1: the lane chain and 16-px lanes. ``size`` is the image
+    side and ``seed`` the core's seed socket. The session runs with one thread and batch 1; SPEC §3
+    makes the output bit-identical for any thread count and batch.
     """
     scene = _painterly.Scene()
-    reference.build_smallpaint_scene(scene, size=SIZE)
-    scene.set_integrator(chain="lane", lane_length=LANE_LENGTH)
+    reference.build_smallpaint_scene(scene, size=size)
+    scene.set_integrator(chain="lane", lane_length=LANE_LENGTH, seed=seed)
 
     session = _painterly.Session(scene, 1)
     session.start(PASSES, 1)
     assert session.wait() is True, "the core's render did not finish"
     return session.combined()
+
+
+def _srgb_to_linear(values: np.ndarray) -> np.ndarray:
+    """The sRGB EOTF of IEC 61966-2-1, written from the literals above, in float64."""
+    return np.where(
+        values <= SRGB_JUNCTION,
+        values / SRGB_LINEAR_SLOPE,
+        ((values + SRGB_OFFSET) / SRGB_SCALE) ** SRGB_EXPONENT,
+    )
+
+
+def _display_referred_expectation(sum_rgb: np.ndarray) -> np.ndarray:
+    """SPEC §8's display_referred pass: ``srgb_to_linear(min(L/255, 1))``, float32, alpha 1."""
+    mean = np.minimum(sum_rgb / PASSES / BYTE_MAX, 1.0)
+    rgba = np.ones((*mean.shape[:2], 4), dtype=np.float32)
+    rgba[..., :3] = _srgb_to_linear(mean)
+    return rgba
+
+
+def _scene_linear_expectation(sum_rgb: np.ndarray, exposure: float) -> np.ndarray:
+    """SPEC §8's scene_linear pass: ``L/255 · exposure``, float32, alpha 1."""
+    rgba = np.ones((*sum_rgb.shape[:2], 4), dtype=np.float32)
+    rgba[..., :3] = sum_rgb / PASSES / BYTE_MAX * exposure
+    return rgba
+
+
+def _blender_rows(rgba: np.ndarray) -> np.ndarray:
+    """SPEC §0's row flip, by hand: our row 0 is the top, Blender's buffer row 0 is the bottom."""
+    return np.ascontiguousarray(rgba[::-1])
 
 
 @pytest.fixture()
@@ -89,6 +152,9 @@ def scene_settings() -> dict[str, object]:
         "passes": settings.passes,
         "output_mode": settings.output_mode,
         "exposure": settings.exposure,
+        "seed": settings.seed,
+        "seed_per_frame": settings.seed_per_frame,
+        "frame_current": scene.frame_current,
     }
     try:
         render.engine = "PAINTERLY"
@@ -98,6 +164,9 @@ def scene_settings() -> dict[str, object]:
         settings.passes = PASSES
         settings.output_mode = "scene_linear"
         settings.exposure = EXPOSURE
+        settings.seed = 0
+        settings.seed_per_frame = False
+        scene.frame_set(1)
         render.resolution_x = SIZE
         render.resolution_y = SIZE
         render.resolution_percentage = 100
@@ -120,6 +189,9 @@ def scene_settings() -> dict[str, object]:
         settings.passes = saved["passes"]
         settings.output_mode = saved["output_mode"]
         settings.exposure = saved["exposure"]
+        settings.seed = saved["seed"]
+        settings.seed_per_frame = saved["seed_per_frame"]
+        scene.frame_set(saved["frame_current"])
 
 
 def _render_result_pixels(tmp_path: Path, scene) -> np.ndarray:
@@ -140,18 +212,68 @@ def _render_result_pixels(tmp_path: Path, scene) -> np.ndarray:
         bpy.data.images.remove(image)
 
 
-def test_the_render_result_is_the_core_film_bit_for_bit(
-    tmp_path: Path, scene_settings: dict[str, object], addon: ModuleType
-) -> None:
-    """The engine's Render Result equals ``to_blender_rows(scene_linear(core_sum, 2, 1))``."""
-    rendered = _render_result_pixels(tmp_path, bpy.context.scene)
-    expected = film.to_blender_rows(film.scene_linear(_core_sum(), PASSES, EXPOSURE))
-
-    assert rendered.shape == (SIZE, SIZE, 4)
+def _assert_is_the_expectation(rendered: np.ndarray, expected: np.ndarray, size: int) -> None:
+    """Check the Render Result against a hand-built SPEC §8 expectation, bit for bit."""
+    assert rendered.shape == (size, size, 4)
     assert rendered.dtype == np.float32
     # Exact equality: the same core rendered both sides, and the EXR round trip stores float32
     # unchanged. A difference of one ulp is a defect, not a rounding to allow for.
     assert np.array_equal(rendered, expected)
+
+
+def test_the_render_result_is_scene_linear_of_the_core_sums(
+    tmp_path: Path, scene_settings: dict[str, object], addon: ModuleType
+) -> None:
+    """The card's step 1: scene_linear at exposure 1, against SPEC §8 built by hand."""
+    rendered = _render_result_pixels(tmp_path, bpy.context.scene)
+    expected = _blender_rows(_scene_linear_expectation(_core_sum(), EXPOSURE))
+
+    _assert_is_the_expectation(rendered, expected, SIZE)
+
+
+def test_the_render_result_is_display_referred_of_the_core_sums(
+    tmp_path: Path, scene_settings: dict[str, object], addon: ModuleType
+) -> None:
+    """The display_referred branch: ``srgb_to_linear(min(L/255, 1))``, SPEC §8's default mode."""
+    bpy.context.scene.painterly.output_mode = "display_referred"
+
+    rendered = _render_result_pixels(tmp_path, bpy.context.scene)
+    expected = _blender_rows(_display_referred_expectation(_core_sum()))
+
+    # The mode must be visible in the pixels: the transfer function is not the identity here.
+    scene_linear = _blender_rows(_scene_linear_expectation(_core_sum(), EXPOSURE))
+    assert not np.array_equal(expected, scene_linear)
+    _assert_is_the_expectation(rendered, expected, SIZE)
+
+
+def test_a_resolution_percentage_below_100_renders_that_smaller_image(
+    tmp_path: Path, scene_settings: dict[str, object], addon: ModuleType
+) -> None:
+    """``session.resolution``: 50 % of 48 px is the 24 px render, and nothing else changes."""
+    bpy.context.scene.render.resolution_percentage = PERCENTAGE
+
+    rendered = _render_result_pixels(tmp_path, bpy.context.scene)
+    expected = _blender_rows(_scene_linear_expectation(_core_sum(size=REDUCED_SIZE), EXPOSURE))
+
+    _assert_is_the_expectation(rendered, expected, REDUCED_SIZE)
+
+
+def test_seed_per_frame_at_a_non_zero_frame_renders_the_seed_plus_the_frame(
+    tmp_path: Path, scene_settings: dict[str, object], addon: ModuleType
+) -> None:
+    """SPEC §8: ``seed_per_frame`` adds the frame number to ``seed`` before the core render."""
+    scene = bpy.context.scene
+    scene.painterly.seed = SEED
+    scene.painterly.seed_per_frame = True
+    scene.frame_set(FRAME)
+
+    rendered = _render_result_pixels(tmp_path, scene)
+    expected = _blender_rows(_scene_linear_expectation(_core_sum(seed=SEED + FRAME), EXPOSURE))
+
+    # The case is only meaningful if the seed moves the pixels: the frame's seed and the
+    # configured seed render differently, so an ignored seed_per_frame fails above.
+    assert not np.array_equal(_core_sum(seed=SEED), _core_sum(seed=SEED + FRAME))
+    _assert_is_the_expectation(rendered, expected, SIZE)
 
 
 def test_a_non_square_reference_render_reports_an_error(

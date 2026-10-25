@@ -89,7 +89,8 @@ def display_referred(sum_rgb, passes: int) -> np.ndarray:
         passes: the number of completed passes the sums cover, at least 1.
 
     Returns:
-        A (H, W, 4) float32 array in Blender's row order (row 0 is the top row), alpha 1.
+        A (H, W, 4) float32 array in the core's row order (row 0 is the top row, SPEC §0), alpha
+        1. :func:`to_blender_rows` flips it for Blender's bottom-row-first buffers.
     """
     mean = np.asarray(sum_rgb, dtype=np.float64) / passes / BYTE_MAX
     return _rgba(srgb_to_linear(np.minimum(mean, 1.0)))
@@ -104,7 +105,8 @@ def scene_linear(sum_rgb, passes: int, exposure: float) -> np.ndarray:
         exposure: the film exposure scale, unitless (the ``exposure`` integrator socket).
 
     Returns:
-        A (H, W, 4) float32 array in Blender's row order (row 0 is the top row), alpha 1.
+        A (H, W, 4) float32 array in the core's row order (row 0 is the top row, SPEC §0), alpha
+        1. :func:`to_blender_rows` flips it for Blender's bottom-row-first buffers.
     """
     mean = np.asarray(sum_rgb, dtype=np.float64) / passes / BYTE_MAX * exposure
     return _rgba(mean)
