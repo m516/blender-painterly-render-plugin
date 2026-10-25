@@ -279,3 +279,26 @@ follow v1 (D4).
 - Whether a node material's emission is scaled by `emission_scale` (T5.3:37 applies it to lights only). Until Opus
   rules, node-material emission is not scaled.
 - Per-lobe normals (Bump, Normal Map) and the Attribute node are outside v1.
+
+## 4. How the cards are drafted
+
+DeepSeek drafts each card from this brief, in one queue task per card, except one task for batches 5, 6, 10, 11 and 12.
+Opus's review panel then checks the drafts, and Opus approves them (plan rows M6b.rvA-rvC, M6b.19).
+- Output: `docs/handoff/drafts/M6b/<id>-<slug>.md`, in the template of `docs/tasks/README.md` ("Card template"). The
+  first line is `# <id> — <title>`; then `Milestone: M6b · Depends on: <ids> · Parallel-safe: yes|no`; then the
+  sections `## Goal`, `## Read first`, `## Create`, `## Modify`, `## Do not touch`, `## Interface`, `## Steps`,
+  `## Acceptance`, `## Commit`, and a last section `## Open for Opus` (write "None." if there is nothing).
+- The brief's text for the card is the mandate. Copy its interface names and its CONTRACT text exactly. A CONTRACT
+  change is shown under `## Interface` as "CONTRACT (Opus writes this before dispatch):", followed by the exact
+  declaration and its comment.
+- Read the code before writing a step: `FACTS.md` (this directory) gives the current interfaces with file:line, and the
+  M6a cards (`docs/handoff/drafts/M6a/`) show the style: exact paths, numbered steps, and an acceptance of exact
+  commands with expected outputs (doctest filters with the counts the card's own cases give, pytest files, and the
+  queue's CHECK).
+- Every expected value in the card is derived in the card: from SPEC, from upstream code with file:line, or by a script
+  whose command and output the card quotes. A count is the count of the cases the card itself specifies. Never put an
+  estimate in a card.
+- Do not decide what this brief leaves open; put it under `## Open for Opus`, with the options and what each would
+  change. Where this brief is wrong about the code (a name, a line, a signature), say so there, with the evidence, and
+  write the step for the code as it is.
+- Write only your card's file. Run no build and no test: a draft changes no code.

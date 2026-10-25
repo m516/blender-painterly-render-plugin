@@ -1437,6 +1437,124 @@ verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV
 allowedPaths: `THIRD_PARTY_NOTICES.md`, `LICENSES/BSD-3-Clause-oiio.txt`, `LICENSES/BSD-3-Clause-intel.txt`, `LICENSES/BSD-3-Clause-ilm.txt`, `LICENSES/Zlib-aladdin.txt`, `tests/core/test_third_party_notices.py`
 Depends on: M6a-T6.8.
 
+## DRAFT-M6b-B1: draft card B1, kernel globals and the build
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B1-kernel-globals.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B1", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B1-kernel-globals.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B1-kernel-globals.md`
+
+## DRAFT-M6b-B2: draft card B2, the shader manager in PainterlyScene::device_update
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B2-shader-manager.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B2", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B2-shader-manager.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B2-shader-manager.md`
+
+## DRAFT-M6b-B3: draft card B3, ShaderData from painterly hits, and the mesh's UVs
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B3-shader-data.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B3", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B3-shader-data.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B3-shader-data.md`
+
+## DRAFT-M6b-B4: draft card B4, the SVM in painterly_trace_pixel
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B4-svm-trace-pixel.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B4", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B4-svm-trace-pixel.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B4-svm-trace-pixel.md`
+
+## DRAFT-M6b-B5: draft card B5, the world shader on misses
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B5-world-shader.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B5", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B5-world-shader.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B5-world-shader.md`
+
+## DRAFT-M6b-B6: draft card B6, the _painterly shader-graph API
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B6-shader-graph-api.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B6", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B6-shader-graph-api.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B6-shader-graph-api.md`
+
+## DRAFT-M6b-B7: draft card B7, sync/shader/flatten.py
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B7-flatten.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B7", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B7-flatten.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B7-flatten.md`
+
+## DRAFT-M6b-B8: draft card B8, sync/shader/node_table.py and export.py
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B8-node-table-export.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B8", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B8-node-table-export.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B8-node-table-export.md`
+
+## DRAFT-M6b-B9: draft card B9, the golden-test harness and its pre-registered rule
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B9-golden-harness.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B9", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B9-golden-harness.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B9-golden-harness.md`
+
+## DRAFT-M6b-B10: draft card B10, image export and experiment X-colour
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B10-image-export-x-colour.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B10", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B10-image-export-x-colour.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B10-image-export-x-colour.md`
+
+## DRAFT-M6b-B11: draft card B11, node-material parity on the reference scene
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/B11-node-material-parity.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "B11", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/B11-node-material-parity.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/B11-node-material-parity.md`
+
+## DRAFT-M6b-N1: draft card N1, node batch 1: Value, RGB, Math, Vector Math (the template)
+Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
+Do:
+- Draft `docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md` from `docs/handoff/drafts/M6b/BRIEF.md` section 2, "Node batches", following the brief's section 4 "How the cards are drafted" and its section 1 decisions.
+- Use `docs/handoff/drafts/M6b/FACTS.md` for the current code, and read every file you cite before you cite it.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md`
+
+## DRAFT-M6b-N5: draft the cards of node batches 5, 6, 10, 11 and 12 from batch 1's template
+Why: decision D4 keeps these five core batches in v1, and FOLLOWUPS (2026-10-22) drafts them in one task from batch 1's card.
+Do:
+- Draft `docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md`, `N6-batch-06-texcoord-mapping.md`, `N10-batch-10-image-texture.md`, `N11-batch-11-bsdfs.md` and `N12-batch-12-mix-add-background.md` from the brief's "Node batches" text, in the structure of `docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md`, following the brief's section 4.
+- Each card names its host classes to extract (or says none is missing), its node-table rows and its golden tests.
+Outcome: the pinned verify prints `DRAFT-OK`.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import re,sys;F=['docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md', 'docs/handoff/drafts/M6b/N6-batch-06-texcoord-mapping.md', 'docs/handoff/drafts/M6b/N10-batch-10-image-texture.md', 'docs/handoff/drafts/M6b/N11-batch-11-bsdfs.md', 'docs/handoff/drafts/M6b/N12-batch-12-mix-add-background.md'];H=['## Goal', '## Read first', '## Create', '## Modify', '## Do not touch', '## Interface', '## Steps', '## Acceptance', '## Commit', '## Open for Opus'];chk=lambda t,i:[h for h in H if not re.search('^'+re.escape(h)+r'[ \t]*(\n|\Z)',t,re.M)]+([] if t.startswith('# '+i+' ') and 'BRIEF.md' in t else ['first line or BRIEF.md']);bad=[(f,c) for f in F for c in [chk(open(f,encoding='utf-8').read(),f.rsplit('/',1)[1].split('-')[0])] if c];print('DRAFT-OK' if not bad else 'DRAFT-BAD',bad);sys.exit(1 if bad else 0)"`
+allowedPaths: `docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md`, `docs/handoff/drafts/M6b/N6-batch-06-texcoord-mapping.md`, `docs/handoff/drafts/M6b/N10-batch-10-image-texture.md`, `docs/handoff/drafts/M6b/N11-batch-11-bsdfs.md`, `docs/handoff/drafts/M6b/N12-batch-12-mix-add-background.md`
+Depends on: DRAFT-M6b-N1.
+
 ## REVIEW-M7-M9: report-only review of the drafted M7-M9 cards
 Why: cards T7.1-T9.3 (`docs/handoff/drafts/M7-M9/`) are drafted, but only T7.1 and T7.2 have been reviewed
 (`docs/handoff/findings/M7-M9-reviews.json`).
