@@ -328,7 +328,7 @@ Run on 2026-10-24. Every number below is from `results_part2.json` of that run.
 
 | Hypothesis | Deciding numbers | Outcome |
 |---|---|---|
-| H4 verbatim compile | patches 0; `vendor_sync check --upstream` exit 0; `scene/svm.cpp` definitions 44, fragments 44, uncovered 0, extra 0; shim new 0, deleted 0, modified 6 (the six of card T6.5); closure 113 paths (110 upstream, 3 shims), 29,367 upstream lines, uncovered 0, unresolved 0; `cmake --build` exit 0 | supported |
+| H4 verbatim compile | patches 0; `vendor_sync check --upstream` exit 0; `scene/svm.cpp` definitions 44, fragments 44, uncovered 0, extra 0; shim new 0, deleted 0, modified 6 (the six of card T6.5); closure 113 paths (110 upstream, 3 shims), 29,367 upstream lines, uncovered 2 (`kernel/util/nanovdb.h`, `util/guiding.h`) and unresolved 1 (`../../guardedalloc/MEM_guardedalloc.h`), the three exceptions the decision rule allows (corrected by Opus on 2026-10-25; the draft said 0 and 0); `cmake --build` exit 0 | supported |
 | H5 byte code and evaluation | registered 6/0; byte code 4/0; unfolded evaluation 9/0; folded evaluation 21/0; two shaders 12/0 (passed/failed) | supported |
 | H6 Math reference | 4162 pairs; 33 passed, 0 failed | supported |
 
@@ -338,7 +338,7 @@ Run on 2026-10-24. Every number below is from `results_part2.json` of that run.
 | M4 MathNode | 7, 1, 66, 119 |
 | M4 EmissionNode | 5, 3, 50, 55 |
 | M4 OutputNode | 4, 0, 38, 39 |
-| M5 card minutes (`port_log_part2.txt`) | 514.3 |
+| M5 card minutes (`port_log_part2.txt`) | 514.3 (not T6.5's card time; see the Conclusion) |
 | M6 compile seconds (three runs, median) | 18.42, 18.51, 9.44; median 18.42 |
 | M7 `scene/svm.cpp` fragments, lines | 44, 1076 |
 | M7 `svm_case` fragments, lines | 42, 192 |
@@ -349,8 +349,9 @@ Run on 2026-10-24. Every number below is from `results_part2.json` of that run.
 | M7 generated `time` unit lines, sha256 | 22, `145c1c19124d24519188b58d571eb53d5c778956291bbfca52b4ebee2d5506ff` |
 
 M6's closure counts (`deps_total`, `deps_third_party_cycles`, `deps_shim`, `deps_src_painterly`,
-`deps_generated`) are 0: `ninja -t deps` printed no `#deps` line for the object in this build, so the
-closure was not measured. M6's times are measured.
+`deps_generated`) are 0 because the closure was not measured: `probe_part2.py:445` looks for a line that starts
+with `#deps `, but `ninja -t deps` prints `<object>: #deps N, ...`, so the probe never finds the list (corrected by
+Opus on 2026-10-25; the draft blamed ninja). M6's times are measured.
 
 | Gate | Value |
 |---|---|
@@ -360,43 +361,77 @@ closure was not measured. M6's times are measured.
 
 ## Conclusion
 
-DRAFT (DeepSeek) — pending Opus review.
+Final (Opus, 2026-10-25). Every number below is from `results.json` and `results_part2.json`, except M5's sprint
+times, which are from sprint S1's `METRICS.tsv`. Opus corrected the DeepSeek draft in three places: H4's closure
+exceptions, M5, and the cause of M6's missing closure counts. A Sonnet reader re-derived the numbers from those files.
 
 - **H1: supported.** The 22 vendored headers compile verbatim in namespace `painterly` with
-  `c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0`: `patches` is 0, `check --upstream` exits 0, the shim
-  status has 0 lines, the closure has 0 uncovered and 0 unresolved paths, and the build exits 0.
-  The deciding numbers are `closure_uncovered: []` and `closure_unresolved: []`; the closure is 78
-  paths of 16,446 upstream lines, and it reaches exactly one shim, `kernel/device/cpu/globals.h`.
-- **H2: supported.** `control flow` reports 11 passed and 0 failed, and
-  `every stack node case dispatches` 105 passed and 0 failed. The generated interpreter therefore
-  runs upstream's frame and consumes exactly each case's words.
-- **H3: supported.** `math`, `mix`, `map range`, `color ramp` and `convert` each report 3 passed
-  and 0 failed: the nodes compute exactly the values card T6.3 derives, under IEEE `==`.
-- **Measurements.** Port cost (M1): 39 cases, 19 includes, 39 `svm_case` fragments of 174 upstream
-  lines, 22 vendored headers, a generated header of 284 lines with sha256
-  `b86aad32d05591ea9b980f494465137ceb7eafe0f5b4c0172c47ed16b087d7d2`. Compile closure (M2): 492
-  dependencies, 74 of them under `third_party/cycles/` (16,154 lines), 1 shim and 1 generated
-  header. Compile time (M3): 6.78 s, 6.12 s and 6.92 s, median 6.78 s.
-- **Gate: passed** on the compiler of `make build` (`c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0`).
-  MSVC and macOS arm64 compile the 22 headers only in CI (the wheel builds, and the MSVC windows
-  job of .github/workflows/ci.yml where the branch has one), which this experiment does not
-  observe.
+  `c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0`: `patches` is 0, `check --upstream` exits 0, the shim status has 0 lines, the
+  closure has 0 uncovered and 0 unresolved paths, and the build exits 0. The closure is 78 paths of 16,446 upstream
+  lines, as predicted, and reaches exactly one shim, `kernel/device/cpu/globals.h`.
+- **H2: supported.** `control flow` reports 11 passed and 0 failed, and `every stack node case dispatches` 105 passed
+  and 0 failed.
+- **H3: supported.** `math`, `mix`, `map range`, `color ramp` and `convert` each report 3 passed and 0 failed, which is
+  the pre-registered rule. `probe.py` decides H3 by `failed == 0 and passed > 0` (`probe.py:227`), a looser rule than the
+  pre-registered one. The recorded counts meet the pre-registered rule, so the verdict stands, and the probe's rule is a
+  fix item.
+- **Part 1 measurements.** M1 equals all seven predictions: 39 cases, 19 includes, 39 `svm_case` fragments of 174
+  upstream lines, 22 headers, a generated header of 284 lines with sha256
+  `b86aad32d05591ea9b980f494465137ceb7eafe0f5b4c0172c47ed16b087d7d2`. M2: 492 dependencies, 74 of them under
+  `third_party/cycles/` (16,154 lines), 1 shim and 1 generated header. M3: 6.78 s, 6.12 s and 6.92 s, median 6.78 s.
+- **Gate (part 1): passed** on the compiler of `make build`.
 
 ### Part 2 (card T6.5)
 
-DRAFT (DeepSeek) — pending Opus review.
+- **H4: supported.**
+  - Patches 0; `check --upstream` exits 0.
+  - All 44 definitions of `scene/svm.cpp:157-1279` are covered by fragments, with no extra range.
+  - No shim file is new or deleted, and exactly the six of card T6.5 are modified.
+  - The closure is 113 paths (110 upstream, 3 shims) of 29,367 upstream lines. It has 2 uncovered paths,
+    `kernel/util/nanovdb.h` and `util/guiding.h`, and 1 unresolved include, `../../guardedalloc/MEM_guardedalloc.h`.
+    These are exactly the three exceptions the decision rule allows, each behind a conditional the definition set never
+    enables. The draft said 0 and 0, as did the Results table before Opus corrected it; the data file lists these three.
+  - The build exits 0.
+- **H5: supported.** The five test cases report 6, 4, 9, 21 and 12 passed assertions and 0 failed.
+- **H6: supported.** 4162 pairs; 33 passed assertions, 0 failed.
+- **M4** (host fragments, kernel cases, manifest lines, upstream lines):
+  - Value 5, 2, 49, 23, against the predicted 5, 2, 67, 32.
+  - Math 7, 1, 66, 119, against 7, 1, 75, 122.
+  - Emission 5, 3, 50, 55, against 5, 3, 77, 73.
+  - Output 4, 0, 38, 39, as predicted.
+  The fragment and case counts equal the predictions. The predicted manifest and upstream lines were too high for Value,
+  Math and Emission, by 18 and 9, 9 and 3, and 27 and 18; this experiment does not explain the difference. No node needed
+  a hand-written line of C++.
+- **M5 is not T6.5's card time.** `port_log_part2.txt` records `start 2026-10-24T06:43:00Z` and
+  `end 2026-10-24T15:17:16Z`, 514.3 minutes apart. The start line was not written by `date -u` when T6.5 began: 06:43Z is
+  when card T6.4's first run stopped (sprint S1's `METRICS.tsv`: `s1-m6a-4` ended at 06:43:50Z with exit 7). T6.5's own
+  run began at 14:24:28Z (`METRICS.tsv`, `s1-m6a-5`). Its card time is therefore 52.8 minutes to the log's `end` line
+  (60.5 minutes to its commit at 15:24:56Z). The 514.3 minutes also count the T6.2 fix task (`s1-m6a-2-fix`) and T6.4's resumed run.
+- **M6.** Compile times 18.42 s, 18.51 s and 9.44 s, median 18.42 s. The closure counts were not measured:
+  `probe_part2.py:445` looks for a line that starts with `#deps `, but `ninja -t deps` prints `<object>: #deps N, ...`,
+  so the parser never finds the list and records 0 for each count (a fix item; part 1's `probe.py` measured M2).
+- **M7** equals every prediction: 44 `scene/svm.cpp` fragments of 1076 lines, 42 `svm_case` fragments of 192 lines,
+  173 fragments, 45 files of 12,956 lines, and the three generated files at 306, 1190 and 22 lines with the predicted
+  sha256s.
+- **Gate G2-svm: passed.** Part 1's gate is true, and H4, H5 and H6 are supported.
 
-- H4 supported: 0 patches, `check --upstream` exit 0, 44 of 44 definitions of `scene/svm.cpp:157-1279`
-  covered with no extra range, exactly the six shim files of card T6.5 modified (none new or deleted), the
-  113-path closure uncovered and unresolved 0, and the build exit 0.
-- H5 supported: the five test cases report 6, 4, 9, 21 and 12 passed assertions and 0 failed.
-- H6 supported: 4162 pairs, 33 passed assertions, 0 failed.
-- M4 against Opus's predictions (host fragments, kernel cases, manifest lines, upstream lines): Value
-  measured 5, 2, 49, 23 against 5, 2, 67, 32; Math 7, 1, 66, 119 against 7, 1, 75, 122; Emission 5, 3, 50, 55
-  against 5, 3, 77, 73; Output 4, 0, 38, 39 against 4, 0, 38, 39. Host fragments and kernel cases match
-  everywhere; manifest and upstream line counts are lower for Value, Math and Emission.
-- M5 514.3 minutes; M6 median 18.42 s (closure counts not measured); M7 matches Opus's prediction on every
-  value: 44 fragments of 1076 lines, 42 `svm_case` of 192 lines, 173 fragments, 45 files of 12,956 lines,
-  the three generated files at 306, 1190 and 22 lines with the predicted sha256s.
-- Gate G2-svm passes: part 1's gate and part 2's three hypotheses are all supported. Per "Gate G2-svm", the
-  vendored route stands and M6a continues with its remaining cards as written.
+### Gate G2 (Opus's ruling, 2026-10-25)
+
+G2 passes, so plan.md's M6 takes the vendored route: Cycles' `graph/` and SVM work with the shim.
+- M6a continues with its remaining cards as written: evaluators vendored verbatim, nodes ported by fragments and manifest
+  entries, no patches.
+- M6b builds on `cycles_svm`, `cycles_scene` and `PainterlyShaderManager`.
+- plan.md's fallback (M6: "keep Cycles names but write our own reduced reflection") is not needed.
+
+Sprint S1's cards T6.6-T6.8 (textures, closures, images) then followed the same route with no patch, and landed on
+2026-10-25 (`994634e`).
+
+The gate covers the compiler of `make build` only. MSVC and macOS arm64 first compile this code in CI, in the run for
+the landing. A failure there would be a portability fix-up, not a refutation of H1 or H4.
+
+Corrections to text above, by Opus on 2026-10-25:
+- Part 2's Method step 2 named `experiments/007-<DATE>-svm-probe/probe_part2.py`. Card T6.5 was written when this
+  experiment was to be 007; the script is `experiments/011-2026-10-23-svm-probe/probe_part2.py`.
+- Part 1's Method step 2 gives the default build directory as `build/q`, but the pre-registered text (card T6.3) and
+  `probe.py:28` say `build/dev`. Opus's task translation `build/dev -> build/q` reached this text. The run set
+  `PAINTERLY_BUILD_DIR=build/q`.
