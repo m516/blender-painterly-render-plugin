@@ -278,6 +278,21 @@ enum class WrongTypeError {
   throw nb::type_error(message.c_str());
 }
 
+// The same, for a conversion that failed with a Python exception pending: `message` becomes the
+// wrong-type exception, and the pending exception becomes its cause (__cause__) and its context,
+// as `raise ... from ...` does. The message is unchanged; the cause keeps what Python said, such
+// as the OverflowError of an integer too large for a double or the exception a user's __float__
+// raised, which a bare PyErr_Clear() discarded (TQ.3 F18).
+[[noreturn]] void throw_wrong_type_chained(const std::string &message,
+                                           const WrongTypeError wrong_type)
+{
+  nb::python_error cause;
+  nb::raise_from(cause,
+                 wrong_type == WrongTypeError::VALUE_ERROR ? PyExc_ValueError : PyExc_TypeError,
+                 "%s",
+                 message.c_str());
+}
+
 // A Python real number as a C double, exactly as PyFloat_AsDouble converts one: any object with
 // __float__ (int, float and numpy scalars included) is accepted. The pyi types the knobs by
 // socket, never by a strict PyFloat_Check, because T3.16 and T4.3 pass numpy float32 scalars and
@@ -289,8 +304,7 @@ double as_real(nb::handle value,
 {
   const double converted = PyFloat_AsDouble(value.ptr());
   if (converted == -1.0 && PyErr_Occurred()) {
-    PyErr_Clear();
-    throw_wrong_type(what + " must be a real number", wrong_type);
+    throw_wrong_type_chained(what + " must be a real number", wrong_type);
   }
   return converted;
 }
@@ -306,14 +320,12 @@ long long as_integer(nb::handle value,
   }
   PyObject *indexed = PyNumber_Index(value.ptr());
   if (indexed == nullptr) {
-    PyErr_Clear();
-    throw_wrong_type(what + " must be an int", wrong_type);
+    throw_wrong_type_chained(what + " must be an int", wrong_type);
   }
   const nb::object owned = nb::steal(indexed);
   const long long converted = PyLong_AsLongLong(owned.ptr());
   if (converted == -1 && PyErr_Occurred()) {
-    PyErr_Clear();
-    throw nb::value_error((what + " is out of range").c_str());
+    throw_wrong_type_chained(what + " is out of range", WrongTypeError::VALUE_ERROR);
   }
   return converted;
 }
@@ -328,7 +340,11 @@ void check_integrator_precondition(const std::string &name, const long long valu
   // SPEC §3: K0 has PAINTERLY_K0_BITS = 22 bits (painterly/kernel/sample/sampler.h), and `1u << q`
   // is undefined from q = 32, so the phase lock accepts 0…22 and nothing else.
   if (name == "k0_phase_lock_bits" && (value < 0 || value > PAINTERLY_K0_BITS)) {
-    throw nb::value_error("set_integrator: k0_phase_lock_bits must be in 0…22");
+    // The range in the message is PAINTERLY_K0_BITS itself, so the text cannot drift from the
+    // check above it.
+    throw nb::value_error(
+        ("set_integrator: k0_phase_lock_bits must be in 0…" + std::to_string(PAINTERLY_K0_BITS))
+            .c_str());
   }
   // T3.20: the oracle's --max-depth is N >= 1, and PainterlyPathTrace throws below it.
   if (name == "max_depth" && value < 1) {
