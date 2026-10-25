@@ -57,12 +57,25 @@
 // A change that moves the quad geometry off the plane, breaks the mesh path or flips a shading
 // normal still fails here: the misses, the reach counts at bounces 0 and 1, the K equality and the
 // by-value normal comparison all break.
+//
+// M3-FIX-T3.17c added three cases below, all on this machine's run:
+//   - the ghost="all" report at the card's design (400 px, P = 32, seed 1088, one chain per
+//   pixel):
+//     14 pixels lose K, 2 gain it, 5119984 are equal, the K totals are 83001163 against 83001050
+//     (relative -1.36e-6), and the differing pixels part as rim 14, corner 2, other 0;
+//   - the plane and self-hit checks at 16 px, which fail at HEAD: 3393 of 3393 plane hits off
+//   their
+//     plane there (largest distance 1.15e-6) and 2 hits on the surface the path just left, against
+//     0 and 0 after the fix (largest distance 1.33e-15, bound 3.98e-13);
+//   - the tilted-quad self-hit guard, which fails at HEAD: the intersect reports the surface the
+//     ray starts on, at Embree's t = 1.67e-4 for a root of -2.82e-5.
 
 #include <doctest/doctest.h>
 
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <vector>
 
 #include "painterly/bvh/embree.h"
@@ -108,6 +121,10 @@ constexpr int FIRST_PLANE_ID = 3;
 constexpr float DIFFUSE_GAIN = 0.1f;
 constexpr float RAY_EPSILON = 1e-4f;
 constexpr int MAX_DEPTH = 20;
+/* The far limit of an intersect query with no bound: the header's
+ * painterly_embree_intersect_closest takes the caller's tfar, and the kernel passes +infinity
+ * (painterly/kernel/bvh/bvh.h). */
+constexpr double INFINITE_DISTANCE = std::numeric_limits<double>::infinity();
 
 KernelPainterlyLobe lobe(const int kind, const double3 weight, const double ior)
 {
@@ -119,8 +136,9 @@ KernelPainterlyLobe lobe(const int kind, const double3 weight, const double ior)
 }
 
 /* SPEC §9, with smallpaint's analytic planes when `quads` is false and with one quad per plane
- * when it is true. The object ids are the list positions in both cases. */
-void build_reference_scene(PainterlyScene &scene, const bool quads)
+ * when it is true. The object ids are the list positions in both cases. `size` is the image side
+ * in pixels of the smallpaint camera. */
+void build_reference_scene(PainterlyScene &scene, const bool quads, const int size)
 {
   const double3 white = make_double3(1.0);
   const double3 black = make_double3(0.0);
@@ -187,7 +205,7 @@ void build_reference_scene(PainterlyScene &scene, const bool quads)
 
   scene.add_sphere(make_double3(-1.9, 0.0, -3.0), 0.5, light, SPHERE_GHOST, 9, nullptr);
 
-  scene.set_camera_smallpaint(WALK_SIZE, WALK_SIZE);
+  scene.set_camera_smallpaint(size, size);
   /* One chain per pixel: both scenes start every pixel from the same K0, so a difference of K
    * consumption stays inside its own pixel and cannot cascade into the next one. This is the
    * "same rays" comparison M3-FIX-T3.17a asks for. */
@@ -211,6 +229,11 @@ struct Bounce {
   bool normal_equals_plane = true; /* A quad hit: the shading normal equals the plane's n. */
 
   int object_id = -1;
+  /* The hit point P = o + t d in binary64, the point the path continues from. It is the zero
+   * vector on a miss. */
+  double3 point = make_double3(0.0);
+  /* The object id of the previous bounce, or -1 at the first bounce or after a miss. */
+  int previous_object_id = -1;
 };
 
 /* True when two vectors are equal by value, component for component: -0.0 == +0.0, and no bit
@@ -307,6 +330,10 @@ int walk(const PainterlyGlobals kg,
   bounces->clear();
   for (int depth = 0; depth < p.max_depth; depth++) {
     Bounce b;
+    b.previous_object_id = bounces->empty() ? -1 : bounces->back().object_id;
+    if (!bounces->empty() && bounces->back().miss) {
+      b.previous_object_id = -1;
+    }
     PainterlyIntersection isect;
     /* The hit with no near limit, to see whether something lies inside ray_epsilon. */
     const double near_t = nearest_t(kg, ray);
@@ -317,6 +344,7 @@ int walk(const PainterlyGlobals kg,
       break;
     }
     b.object_id = object_of(kg, isect);
+    b.point = ray.o + ray.d * isect.t;
     const double3 N = shading_normal(kg, isect, ray);
     b.away = dot(N, ray.d) > 0;
     if (isect.kind == HIT_TRIANGLE && b.object_id >= FIRST_PLANE_ID) {
@@ -376,14 +404,103 @@ struct Walk {
   }
 };
 
+/* The smallest image whose walk still covers every plane of the box and every sphere: the two
+ * new checks of M3-FIX-T3.17c (R64) run on it. 16 px keeps them fast; the card's slow Python test
+ * is the statistical one at 400 px. */
+constexpr int PLANE_CHECK_SIZE = 16;
+
+/* The plane of one SPEC §9 plane as a point and a unit normal: n.p + d = 0, so the plane is
+ * {p : dot(n, p) + d = 0}. */
+struct Plane {
+  double3 n;
+  double d;
+};
+
+Plane plane_of(const int object_id)
+{
+  const int p = object_id - FIRST_PLANE_ID;
+  return Plane{make_double3(PLANES[p].n[0], PLANES[p].n[1], PLANES[p].n[2]), PLANES[p].d};
+}
+
+/* The signed distance of a point from a plane, dot(n, p) + d, in binary64. n is unit, so the value
+ * is the distance itself, positive on the side n points to. */
+double signed_distance(const Plane &plane, const double3 point)
+{
+  return dot(plane.n, point) + plane.d;
+}
+
+/* The bound on the signed distance of a quad hit's point from its plane, derived from binary64
+ * round-off (CLAUDE.md rule 2).
+ *
+ * A hit point is P = o + t d, with the refined t of painterly/bvh/embree.cpp's refine_triangle_t:
+ * t = dot(normal, v0 - o) / dot(normal, d), where v0 is a world corner of the reported triangle
+ * and normal = (v1 - v0) x (v2 - v0). All of that is binary64. Notation of Higham, "Accuracy and
+ * Stability of Numerical Algorithms", 2nd ed., SIAM 2002, section 2.2: a correctly rounded
+ * operation returns (x op y)(1 + d) with |d| <= u, u = 2^-53 is the unit round-off of IEEE
+ * binary64 with round to nearest (a definition of the format), and a chain of n of them is 1 +
+ * theta with |theta| <= gamma(n) = n u / (1 - n u).
+ *
+ * The roundings, counted from the expressions in refine_triangle_t and in
+ * painterly_transform_direction_3x4 / painterly_transform_translation_3x4:
+ *   - one world corner: 3 products and 2 sums per row, so 5 roundings per coordinate;
+ *   - the cross product: 2 products and 1 difference per component, so 3;
+ *   - dot(normal, v0 - o): 3 differences, 3 products and 2 sums, so 8;
+ *   - dot(normal, d): 3 products and 2 sums, so 5;
+ *   - the quotient: 1;
+ *   - o + t d: 3 products and 3 sums, so 6.
+ * That is 28 roundings in all, each of a value of the magnitude of the operands. The box's
+ * coordinates are at most 50 + 5.5 = 55.5 units (the quads' PLANE_EXTENT plus the box's own
+ * extent, SPEC §9), and the world corner v0 is on the plane exactly for the reference box (its
+ * planes are axis-aligned and their offsets are small dyadics), so the signed distance of P from
+ * the plane is the round-off of those 28 operations: at most 28 * 55.5 * 2^-53 = 1.7e-13.
+ *
+ * The bound charges 64 roundings of 56 units, 64 * 56 * 2^-53 = 4.0e-13, a margin of 2.3 over the
+ * count above. It bounds binary64 round-off only, so it does not depend on the instruction set:
+ * -ffp-contract=off keeps every product uncontracted, and no binary32 value enters the refine
+ * except the mesh's own vertices. Before M3-FIX-T3.17c the hit point came from Embree's binary32
+ * t, whose error is up to |P| 2^-24 = 3.3e-6, six orders of magnitude above this bound. */
+constexpr int HIT_DISTANCE_ROUNDINGS = 64;
+constexpr double HIT_DISTANCE_SCALE = 56.0;
+constexpr double HIT_ON_PLANE_BOUND = HIT_DISTANCE_ROUNDINGS * HIT_DISTANCE_SCALE * 0x1p-53;
+
+/* True for the object id of one of the six quads: list positions FIRST_PLANE_ID to
+ * FIRST_PLANE_ID + 5 (SPEC §9). Position 9 is the light sphere, which is not a plane. */
+bool is_plane_object(const int object_id)
+{
+  return object_id >= FIRST_PLANE_ID && object_id < FIRST_PLANE_ID + 6;
+}
+
+/* True when the hit point of a bounce lies within HIT_ON_PLANE_BOUND of the plane of the object it
+ * hit, for a bounce that hit one of the six quads. */
+bool on_its_plane(const Bounce &b)
+{
+  return is_plane_object(b.object_id) &&
+         std::abs(signed_distance(plane_of(b.object_id), b.point)) <= HIT_ON_PLANE_BOUND;
+}
+
+/* The number of plane hits in `walk`'s bounces, and the number of those whose point is further
+ * than HIT_ON_PLANE_BOUND from the plane. */
+void count_plane_hits(const std::vector<Bounce> &bounces, long long *hits, long long *off_plane)
+{
+  for (const Bounce &b : bounces) {
+    if (b.miss || !is_plane_object(b.object_id)) {
+      continue;
+    }
+    (*hits)++;
+    if (!on_its_plane(b)) {
+      (*off_plane)++;
+    }
+  }
+}
+
 }  // namespace
 
 TEST_CASE("painterly scene: the quad scene's paths match the analytic scene's, bounce by bounce")
 {
   PainterlyScene analytic_scene;
-  build_reference_scene(analytic_scene, false);
+  build_reference_scene(analytic_scene, false, WALK_SIZE);
   PainterlyScene quad_scene;
-  build_reference_scene(quad_scene, true);
+  build_reference_scene(quad_scene, true, WALK_SIZE);
 
   PainterlyDeviceScene analytic_device;
   analytic_scene.device_update(analytic_device);
@@ -537,6 +654,321 @@ TEST_CASE("painterly scene: the quad scene's paths match the analytic scene's, b
   CHECK(a.reached[1] == paths);
   CHECK(t.reached[0] == paths);
   CHECK(t.reached[1] == paths);
+}
+
+TEST_CASE("painterly scene: the ghost-all K differences and where the two paths first part")
+{
+  /* M3-FIX-T3.17c (R64): the card's design, 400 px, P = 32, one chain per pixel, ghost="all",
+   * walked for both scenes. The K totals and the counts of pixels that lose, gain and keep K are
+   * printed, and for every pixel whose K differs, the bounce at which the two paths first hit a
+   * different object, the two objects, and the class of that parting:
+   *   - "rim": the analytic path hit a plane and the quad path missed, because the path left the
+   *     box and beyond the quads' rim only the infinite analytic plane is there;
+   *   - "corner": both paths hit a plane, but a different one;
+   *   - "other": anything else (a sphere in one scene or the other, or a plane against a sphere).
+   * Nothing here is asserted: the ghost="all" numbers are a report (R64). The card's assertion is
+   * the Python test tests/core/test_triangle_samples.py, on ghost="none". */
+  constexpr int REPORT_SIZE = 400;
+  constexpr int REPORT_PASSES = 32;
+  /* Block 68's first seed (the card): a block is 16 seeds, the base seed is 16 times the block. */
+  constexpr uint REPORT_SEED = 1088;
+
+  PainterlyScene analytic_scene;
+  build_reference_scene(analytic_scene, false, REPORT_SIZE);
+  PainterlyScene quad_scene;
+  build_reference_scene(quad_scene, true, REPORT_SIZE);
+  analytic_scene.integrator.set_seed(REPORT_SEED);
+  quad_scene.integrator.set_seed(REPORT_SEED);
+
+  PainterlyDeviceScene analytic_device;
+  analytic_scene.device_update(analytic_device);
+  PainterlyDeviceScene quad_device;
+  quad_scene.device_update(quad_device);
+  const PainterlyGlobalsCPU analytic_globals = analytic_device.globals();
+  const PainterlyGlobalsCPU quad_globals = quad_device.globals();
+  const PainterlyGlobals a_kg = &analytic_globals;
+  const PainterlyGlobals t_kg = &quad_globals;
+
+  long long lose = 0;
+  long long gain = 0;
+  long long equal = 0;
+  long long k_analytic = 0;
+  long long k_quad = 0;
+  long long parting[MAX_DEPTH + 1] = {0};
+  long long rim = 0;
+  long long corner = 0;
+  long long other = 0;
+  long long ghost_sphere = 0; /* The parting is a sphere in one scene and something else, or two
+                                 different spheres: a ghost sphere's root decided it. */
+  /* The signed distance of each plane hit's point from its plane, both scenes: the number of hits,
+   * their mean, and the fraction in front of (positive) and behind (negative) the plane. */
+  struct DistanceStats {
+    long long hits = 0;
+    long long front = 0;
+    long long behind = 0;
+    double sum = 0.0;
+    double largest = 0.0;
+  };
+  DistanceStats distance_a;
+  DistanceStats distance_t;
+  std::vector<Bounce> a_path;
+  std::vector<Bounce> t_path;
+  for (int pass = 0; pass < REPORT_PASSES; pass++) {
+    for (int row = 0; row < REPORT_SIZE; row++) {
+      for (int col = 0; col < REPORT_SIZE; col++) {
+        uint64_t k_a = painterly_chain_start(a_kg->data->integrator, row, col, pass);
+        uint64_t k_t = painterly_chain_start(t_kg->data->integrator, row, col, pass);
+        const uint64_t k0_a = k_a;
+        const uint64_t k0_t = k_t;
+        const int na = walk(a_kg, row, col, pass, &k_a, &a_path);
+        const int nt = walk(t_kg, row, col, pass, &k_t, &t_path);
+        const std::vector<Bounce> *paths[2] = {&a_path, &t_path};
+        for (int side = 0; side < 2; side++) {
+          DistanceStats &stats = (side == 0) ? distance_a : distance_t;
+          for (const Bounce &b : *paths[side]) {
+            if (b.miss || !is_plane_object(b.object_id)) {
+              continue;
+            }
+            const double distance = signed_distance(plane_of(b.object_id), b.point);
+            stats.hits++;
+            stats.sum += distance;
+            stats.front += distance > 0.0 ? 1 : 0;
+            stats.behind += distance < 0.0 ? 1 : 0;
+            stats.largest = std::max(stats.largest, std::abs(distance));
+          }
+        }
+        const long long da = static_cast<long long>(k_a - k0_a);
+        const long long dt = static_cast<long long>(k_t - k0_t);
+        k_analytic += da;
+        k_quad += dt;
+        if (dt < da) {
+          lose++;
+        }
+        else if (dt > da) {
+          gain++;
+        }
+        else {
+          equal++;
+        }
+        if (dt == da) {
+          continue;
+        }
+        /* The first bounce at which the two paths hit different objects. A path that ended has no
+         * hit from then on, so an early end counts as a difference. */
+        for (int i = 0; i < MAX_DEPTH; i++) {
+          const bool a_has = i < na && !a_path[size_t(i)].miss;
+          const bool t_has = i < nt && !t_path[size_t(i)].miss;
+          if (a_has == t_has &&
+              (!a_has || a_path[size_t(i)].object_id == t_path[size_t(i)].object_id))
+          {
+            continue;
+          }
+          parting[i]++;
+          const bool a_plane = a_has && is_plane_object(a_path[size_t(i)].object_id);
+          const bool t_plane = t_has && is_plane_object(t_path[size_t(i)].object_id);
+          if (a_plane && !t_has) {
+            rim++;
+          }
+          else if (a_plane && t_plane) {
+            corner++;
+          }
+          else {
+            other++;
+            if ((a_has && !a_plane) || (t_has && !t_plane)) {
+              ghost_sphere++;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  MESSAGE("K: analytic " << k_analytic << ", quad " << k_quad << " (relative "
+                         << double(k_quad - k_analytic) / double(k_analytic) << ")");
+  MESSAGE("pixels: " << lose << " lose K, " << gain << " gain K, " << equal << " equal, of "
+                     << REPORT_SIZE * REPORT_SIZE * REPORT_PASSES);
+  MESSAGE("the parting classes of the differing pixels: rim "
+          << rim << ", corner " << corner << ", other " << other << " (of " << other
+          << ", a sphere decided " << ghost_sphere << ")");
+  const DistanceStats *all_stats[2] = {&distance_a, &distance_t};
+  for (int side = 0; side < 2; side++) {
+    const DistanceStats *stats = all_stats[side];
+    MESSAGE(std::string(side == 0 ? "analytic" : "quad")
+            << " plane hits: " << stats->hits << ", mean signed distance "
+            << stats->sum / double(stats->hits) << ", largest " << stats->largest << ", in front "
+            << stats->front << " (" << double(stats->front) / double(stats->hits) << "), behind "
+            << stats->behind << " (" << double(stats->behind) / double(stats->hits) << ")");
+  }
+  MESSAGE("first parting bounce (no entry: no differing pixel parted within max_depth):");
+  for (int i = 0; i < MAX_DEPTH; i++) {
+    if (parting[i] != 0) {
+      MESSAGE("  " << i << ": " << parting[i]);
+    }
+  }
+  CHECK(k_analytic > 0);
+}
+
+TEST_CASE("painterly scene: a quad hit's point lies on its plane and is never the surface it left")
+{
+  /* M3-FIX-T3.17c (R64 clause 2): on a small image of the quad scene, every plane hit lies within
+   * HIT_ON_PLANE_BOUND of its plane, and no path's next hit is the surface it just left. Both
+   * checks fail at HEAD: the hit point there is o + t d with Embree's binary32 t, so it lies up to
+   * 3.3e-6 off the plane, and the next ray's origin starts that far off it, so a grazing bounce
+   * re-hits the wall it just left (the near limit does not catch it, because the plane is
+   * ray_epsilon away along the new ray and not within it). */
+  PainterlyScene quad_scene;
+  build_reference_scene(quad_scene, true, PLANE_CHECK_SIZE);
+  PainterlyDeviceScene quad_device;
+  quad_scene.device_update(quad_device);
+  const PainterlyGlobalsCPU quad_globals = quad_device.globals();
+  const PainterlyGlobals kg = &quad_globals;
+  REQUIRE(kg->bvh != nullptr);
+
+  long long plane_hits = 0;
+  long long off_plane = 0;
+  long long bounces = 0;
+  long long repeats = 0;
+  double max_distance = 0.0;
+  uint64_t K = 0;
+  std::vector<Bounce> path;
+  for (int row = 0; row < PLANE_CHECK_SIZE; row++) {
+    for (int col = 0; col < PLANE_CHECK_SIZE; col++) {
+      /* One chain per pixel, so the walk is the tracer's own sequence (SPEC §3). */
+      K = painterly_chain_start(kg->data->integrator, row, col, 0);
+      walk(kg, row, col, 0, &K, &path);
+      count_plane_hits(path, &plane_hits, &off_plane);
+      for (const Bounce &b : path) {
+        if (b.miss) {
+          continue;
+        }
+        bounces++;
+        if (is_plane_object(b.object_id) && b.object_id == b.previous_object_id) {
+          repeats++;
+        }
+        if (is_plane_object(b.object_id)) {
+          const double distance = std::abs(signed_distance(plane_of(b.object_id), b.point));
+          max_distance = std::max(max_distance, distance);
+        }
+      }
+    }
+  }
+
+  MESSAGE("plane hits: " << plane_hits << ", of which off their plane: " << off_plane << " (bound "
+                         << HIT_ON_PLANE_BOUND << ", largest distance " << max_distance << ")");
+  MESSAGE("hits: " << bounces << ", of which on the surface the path just left: " << repeats);
+  CHECK(plane_hits > 0);
+  CHECK(bounces > 0);
+  CHECK(off_plane == 0);
+  CHECK(repeats == 0);
+}
+
+TEST_CASE("painterly_embree: a binary32 self-hit below the near limit is not a hit")
+{
+  /* M3-FIX-T3.17c (R64 clause 3): a refined root below the ray's near limit means Embree reported
+   * the surface the ray starts on, a binary32 self-hit. That is not a hit: the intersect skips it
+   * and searches again beyond it. Without the guard this case reports the surface the ray starts
+   * on, at t = 3.7e-5 < ray_epsilon, and the path stops dead on it.
+   *
+   * The scene is one tilted quad in the plane x + y - z = 0, spanning +-4000 units in its plane,
+   * so its coordinates are far larger than the reference box's and the binary32 rounding of the
+   * ray's origin is large enough to put the plane in front of it. The ray starts on the plane at a
+   * point whose coordinates are not dyadic, so its binary32 origin lies off the plane by a
+   * binary32 rounding (about 1.4e-5 at x = 285, where the binary32 spacing is 3.1e-5). Its
+   * direction has |n.d| = 1/2, so the plane is 2 * 1.4e-5 = 2.8e-5 away along it: below
+   * ray_epsilon, and far above the binary64 refine's own round-off. */
+  /* Corners: p = u e1 + v e2, with e1 = (1, -1, 0)/sqrt(2) and e2 = (1, 1, 2)/sqrt(6), both in the
+   * plane and orthogonal to its normal (1, 1, -1)/sqrt(3). The corners are the binary32 values of
+   * the sums, so the quad is exactly planar in binary32 too. */
+  const double e1[3] = {1.0 / std::sqrt(2.0), -1.0 / std::sqrt(2.0), 0.0};
+  const double e2[3] = {1.0 / std::sqrt(6.0), 1.0 / std::sqrt(6.0), 2.0 / std::sqrt(6.0)};
+  const double corners_uv[4][2] = {
+      {-4000.0, -4000.0}, {4000.0, -4000.0}, {4000.0, 4000.0}, {-4000.0, 4000.0}};
+  float vertices[4 * PAINTERLY_POINT_FLOATS];
+  for (int c = 0; c < 4; c++) {
+    for (int i = 0; i < PAINTERLY_POINT_FLOATS; i++) {
+      vertices[c * PAINTERLY_POINT_FLOATS + i] = float(corners_uv[c][0] * e1[i] +
+                                                       corners_uv[c][1] * e2[i]);
+    }
+  }
+  const uint32_t triangles[2 * PAINTERLY_TRIANGLE_CORNERS] = {0, 1, 2, 0, 2, 3};
+  const float identity[12] = {
+      1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+  const PainterlyEmbreeMeshInput mesh = {vertices, 4, triangles, 2};
+  const PainterlyEmbreeObjectInput object = {0, identity};
+  const std::unique_ptr<PainterlyEmbreeScene, void (*)(PainterlyEmbreeScene *)> scene(
+      painterly_embree_scene_create(&mesh, 1, &object, 1), painterly_embree_scene_free);
+  REQUIRE(scene != nullptr);
+
+  /* The triangle's own corners and plane, in binary64, from the same binary32 vertices Embree
+   * has. */
+  double3 w[3];
+  for (int c = 0; c < PAINTERLY_TRIANGLE_CORNERS; c++) {
+    w[c] = make_double3(double(vertices[triangles[c] * PAINTERLY_POINT_FLOATS]),
+                        double(vertices[triangles[c] * PAINTERLY_POINT_FLOATS + 1]),
+                        double(vertices[triangles[c] * PAINTERLY_POINT_FLOATS + 2]));
+  }
+  const double3 normal = cross(w[1] - w[0], w[2] - w[0]);
+  /* An in-plane axis, e1 itself: both it and the plane's normal are in the quad's plane. */
+  const double3 in_plane = make_double3(e1[0], e1[1], e1[2]);
+  /* The direction: half along the triangle's own normal (so |n.d| = 1/2) and 0.7 along an in-plane
+   * axis, so the ray leaves the surface at a slant instead of grazing it. It is not normalized, as
+   * the kernel's directions are (SPEC §4: t is parametric along d). */
+  const double3 direction = normalize(normal) * 0.5 + in_plane * 0.7;
+
+  /* A scan of the quad's interior for the self-hit. The start points are the binary64 points
+   * u e1 + v e2 at fixed fractions of the quad's half-size; each lies on the plane, and its
+   * coordinates are not dyadic, so its binary32 origin lies off the plane by a binary32 rounding
+   * (up to 2^-11 = 4.9e-4 at the corners' 4000 units). The scan takes the first point whose exact
+   * root is negative while Embree still reports a hit: the binary32 origin is on the far side of
+   * the plane, and the reported hit is the surface the ray starts on. The fractions are a fixed
+   * list, not a search for a passing case: the test fails if none of the nine is such a point, and
+   * it then checks the first one found. */
+  constexpr double SCAN_HALF_SIZE = 4000.0;
+  constexpr double SCAN_U[3] = {0.30, 0.37, 0.41};
+  constexpr double SCAN_V[3] = {0.20, 0.29, 0.33};
+  double root = 0.0;
+  double3 start = make_double3(0.0);
+  bool found = false;
+  for (int iu = 0; iu < 3 && !found; iu++) {
+    for (int iv = 0; iv < 3 && !found; iv++) {
+      const double3 candidate = in_plane * (SCAN_HALF_SIZE * SCAN_U[iu]) +
+                                make_double3(e2[0], e2[1], e2[2]) * (SCAN_HALF_SIZE * SCAN_V[iv]);
+      const PainterlyRay candidate_ray{candidate, direction};
+      root = dot(normal, w[0] - candidate_ray.o) / dot(normal, candidate_ray.d);
+      if (root < 0.0) {
+        /* A near limit below the root: the guard accepts the root, so a hit here means Embree
+         * reported a surface in front of the binary32 origin. */
+        PainterlyIntersection reported;
+        if (painterly_embree_intersect_closest(
+                scene.get(), candidate_ray, -1.0, INFINITE_DISTANCE, &reported))
+        {
+          start = candidate;
+          found = true;
+        }
+      }
+    }
+  }
+  REQUIRE(found);
+  REQUIRE(root < 0.0);
+  const PainterlyRay ray{start, direction};
+
+  /* With the near limit the quad is not a hit: the reported surface is the one the ray starts on,
+   * and the search continues past it, to a miss (the scene holds this one quad). */
+  PainterlyIntersection hit;
+  CHECK_FALSE(
+      painterly_embree_intersect_closest(scene.get(), ray, RAY_EPSILON, INFINITE_DISTANCE, &hit));
+  CHECK(hit.kind == HIT_NONE);
+
+  /* The control, which shows that the rejected hit is the surface the ray starts on: with a near
+   * limit below the root the guard accepts it, and the root is negative, so the plane lies behind
+   * the exact origin and the only surface that can be in front of the binary32 origin is the one
+   * the ray starts on. Embree's own binary32 t for this ray is positive (2.5e-4 at this point),
+   * which is why the hit had to be rejected. */
+  REQUIRE(painterly_embree_intersect_closest(scene.get(), ray, -1.0, INFINITE_DISTANCE, &hit));
+  CHECK(hit.kind == HIT_TRIANGLE);
+  CHECK(hit.t < 0.0);
+  CHECK(hit.t == root);
 }
 
 CCL_NAMESPACE_END
