@@ -2,7 +2,7 @@
 
 Pre-registered by Opus on 2026-10-09 in card T6.3. Run on 2026-10-23.
 
-Part 2 pre-registered by Opus on 2026-10-09 in card T6.5. Run on 2026-10-23.
+Part 2 pre-registered by Opus on 2026-10-09 in card T6.5. Run on 2026-10-24.
 
 ## Background
 
