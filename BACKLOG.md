@@ -854,6 +854,13 @@ calls the cause open and its 1e-7 one-chain-per-pixel agreement points the other
 `ensemble.DEFAULT_ALPHA` and calls an "indistinguishable" verdict "equivalent" (F24). TOL-a's two derivations
 (`analysis/tests/test_report.py:570-583`, `analysis/tests/test_scale_metrics.py:157-170`) reach their tolerances by
 loose arguments (F33).
+The landing-5 review of M3-FIX-T3.17c (Sonnet reader E, 2026-10-25; line numbers below are at integration `d78fb5e`)
+adds: the report case `painterly scene: the ghost-all K differences and where the two paths first part`
+(`src/test/test_triangle_diagnostics.cpp:659-809`) asserts only `k_analytic > 0` (`:809`) but adds about 63 s to every
+`painterly_tests` run (1.48 s in t-fix-tq3a's log, 64.52 s in t-fix317c's); `HIT_ON_PLANE_BOUND`'s comment counts 28
+roundings where the code has 29, and its 56 (`:463`) is a literal beside `PLANE_EXTENT` (`:117`); the figures of the
+self-hit case disagree with each other and with the header; and comments in `embree.cpp`, `embree.h` and the selftest
+still describe Embree's binary32 t.
 Do:
 - Start from M3-FIX-T3.17c's result: where it changed these files or found the cause, the comments follow it.
 - In the diagnostics header, state as measured only what the harness measures, mark the near-hit mechanism as a
@@ -868,10 +875,57 @@ Do:
   `test_scale_metrics.py`, count the operations of the 22-point transform the code actually runs (mixed radix 2 x 11,
   not radix 2). If both sides are bitwise equal there (they run the same code on the same values), assert that with
   `np.testing.assert_array_equal` instead, and say how you checked. No tolerance may widen.
-Outcome: `CHECK` exits 0, and the quad-scene doctest case still runs and passes.
+- The ghost-all report case (`:659-809`): mark it `* doctest::skip()`, so the default run skips it, and add a
+  `@pytest.mark.slow` test to `tests/core/test_triangle_samples.py` that runs it by name with `--no-skip`
+  (`$PAINTERLY_BUILD_DIR/src/test/painterly_tests --no-skip --test-case='<its name>'`) and asserts exit status 0 and one
+  test case run. Report the default `painterly_tests` time before and after; do not assert it.
+- `HIT_ON_PLANE_BOUND` (`:445-464`): count the roundings the code performs (6 per corner coordinate, 29 in all), and
+  derive the magnitude from `PLANE_EXTENT` and the box half-size the comment names instead of the literal 56. The
+  charged count stays at most 64 and the bound still fails at HEAD's 1.5e-6; show both.
+- The self-hit case `painterly_embree: a binary32 self-hit below the near limit is not a hit` (`:866-966`) and the
+  header (`:70-71`): make each quoted figure (`:871`, `:877-878`, `:922`, `:966`) what the code computes, from a script
+  whose command and output you quote, and say where the negative root comes from (the reviewer computed that the
+  float32 quad lies up to 7.05e-5 off its ideal plane at |x| about 1175). Say in a comment why `SCAN_U`/`SCAN_V`
+  (`:927-929`) are these nine fractions and what `REQUIRE(found)` (`:952`) means on an ISA where none qualifies.
+- `src/painterly/bvh/embree.cpp:281-285` says |o| and |t| are a few units, which cannot give 1.5e-6 (that needs |P|
+  about 25): correct it. `src/painterly/bvh/embree.h:29-33`, `:79-83`, `src/blender/selftest.cpp:99-100` and
+  `src/blender/selftest.h:18-20` still say that Embree's float tfar is widened and narrowing is exact; since T3.17c
+  the reported t is the binary64 root, and the contract's `t <= tfar` is not checked (`embree.cpp:403-412`). Correct
+  the comments; for `t <= tfar`, either check it, with a doctest that fails without the check, or, if every caller
+  passes an infinite tfar (`kernel/bvh/bvh.h:26`), drop the claim. Say which and why.
+- `tests/core/test_triangle_samples.py:76`: use `ensemble.DEFAULT_ALPHA` instead of a third 0.01 (as F24 above).
+Outcome: `CHECK` exits 0, and the quad-scene doctest case still runs and passes; the ghost-all report case is
+skipped by default and passes with `--no-skip`.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && build/q/src/test/painterly_tests --test-case='painterly scene: the quad scene*' | grep -qE '^\[doctest\] test cases: +1 \| +1 passed \| +0 failed \|'`
-allowedPaths: `src/test/test_triangle_diagnostics.cpp`, `tests/core/test_triangle_path.py`, `analysis/tests/test_report.py`, `analysis/tests/test_scale_metrics.py`
+allowedPaths: `src/test/test_triangle_diagnostics.cpp`, `tests/core/test_triangle_path.py`, `analysis/tests/test_report.py`, `analysis/tests/test_scale_metrics.py`, `tests/core/test_triangle_samples.py`, `src/painterly/bvh/embree.cpp`, `src/painterly/bvh/embree.h`, `src/blender/selftest.cpp`, `src/blender/selftest.h`
 Depends on: M3-FIX-T3.17c.
+
+## M3-FIX-TQ3d: a session's wait never overflows the clock, and its rollback wakes waiters (landing-5 review)
+Why (Sonnet reader E, landing-5 review of M3-FIX-TQ3a, 2026-10-25): `src/painterly/session/session.cpp:122-130` caps a
+timeout at `max_seconds = floor(duration<double>(steady_clock::duration::max()))`, 9223372036 s, and calls it always
+representable. But libstdc++ computes the deadline as `steady_clock::now() + ceil<ns>(timeout)`
+(`/usr/include/c++/15/condition_variable:174-182`), which overflows int64 for every timeout within about one uptime of
+the cap: the reviewer's probe on this host had 9221898996.8 s overflow and 9217479879.1 s not. So a timeout of about
+292 years is still undefined behaviour. The F14 rollback (`:96-115`) restores the state but never calls
+`state_changed_.notify_all()`. `src/test/test_session.cpp:15` and `:23` cite old line numbers (session.cpp:24, :108,
+and :149, now :25, :159 and :200), and `:30-31` wrongly says the cases are "flaky in both directions".
+Do:
+- In `session.cpp`, make the deadline always representable. A timeout whose deadline from `now()` would pass
+  `steady_clock::time_point::max()` waits like a negative one, with no deadline, as NaN and infinity already do. Put
+  the decision in one function of (now, timeout), declared where a test can call it without waiting, and correct the
+  comment.
+- In `src/test/test_session.cpp`, test that function at 0, a small timeout, the old cap, the old cap minus one second,
+  9.2e9 s, `DBL_MAX`, +inf, NaN and -1. Use a `now` of 0 and a `now` near `steady_clock::now()`, so that each boundary
+  is computed, not hand-picked. Mutations: the old cap restored; the no-deadline branch removed. Show both failing.
+- After the rollback, call `state_changed_.notify_all()`. If a test can make the thread start fail without a
+  test-only branch in production code, add that test. Otherwise say why not, and add a comment saying why no waiter
+  can exist (a Session is used from one thread at a time, `session.h`).
+- Fix the cites at `test_session.cpp:15` and `:23`; cite by function name, which does not go stale. Correct `:30-31`.
+- Change no existing assertion.
+Outcome: `CHECK` exits 0.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/painterly/session/session.cpp`, `src/painterly/session/session.h`, `src/test/test_session.cpp`
+Depends on: M3-FIX-TQ3a.
 
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
@@ -1028,6 +1082,360 @@ Depends on: M6a-T6.7.
 Outcome: the card's Acceptance, translated; and `CHECK` exits 0.
 - The verify counts the card's test cases (and assertions where the card states them), so it cannot pass with none run: doctest prints `Status: SUCCESS!` for a filter that matches nothing.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && build/q/src/test/painterly_tests --test-case='cycles svm images:*' | grep -qE '^\[doctest\] test cases: +8 \| +8 passed \| +0 failed \|' && build/q/src/test/painterly_tests --test-case='cycles svm images:*' | grep -qE '^\[doctest\] assertions: +122 \| +122 passed \| +0 failed \|'`
+
+## M6a-FIX-VS1: vendor_sync reads fragments from the pinned commit, and its rules are tested on bad input
+Why (Sonnet reader A and audit A, 2026-10-24/25): `tools/vendor_sync.py` says that upstream bytes come from the pinned
+commit's git objects, and that every subcommand refuses a checkout whose HEAD is not the pin (docstring `:32-37`). It keeps
+one exception: `_fragment_source` (`:1405-1426`) reads fragments from the checkout's working tree (`:39-42`, as card T6.2
+specified). T3.27's reason for the rule applies to them too: a locally edited, deleted or untracked checkout file, or
+end-of-line conversion at checkout, must not reach a hash, and VENDORED.toml hashes every fragment (A1). `_fragment_keys`
+(`:315-323`) lets `params` through on `svm_case`, `node_define` and `define` entries, which cannot carry it (A2). Most
+branches of `check_fragment_rules` (`:348-443`) never see bad input, and no test has a `function` entry with `params`
+(A6). On Windows a text-mode write puts CRLF into the fixture source that `extract_fragment` refuses
+(`tests/core/test_vendor_fragments.py:586-599`), and `cmd_extract` writes through text-mode stdout (`:1917`) while it
+reports the sha256 of the LF bytes (A7). `tests/core/test_gen_fragment_units.py:448` replaces the whole environment, which
+drops SYSTEMROOT on Windows (B3).
+Do:
+- In `tools/vendor_sync.py`, read fragments as `upstream_blob` reads whole files (`:620-630`, `git cat-file blob` of the
+  pinned commit):
+  - `_fragment_source` (`:1405-1426`) returns the blob of `manifest.upstreams[upstream]` at `upstream_path`, decoded as
+    UTF-8, and never reads the working tree. It keeps its "not pinned" and "no checkout" errors. A `VendorError` from the
+    blob read and a decode failure become `FragmentError`, with a message that names `<upstream>:<path>` and the commit.
+  - Before it reads, it refuses a checkout whose HEAD (`_git_head`, `:553-565`) is not the pin, with the text that
+    `ensure_checkout` gives (`:675-678`: "<dir> is at <head>, not the pinned <commit>; delete it and rerun fetch"). Put the
+    comparison and the message in one helper that both call. `_fragment_source` is the only reader of fragment sources
+    (`_Sources.get`, `:909-915`, and `cmd_list_anchors`, `:1932`), so this covers `add-fragment`, `extract`,
+    `list-anchors` and the API functions. `_fragment_checkouts` (`:1678-1688`) stays as it is: it never fetches, and a
+    missing directory is an error.
+  - Rewrite the module docstring (`:32-42`): delete the exception for fragments, and say that their bytes come from the
+    pinned commit too. Correct the docstrings of `_Sources` (`:902`, `:910`) and `_fragment_source` (`:1408`) the same
+    way. Card T6.2 (`docs/handoff/drafts/M6a/T6.2-fragment-extraction.md:378, 470-471, 868`) names the working tree; this
+    item replaces that, and the card stays as it is.
+- A2: `_fragment_keys` (`:315-323`) allows `params` only for the kinds in `PARAM_KINDS` (`:125`, `member` and `function`).
+  On `svm_case`, `node_define` and `define` it is an unexpected key, reported by the existing message (`:371-375`).
+- A7: `cmd_extract` (`:1917-1918`) writes `fragment.text.encode("utf-8")` to `sys.stdout.buffer` and flushes, so the
+  bytes on stdout are the bytes whose sha256 goes to stderr (`:1919-1920`), on every platform.
+- B3: `tests/core/test_gen_fragment_units.py:448` passes `env={**os.environ, "PYTHONHASHSEED": seed}`, as
+  `tests/core/test_gen_svm_switch.py:323` does (add `import os`). `tools/gen_fragment_units.py` runs no subprocess and
+  reads no PATH, so the PATH override goes. Name this choice in your answer.
+- Fixtures. Three files call `add_fragments` on a plain-directory checkout: `test_vendor_fragments.py` (`TEST_MANIFEST`
+  `:35-48`, `_tree` `:427-441`), `test_gen_fragment_units.py` (`UPSTREAM_TABLE` `:23-28`, `_setup` `:155-194`,
+  `test_registry_needs_a_node_define` `:348-377`) and `test_gen_svm_switch.py` (`TEST_UPSTREAM` `:37-43`, `_build_tree`
+  `:185-220`). After the change to `_fragment_source` they need a git checkout. Each builds its checkout as a one-commit
+  git repository under `tmp_path` and writes that commit's id into the `commit` line of its manifest. Run git as
+  `tests/core/test_vendored.py:57-82` does (no user or system configuration, so no signing and no `core.autocrlf`; a
+  fixed identity). Write and read every fixture file with `write_bytes` and `read_bytes`.
+- New tests. Each fails under the mutation named after it; the mutations are made in `tools/vendor_sync.py` itself, so
+  save your finished file under `.cache/` first and put it back afterwards (`git checkout` would discard your work). Show
+  each mutation and its failing output in your answer.
+  - The pinned commit, `test_vendor_fragments.py`. Step 6 of `test_manifest_round_trip` (`:581-599`) edited a working-tree
+    line, which no longer reaches the extraction. Keep its outcomes (`sync_fragments` raises `FragmentError` naming the
+    fragment and writes no byte; `check_fragments(manifest, checkouts)` names it), reached by committing the changed line
+    in the fixture and pointing the temporary manifest's pin at that commit. Add: that old edit, left uncommitted, changes
+    nothing (`check_fragments(manifest, checkouts) == []`, and `sync_fragments` rewrites the same bytes); the same with
+    the file deleted from the working tree; a file that exists only in the working tree is refused with
+    `<path> is not a file in upstream cycles at <commit>`; with `core.autocrlf true` and the file checked out again (as
+    `test_vendored.py:164-174`) the working file has CRLF and the extraction still equals the LF fragment. Mutation:
+    `_fragment_source` reads `<checkout>/<root>/<path>` again.
+  - The pin, `test_vendor_fragments.py` and `test_vendored.py`. A checkout whose HEAD is a later commit is refused by
+    `add_fragments`, `sync_fragments` and `check_fragments`, with the text above, and the manifest and the `.inc` files
+    stay as they were. In `test_vendored.py`, add `add-fragment`, `extract` and `list-anchors` to the parametrization of
+    `test_a_checkout_off_its_pin_is_refused` (`:237-258`), on `util/a.h` (for example `define A`). Mutation: the HEAD
+    refusal deleted.
+  - A2, `test_vendor_fragments.py`: for each of `svm_case`, `node_define` and `define`, a valid entry with `params = "x"`
+    is refused by `check_fragment_rules` and by `load_manifest`, with "unexpected ['params']"; the same entry without
+    `params` is accepted. Mutation: `_fragment_keys` allows `params` for every kind but `span`.
+  - A6, `test_vendor_fragments.py`: a `function` entry with `params` is accepted by `check_fragment_rules`, by
+    `load_manifest` and by the writer round trip (its name has the `-<params>` suffix, `fragment_name` `:1392-1394`).
+    Mutation: `_fragment_keys` allows `params` for `member` only. Then one case for each other branch of
+    `check_fragment_rules`, `_fragment_string` and `_fragment_lines` (`:307-345`, `:360-443`; a `params` that is not a
+    string is tested at `:664`): not a table; an unknown kind, and a kind that is not a string; a missing key and an
+    unexpected key, each for `span` and for another kind; a character outside printable ASCII; an unknown upstream; a
+    non-canonical `upstream_path`; an invalid span id; an empty `begin`, an empty `end`; an invalid anchor for a `function`
+    and for a `member`; `upstream_lines` that is not a list of two integers, that holds a bool, and that breaks
+    `1 <= first <= last`; a sha256 that is not 64 lowercase hex digits; a name other than the one the fields give; a name
+    used twice; a file that is vendored whole and fragmented; two overlapping ranges, including two that share one line,
+    while `[a, b]` next to `[b + 1, c]` and equal ranges in two different files are accepted. Each case starts from an
+    entry that the test has shown to pass, changes exactly one thing, and expects `FragmentError` with `match=` a phrase of
+    that branch's own message. Mutation: the `raise` of that branch deleted (one run per case; a script that applies them
+    in turn and prints "mutation, first failing test" is fine).
+  - A7, `test_vendored.py`, on its `tree` fixture: `extract` of `util/a.h` with `sys.stdout` replaced by
+    `io.TextIOWrapper(io.BytesIO(), encoding="utf-8", newline="\r\n")` (what Windows text mode does to "\n"): the bytes
+    behind it equal the fragment's LF bytes, and their sha256 is the one on stderr. Mutation: `cmd_extract` writes
+    `fragment.text` to `sys.stdout` again.
+- Change no existing assertion. The edits to existing tests are the fixtures above, step 6 (its mechanism, not its
+  outcomes), B3, and the added parametrized cases.
+Outcome:
+- `CHECK` exits 0.
+- `git grep -n write_text -- tests/core/test_vendor_fragments.py` prints nothing.
+- Host only, after landing (Opus): `python -I tools/vendor_sync.py check --upstream` exits 0 on the real checkout, so the
+  pinned blobs give every recorded fragment hash and line range.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `tools/vendor_sync.py`, `tests/core/test_vendor_fragments.py`, `tests/core/test_gen_fragment_units.py`, `tests/core/test_gen_svm_switch.py`, `tests/core/test_vendored.py`
+Depends on: M6a-T6.8.
+
+## M6a-FIX-X011: experiment 011's probes record what they measured
+Why (readers A and B; Opus's Conclusion of 2026-10-25 in `experiments/011-2026-10-23-svm-probe/README.md`): three places
+where the probes or their data files differ from what the README pre-registers or reports. None changes a verdict.
+`probe.py:227` decides H3 by `failed == 0 and passed > 0`; the pre-registered rule (README.md:98) is "3 passed assertions
+and 0 failed" for each of the five cases (A3). Both probes write the absolute build directory of the sprint clone into
+their data files (`probe.py:300`, `probe_part2.py:561`; `results.json:74` and `results_part2.json:126`) (A4).
+`probe_part2.py:445` looks for a line that starts with `#deps `, but `ninja -t deps` prints `<object>: #deps N, ...`, so
+`instrument_m6` never finds the list and its six closure fields are 0 in `results_part2.json`, where they should say "not
+measured" (M6; part 1's `_m2`, `probe.py:256-276`, skips the first line and did measure).
+Do:
+- `probe.py`: decide H3 as H2 is decided (`H2_CASES` `:66`, `_h2` `:208-217`): a table `H3_CASES` (`:67`) of the five names
+  with the passed count 3, and `supported` only if every case reports exactly that count and 0 failed. A comment cites
+  README.md:98 as the origin of the 3.
+- `probe.py:300` and `probe_part2.py:561`: record the build directory relative to the repository root, as a POSIX path
+  (`Path(os.path.relpath(BUILD, REPO)).as_posix()`). It is never absolute; a build directory outside the repository gives a `..` path,
+  not an error. `probe.py:311` builds its output path inline: give it a module-level name, as `probe_part2.py` has `EXP`
+  (`:38`), so that a test can redirect it.
+- `probe_part2.py`, `instrument_m6` (`:424-484`):
+  - Move the parsing of the `ninja -t deps` text (`:444-471`) into a function of that text, so that a test can call it
+    without ninja and without the `os.utime` of `src/test/test_cycles_svm_compiler.cpp` (`:476`).
+  - Recognise the header as ninja prints it: a first line `<object>: #deps <N>, deps mtime <T> (VALID)`, then one indented
+    path per line. After `CHECK`, run
+    `ninja -C build/q -t deps src/test/CMakeFiles/painterly_tests.dir/test_cycles_svm_compiler.cpp.o | head -1` and quote
+    that line in your answer.
+  - With no header line, the six closure fields are `None` (JSON `null`, "not measured") and not 0: `deps_total`,
+    `deps_third_party_cycles`, `deps_third_party_cycles_lines`, `deps_shim`, `deps_src_painterly`, `deps_generated`
+    (initialised at `:428-433`, assigned at `:458-471`). The compile times keep their code.
+- The committed data. Do not run either probe. Write a throwaway script under `.cache/` (not committed: it produces no
+  number, only rewrites a provenance field and six "not measured" markers, and Opus asked for its source and output in
+  your answer) that:
+  - loads each file with `json`, changes exactly the fields below, and writes it back as
+    `json.dumps(data, indent=2, sort_keys=True) + "\n"`, which is how the probes write it; it first asserts that this
+    reproduces each unchanged file byte for byte;
+  - `build_dir`, in both files: asserts that the old value ends in `/build/q`, and sets `build/q` (README.md:246-248: the
+    part-1 run set `PAINTERLY_BUILD_DIR=build/q`; both old values are the same path of sprint S1's clone);
+  - the six M6 fields of `results_part2.json`: asserts that each is 0, and sets `null`;
+  - prints, for each file, every JSON path whose value differs from `git show HEAD:<path>`.
+  Run it with `MAIN/.venv/bin/python -P -s`, and put its source, the command and the output in your answer. No measured
+  value may change.
+- `README.md`: add one line under `## Results`, after the paragraph that ends "M6's times are measured." (`:351-354`):
+  what was rewritten (the two `build_dir` values, from the absolute path of the sprint clone to `build/q`; the six M6
+  closure fields, from 0 to `null`), by whom (DeepSeek, item M6a-FIX-X011) and when (the date `date -u +%F` prints), and
+  that no measured value changed. Leave the Conclusion and every pre-registered section as they are.
+- Tests, in a new `experiments/011-2026-10-23-svm-probe/test_probes.py` (it follows
+  `experiments/005-2026-10-08-native-coexistence/test_bindings.py`: load the probes by path). Each fails under the
+  mutation named after it. The mutations are made in the probes, so save your finished files under `.cache/` first and put
+  them back afterwards; show each failing output in your answer.
+  - H3: with `_doctest_assertions` stubbed, (3, 0) for all five cases is supported; (2, 0), (4, 0), (3, 1) and (0, 0) in
+    any one case are not. Mutations: `_h3` back to `passed > 0`; `failed == 0` dropped.
+  - `build_dir`: `main()` of each probe, with every instrument stubbed and the output redirected into `tmp_path`, writes
+    `"build_dir": "build/q"` for `BUILD_DIR` given as `build/q` and as the absolute path `REPO/build/q`, and a `..` path
+    for a directory outside `REPO`; it is never absolute. Mutation: `str(BUILD_DIR)` back in either `main`.
+  - M6: the parsing function gives `None` for all six fields on an empty output and on a `<object>: deps not found` line
+    (what ninja prints for a target without recorded dependencies). On a header plus indented paths that the test builds
+    (under a temporary `REPO` and `BUILD`, with files under `third_party/cycles/` of known newline counts), it gives the
+    counts that the construction gives, so no count is read from the code under test. Mutations: the header test back to
+    `line.startswith("#deps ")`; `None` back to 0; one of the path prefixes changed.
+Outcome:
+- `CHECK` exits 0.
+- `git diff --numstat HEAD -- experiments/011-2026-10-23-svm-probe/results.json experiments/011-2026-10-23-svm-probe/results_part2.json`
+  prints one changed line for `results.json` (`build_dir`) and seven for `results_part2.json` (`build_dir` and the six M6
+  fields), and the script's list in your answer shows no other path.
+- `git grep -n --untracked "/run/media" -- experiments/011-2026-10-23-svm-probe` prints nothing.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `experiments/011-2026-10-23-svm-probe/probe.py`, `experiments/011-2026-10-23-svm-probe/probe_part2.py`, `experiments/011-2026-10-23-svm-probe/results.json`, `experiments/011-2026-10-23-svm-probe/results_part2.json`, `experiments/011-2026-10-23-svm-probe/README.md`, `experiments/011-2026-10-23-svm-probe/test_probes.py`
+Depends on: M6a-T6.8.
+
+## M6a-FIX-SVMT: the SVM node doctests fail when the node they test changes
+Why (reader B, reader C and audit B): mutations of the code under the T6.5-T6.8 doctests that no test notices.
+B2: the shader-manager checks of `src/test/test_cycles_svm_compiler.cpp` reach 2 of the 15 flag conditions of
+`PainterlyShaderManager::device_update_common` (`src/painterly/scene/svm/shader_manager.h:273-323`). Every expectation is
+`default_shader_flags` (`:189-195`: SD_VOLUME_MIS and SD_USE_BUMP_MAP_CORRECTION; compared at `:319, 373, 420, 421`).
+`use_volumes` and `transparent_shadows` are compared with their zero-initialised values (`:374-375`), so deleting the
+writes at `shader_manager.h:119` and `:339` passes. `rgb_to_y` is compared with the manager's own member (`:378-383`),
+so nothing pins its value; and the value depends on the CPU, because `transform_inverse` runs a different function on
+AVX2 CPUs (FMA in `transform_inverse_cross`, `third_party/cycles/util/transform.h:500-516`; dispatch `:572-584`).
+C6, as read from the tests. Textures `:515-517` and `:658-699`: the brick case has Mortar Smooth 0 and Squash 1, and the
+noise case samples only points whose fractional parts are all 0.5. Closures `:332-337`: the thin-film table is compared
+with another ShaderManager's table. Closures `:749-756` is the end of the policy case (Thin Wall, lobe kinds only), where
+`collect.h:110-114` (the DIELECTRIC and DIELECTRIC_TINT cases of `painterly_svm_reflection_color`) has no case: no test sets
+Coat Weight. Images `:501-556`: only the float pixels are tested for non-finite values. Images `:746`: `use_transform_3d`
+is checked, `transform_3d` and `average_color` are not.
+Do:
+- For every case below:
+  - Add new `TEST_CASE`s and change no existing assertion, case or line. Give each a name that does not begin with
+    `cycles svm compiler:`, `cycles svm textures:`, `cycles svm closures:` or `cycles svm images:`: the verify lines of
+    M6a-T6.5 to M6a-T6.8 count the cases and assertions that match those four.
+  - Take every expected value from a script that you run (double precision), and paste its command and output. Choose
+    inputs for which every float32 operation of the upstream formula is exact, as the header of
+    `test_cycles_svm_textures.cpp` (`:4-18`) requires, so that the order of operations and FMA cannot change the result.
+    Where no such input exists, do not pin the value with `==`: derive a bound in a comment (CLAUDE.md rule 2), or call
+    `report_blocked` naming the value.
+  - Show each mutation, its failing output, and restore it. A mutation in our code (`src/painterly/`, `src/cycles/shim/`)
+    is made in the file and undone with `git checkout -- <file>`; none of those files is in allowedPaths. A mutation of a
+    vendored header is never made in `third_party/`: copy the header to `.cache/mutants/active/<same relative path>`,
+    change the copy, and build into `build/qm` (`make build BUILD_DIR=build/qm` with the CHECK knobs and
+    `-DCMAKE_CXX_FLAGS=-iquote$PWD/.cache/mutants/active` added to `CMAKE_ARGS`; a quoted include finds an `-iquote`
+    directory before the `-isystem third_party/cycles` that the tests use). `touch` the test source and rebuild after each
+    change of the copy, because the dependency file lists the original path. Remove the copy afterwards.
+  - Upstream files named below as `scene/shader.cpp:N`, `scene/svm.cpp:N` or `util/colorspace.cpp:N` are in
+    `MAIN/.cache/vendor/blender-v5.2.2/intern/cycles/`; read them by those exact paths.
+- B2, `test_cycles_svm_compiler.cpp`:
+  - Flags. One case per condition of `device_update_common` (upstream `scene/shader.cpp:642-688` and `:695-697`): a shader
+    where only that condition holds gets exactly its flag(s) on top of the two defaults, compared with constants written
+    from the upstream lines (`SD_*` of `kernel/types.h`), never computed by the code under test. Include: `has_volume` also
+    sets SD_HAS_TRANSPARENT_SHADOW (`:279-285`); each operand of the three conjunctions (`:273`, `:287`, `:290`) alone gives
+    no flag; each of the three `volume_sampling_method` values (only EQUIANGULAR and MULTIPLE_IMPORTANCE give one); each of
+    the three `displacement_method` values (only BUMP gives none, `:314`); both values of `use_bump_map_correction`. The
+    `Shader` members are public (`src/cycles/shim/scene/shader.h:73-117`). `device_update_common` is protected and the
+    class is `final` (`shader_manager.h:43`, `:154`, `:252`), so set the members on a shader with a valid graph (as
+    `prepare_unfolded()` leaves one) and call `device_update_post()`. The compiler that it runs only ever sets some `has_*`
+    members to true (upstream `scene/svm.cpp:578-581`, `:586-589`, `:795-804`), so a member you set stays set; check that
+    every member you expect to be false is false.
+  - Integrator. `use_volumes` (`:111-119`): 1 for a referenced shader whose graph links Output.Volume
+    (`device_update_pre` computes `has_volume` from the link, `:88`); 0 when only an unreferenced shader has a volume
+    (`reference_count()`, `:111`); 0 when none has. `transparent_shadows` (`:331`, `:339`): 1 when some shader's flags
+    contain SD_HAS_TRANSPARENT_SHADOW, 0 otherwise.
+  - `rgb_to_y` (`:352-353`). The shim computes it as `.y` of `transform_inverse(xyz_to_rgb)` for the Rec.709 matrix at
+    `src/cycles/shim/scene/shader.cpp:60-73` (upstream `util/colorspace.cpp:687-703`, `scene/shader.cpp:1018-1019`), so a
+    constant would be wrong on some CPUs. Write the matrix out in the test, call `transform_inverse` on it there, and
+    compare the film's `x`, `y` and `z` bit for bit with `.y` of the result, and `w` with 1.0f
+    (`make_float4(float3)`, `util/types_float4.h:89-92`). Both sides run the same function on the same bits on the same
+    CPU, so the equality holds on every CPU; say so in the comment. Keep the existing comparison. If you cannot justify the
+    equality, derive a bound or `report_blocked`.
+  - Mutations: each `flag |= ...` of `:274-322` deleted (one run each); each condition negated; `&&` to `||` at `:273`,
+    `:287`, `:290`; `shader_manager.h:119`, `:339` and `:353` deleted; the `if` of `:111` removed; `:331` deleted;
+    `shader.cpp:73` `.y` to `.x`; one digit of a matrix constant at `shader.cpp:60-71`. A script that applies them in turn
+    and prints "mutation, first failing check" is fine.
+- C6, `test_cycles_svm_textures.cpp` (mutations in copies of the vendored headers):
+  - Brick (`:501-551`). Mortar Smooth 0 (`:515`) means the smoothed mortar of `brick.h:62-65` never runs; Squash 1 (`:517`)
+    means `brick.h:43` (`brick_width *= (rownum % squash_frequency) ? 1.0f : squash_amount`) and the squashed width in the
+    offset (`brick.h:44`) cannot show. Survivors: `brick.h:64` `smoothstepf(min_dist / mortar_smooth)` replaced by
+    `min_dist / mortar_smooth` or by `1.0f`; `brick.h:63` without `1.0f -`; `brick.h:43` with `1.0f` and `squash_amount`
+    swapped, or deleted; `brick.h:44` using the unsquashed width. Add a case with a Squash other than 1 (dyadic) on a row
+    where `rownum % squash_frequency == 0` and on one where it is not, and a point inside the mortar band with Mortar
+    Smooth above 0 so that the mortar factor f is strictly between 0 and 1 (the colour is then
+    `color1 * (1 - f) + mortar * f`, `brick.h:106`, and Fac is f).
+  - Noise (`:654-704`). Scale 2 puts the point at (1.5, 1.5, 1.5) (`:658-659`) and the 1D sample at 0.5, so every
+    fractional part is 0.5, `fade()` is 0.5 and every mix weight is 0.5. Survivors: `fade()` returning `t` (`noise.h:20` for
+    1D; `noise.h:285-290` for the SSE 3D code that these tests compile, see the comment at `:228-231`); the y and z weights
+    swapped in `tri_mix` (`shuffle<1>(f)` and `shuffle<2>(f)`, `noise.h:372-373`); the weights swapped in `perlin_1d`
+    (`noise.h:41`); `sum += t * amp` without `amp` (`fractal_noise.h:23`, `:73`), because the second octave is evaluated at
+    a lattice point where t is 0 (test `:694-696`). Add cases whose fractional parts differ per axis (0.25 on one axis and
+    0.5 on the others, rotated over the three axes; `fade(0.25)` is 53/512 and `fade(0.75)` is 459/512), a 1D case at a
+    fractional part other than 0.5, and a detail-1 case whose second octave is not at a lattice point. The inputs must
+    keep every float32 operation of `perlin_3d`, `perlin_1d` and `noise_fbm` exact: show by script that each intermediate
+    result has at most 24 significant bits. If a survivor above cannot be killed that way, say which and why.
+- C6, `test_cycles_svm_closures.cpp`:
+  - Thin film (`:329-337`). `ThinFilmProbe` (`:240-257`) is another ShaderManager, which builds its table with the same
+    `compute_thin_film_table` (`shader.cpp:108-169`) as the manager under test: a change to that function changes both
+    tables and passes. Only the zero imaginary DC term (`:337`) is independent. Keep those checks, and add one that
+    recomputes all `6 * THIN_FILM_TABLE_SIZE` entries (`kernel/types.h:37`) in the test from the raw `table_thin_film_cmf`
+    (`scene/shader.tables`, included at `:40`) and the Rec.709 matrix written out in the test, through `transform_direction`
+    and the normalization by row 0, operation by operation as `shader.cpp:143-168` does, and compares bit for bit.
+    `transform_direction` multiplies and adds with `madd` (`util/transform.h:157-177`, `util/math_float4.h:238-251`),
+    which is fused on NEON and unfused on the x86-64 builds, so state in a comment why the equality holds on every CPU
+    (the same function on the same bits, in a build where the choice is fixed), or derive a bound, or call `report_blocked`.
+    Mutations (in `src/cycles/shim/scene/shader.cpp`): two of the six store indices at `:162-167` swapped;
+    `* normalization.x` dropped at `:162`; `rgbImag` taken from `xyzReal` (`:153`); one digit of a matrix constant
+    (`:60-71`).
+  - Coat and Dielectric Tint (`collect.h:107-127`). No Principled variant sets Coat Weight (variants at `:624-647` and
+    `:710-724`), so the DIELECTRIC case (`:110-111`, reached only by the coat, `closure.h:146-176`, whose call at `:169` is
+    `bsdf_microfacet_setup_fresnel_dielectric`, `bsdf_microfacet.h:1038-1047`) and the DIELECTRIC_TINT case (`:112-114`) run in
+    no test. DIELECTRIC_TINT is set only by `bsdf_microfacet_setup_fresnel_dielectric_tint` (`bsdf_microfacet.h:941-961`), which
+    nothing calls, so reach it with a hand-made closure as the conductor is (`:776-806`, without the albedo estimate). Add
+    (1) a Principled with Coat Weight and Coat IOR set so that F0 is exact (IOR 3 gives `F0_from_ior` 0.25,
+    `bsdf_util.h:290-293`): check that the first lobe is a mirror lobe with weight `Coat Weight * F0` per channel, and the
+    kinds of the lobes below it (their weights come through the lookup tables; check them only if you can derive them
+    exactly, as `principled_reference()` does); (2) a hand-made `FresnelDielectricTint` closure with different
+    reflection and transmission tints: its lobe weight is the closure weight times `F0_from_ior(ior)` times the
+    reflection tint per channel. Mutations (in `src/painterly/kernel/svm/collect.h`): `:111` returning `one_spectrum()`;
+    `:113-114` without `F0_from_ior`, without `reflection_tint`, and with `transmission_tint` instead.
+- C6, `test_cycles_svm_images.cpp`:
+  - Non-finite pixels (`:501-504`, `:552-558`; `src/cycles/shim/scene/image.cpp:80-99`). The float version of
+    `zero_if_not_finite` (`:91-99`) is tested for channel x of one texel only. Add texels with a non-finite value in y, in z
+    and in w, each alone (inf and NaN), sampled to zero. Mutations (in `image.cpp`): each of the `!std::isfinite` operands at
+    `:93-94` deleted, one run each.
+  - The half version (`:80-89`) cannot be reached through `add_image`. Halves come only from `float_to_half_image` (`:213-216`),
+    which clamps to +-65504 before converting (`util/half.h:284-287`), and Cycles' `max` returns its second argument when the
+    first is NaN (`util/math_base.h:173-176`, `:371-374`), so inf and NaN both come out finite. Confirm with a script that
+    prints `float_to_half_image` of NaN, +-inf, 65520 and FLT_MAX, their bits, and `half_is_finite` (quote it). If it
+    confirms, do not write a test for the dead branch. Pin what a converted (half) image does with those floats (the
+    `converted` construction at `:494-499`, with `is_unassociated_alpha` false so that no association multiplies them): each
+    of NaN, +inf and -inf in every channel samples back as the finite value that the script prints. Mutation (in a copy of
+    `util/half.h`): `float_to_half_image` without its clamp, which makes inf a half infinity that `image.cpp:80-89` then
+    zeroes, so the pin fails. A deletion of the body of `image.cpp:80-89` itself is an equivalent mutant while the clamp is
+    there; say so.
+  - Texture defaults (`:705-775`; `image.cpp:160-162`). `KernelImageTexture` starts with `transform_3d = transform_zero()`
+    and `average_color = zero_float4()` (`util/types_image.h:161`, `:163`); `add_image` sets `transform_identity()` and
+    zero (`image.cpp:161-162`). The test checks `use_transform_3d` only (`:746`). Add checks of `transform_3d` against
+    `transform_identity()` (`operator==`, `util/transform.h:369`) and of `average_color` against zero (`util/math_float4.h:193`).
+    Mutations (in `image.cpp`): `:161` deleted; `:162` assigning `one_float4()`. Deleting `:162` is an equivalent mutant
+    (the member initializer is the same value); say so.
+Outcome:
+- `CHECK` exits 0.
+- `git diff -U0 HEAD -- src/test | grep -E '^-[^-]'` prints nothing: no existing line is removed or changed. `git status
+  --porcelain` lists only allowedPaths.
+- Your answer has one table per file: each mutation, where it was made (file:line, or the copy), and the first failing check;
+  every mutation named above appears, or is listed as an equivalent mutant with the reason.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/test/test_cycles_svm_compiler.cpp`, `src/test/test_cycles_svm_textures.cpp`, `src/test/test_cycles_svm_closures.cpp`, `src/test/test_cycles_svm_images.cpp`
+Depends on: M6a-T6.8.
+
+## M8-FIX-NOTICES: THIRD_PARTY_NOTICES.md names every vendored source's licence
+Why (Opus's licence check, 2026-10-24): five files of `third_party/cycles/util/` state a licence other than Cycles' default,
+Apache-2.0, in their own SPDX lines, and `THIRD_PARTY_NOTICES.md` names none of them. The gap is older than M6a (M3, T3.2
+and T3.3 vendored them). Their lines:
+- `math_fast.h:1-22`: BSD-3-Clause; "2004 NVIDIA Corporation", "2008-2014 Larry Gritz", "2009-2014 Sony Pictures Imageworks
+  Inc., et al."; "Adapted from OpenImageIO".
+- `md5.cpp:1-5` and `md5.h:1-5`: Zlib; "1999, 2002 Aladdin Enterprises. All rights reserved."; "By L. Peter Deutsch
+  <ghost@aladdin.com>".
+- `projection_inverse.h`: Apache-2.0 for the file (`:1-3`), and BSD-3-Clause for `projection_inverse_impl` (`:14-17`),
+  "Adapted from code: Copyright (c) 2002, Industrial Light & Magic, a division of Lucas Digital Ltd. LLC. All rights reserved."
+- `types_float8.h:1-6`: BSD-3-Clause; "2017 Intel Corporation", "2018-2022 Blender Foundation"; "Originally by Intel
+  Corporation, modified by the Blender Foundation".
+`LICENSES/` has no Zlib text, and none of its BSD texts has these holders.
+Do:
+- In `THIRD_PARTY_NOTICES.md`, add rows after line 15, in the layout of lines 12-15 (component, licence with the file of its
+  full text, where used with the file lines that state the licence, upstream URL). Quote the files' own words and add no
+  holder, year or licence that a file does not state. Suggested components: "OpenImageIO and NVIDIA code in Cycles' fast
+  math" (`math_fast.h`; URL https://github.com/AcademySoftwareFoundation/OpenImageIO), "Intel code in Cycles' vfloat8"
+  (`types_float8.h`), "Industrial Light & Magic code in Cycles' projection_inverse" (`projection_inverse.h`: say both
+  licences), "MD5 by L. Peter Deutsch in Cycles" (`md5.cpp`, `md5.h`). For a file that names no upstream project, the URL
+  is the Blender tag of line 6, not a guess.
+- Add the licence texts to `LICENSES/`, one file per component as the existing files are: `BSD-3-Clause-oiio.txt`,
+  `BSD-3-Clause-intel.txt`, `BSD-3-Clause-ilm.txt`, `Zlib-aladdin.txt`. Each is the copyright statements of the vendored file,
+  one per line, a blank line, and then the licence text, unchanged and without its title line, of
+  `MAIN/.cache/vendor/blender-v5.2.2/intern/cycles/doc/license/BSD-3-Clause-license.txt` or `.../Zlib-license.txt` (Cycles' own
+  copies at the pinned tag; read them by these exact paths). A statement that the header quotes as a `Copyright ...` line
+  (`math_fast.h:8-9`, `:13`, `:17`; `projection_inverse.h:16-17`) is copied as it stands; one that the header gives only as an
+  `SPDX-FileCopyrightText` is written `Copyright (c) <that text>`, as `BSD-3-Clause-osl.txt` writes its line. Name this
+  choice in your answer. Do not touch `LICENSES/BSD-3-Clause-osl.txt`: its copyright line is the owner's call.
+  `pyproject.toml:11` already ships `LICENSES/*.txt`.
+- A test, `tests/core/test_third_party_notices.py`, so the gap cannot reopen: for every file under `third_party/cycles` whose
+  text has `SPDX-License-Identifier: X` with X other than `Apache-2.0` (a file can have several; read all of them), some
+  line of `THIRD_PARTY_NOTICES.md` contains both the file's name and X; and every `LICENSES/<name>.txt` that the notices name
+  exists. The test holds no list of files. Mutations to show (save the file first and put it back): the `math_fast.h`
+  mention deleted from its row; `Zlib` deleted from the row of `md5.h`; `LICENSES/Zlib-aladdin.txt` renamed.
+Outcome:
+- `CHECK` exits 0.
+- This prints nothing (before the change it printed the five files):
+  ```
+  MAIN/.venv/bin/python -P -s - <<'EOF'
+  import re
+  from pathlib import Path
+
+  lines = Path("THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8").splitlines()
+  for path in sorted(Path("third_party/cycles").rglob("*")):
+      if not path.is_file():
+          continue
+      text = path.read_text(encoding="utf-8", errors="replace")
+      for ident in sorted(set(re.findall(r"SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)", text)) - {"Apache-2.0"}):
+          if not any(path.name in line and ident in line for line in lines):
+              print(path.as_posix(), ident)
+  EOF
+  ```
+- `grep -o 'LICENSES/[A-Za-z0-9._-]*\.txt' THIRD_PARTY_NOTICES.md | sort -u | while read -r f; do test -f "$f" || echo "missing $f"; done`
+  prints nothing.
+- `git diff --quiet HEAD -- LICENSES/BSD-3-Clause-osl.txt` exits 0, and `git status --porcelain` lists only allowedPaths.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `THIRD_PARTY_NOTICES.md`, `LICENSES/BSD-3-Clause-oiio.txt`, `LICENSES/BSD-3-Clause-intel.txt`, `LICENSES/BSD-3-Clause-ilm.txt`, `LICENSES/Zlib-aladdin.txt`, `tests/core/test_third_party_notices.py`
+Depends on: M6a-T6.8.
 
 ## REVIEW-M7-M9: report-only review of the drafted M7-M9 cards
 Why: cards T7.1-T9.3 (`docs/handoff/drafts/M7-M9/`) are drafted, but only T7.1 and T7.2 have been reviewed
