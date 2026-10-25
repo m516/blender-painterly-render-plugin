@@ -182,14 +182,14 @@ the draft quotes this brief's interface, and the approving review writes the con
   - `Scene.add_shader(nodes: list[tuple[str, dict[str, object], dict[str, object]]], links: list[tuple[int, str, int,
     str]]) -> int`. Each node is (Cycles type name, parameters by member name, linkable input defaults by UI name). Each
     link is (from node, output UI name, to node, input UI name); to-node -1 is the graph's output.
-  - `Scene.add_node_material(shader: int) -> int` and `Scene.set_background_shader(shader: int) -> None`.
+  - `Scene.add_node_material(shader: int) -> int`. The world's binding, `Scene.set_background_shader`, is B8's.
   - An unknown type, parameter, socket or enum name raises `ValueError` naming it, and a wrong value type raises
     `TypeError`. Indices are dense from 0 (pyi:7).
 - Acceptance:
   - a graph built from Python renders bit for bit like the same graph built in C++;
   - each error case raises with the name;
   - `test_api_contract.py` covers the new names, parameters and defaults.
-- Needs: B2, B5 (it binds `set_background_shader`), M3 T3.15.
+- Needs: B2, M3 T3.15.
 
 ### B7. `sync/shader/flatten.py`
 - Scope: from Cycles' `add_nodes_inlined` (`blender/shader.cpp`; report §5).
@@ -207,12 +207,14 @@ the draft quotes this brief's interface, and the approving review writes the con
     needs: Material Output, Emission and Texture Coordinate. The batch cards add every other row, and batches 6 and 11
     give these three their golden tests.
   - Export turns a flattened tree into B6's lists.
+  - B8 binds `Scene.set_background_shader(shader: int) -> None` (CONTRACT `_painterly.pyi`, `python.cpp`) over B5's
+    `PainterlyScene::set_background_shader`, because the world export is its first caller.
   - The scene sync exports each material and the world. An unsupported node makes that material fall back to M5's
     constant mapping (T5.3), with one warning that names the node. M5's `SyncStats` (T5.2:9-11) has no warning field;
     B8 adds one, `warnings: list[str]`.
 - Acceptance: `make test-blender` cases on generated `.blend`s, giving the exact export lists for fixtures and the
   fallback warning.
-- Needs: B6, B7.
+- Needs: B5, B6, B7.
 
 ### B9. The golden-test harness
 - Scope: `tests/blender_it/` and `make blender-it` (plan.md:353).
