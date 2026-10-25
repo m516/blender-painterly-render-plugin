@@ -900,6 +900,57 @@ verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV
 allowedPaths: `src/test/test_triangle_diagnostics.cpp`, `tests/core/test_triangle_path.py`, `analysis/tests/test_report.py`, `analysis/tests/test_scale_metrics.py`, `tests/core/test_triangle_samples.py`, `src/painterly/bvh/embree.cpp`, `src/painterly/bvh/embree.h`, `src/blender/selftest.cpp`, `src/blender/selftest.h`
 Depends on: M3-FIX-T3.17c.
 
+## XCHK-M7: report-only cross-check of the five revised M7 cards
+Why: `docs/handoff/queue.md` §8 cross-checks the revised M7-M9 drafts before Opus approves them and commits them to
+`docs/tasks/M7/`. REVISE-M7-a..d revised T7.1-T7.5 from the checked findings, and their verifies check only the clean
+`apply` fixes: "The cross-check item and Opus's approval read the rest."
+Do: read the five drafts in order, `docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md`, `T7.2-presets.md`,
+`T7.3-lane-stagger.md`, `T7.4-exp-animation.md` and `T7.5-artist-guide.md`, and check them as a set.
+- **Rulings applied.** Each ruling of `docs/handoff/findings/M7-M9-rulings.md` that concerns an M7 card ("How to apply
+  them, per card", the cross-cutting X1, X2, C1-C4 and J1, and the M7a and M7b sections) is applied in the card it
+  names. Each object of `M7-M9-panel-check-M7a.json` and `M7-M9-panel-check-M7b.json` whose `ruling` is `apply` or
+  `change` is in its draft (for `change`, the object's `change` text), or a later ruling replaces it.
+- **Ownership and order.** Every file, socket, property, operator, preset, test and experiment directory a card uses is
+  created by that card, by an earlier M7 card (T7.1, T7.2, then T7.3 and T7.4, then T7.5), or exists on this tree now:
+  cite its path and line.
+- **Names and interfaces** agree across the five cards, with the code on this tree (`blender/painterly/`,
+  `src/blender/python.cpp`, `src/blender/_painterly.pyi`) and with the committed M4 cards in `docs/tasks/M4/`.
+- **Acceptance** is runnable inside each card's own Create/Modify scope and deterministic, with no hand-picked
+  tolerance, and no step runs `make oracle`.
+- **Experiments** (T7.3, T7.4) take the next free number at run time, and their pre-registered rules are as the M7b
+  section of the rulings leaves them.
+- Opus's landing readers found the issues below. Verify each at its line, include each real one as an object, and say
+  in your answer which you dropped and why:
+  - T7.2:317 and :320 still say "In case B, add jitter entries", which the card's check says to delete and its verify
+    then requires.
+  - T7.2:8-10 says "a later card" where ruling J1 says Opus amends.
+  - T7.2:321 states "30 tests pass" from arithmetic, not from a run.
+  - T7.2:155 and :653 keep a vestigial "NNN" and "each value".
+  - T7.2 against the landed T4.2: the preset operator's `bl_idname` is `render.painterly_render_preset_add`
+    (`blender/painterly/presets.py:41`), and T7.2:88, :93, :134 and :556 disagree with it; Step 1's grep also matches
+    `presets.py:7`; `tests/blender/test_properties.py:429-438` fails under T7.2:202-208.
+  - T7.3:505-508: "means ... still reported" says more than the ruling allows.
+  - T7.4:260-261: "96 sequences" leaves out the smoke run.
+  - T7.4:498-499: `sign_disagrees_with_r4` is one flag while d is per configuration.
+  - T7.4:530 disagrees with :543-545, and :544's AGENTS.md wording with ruling X1.
+  - T7.5:238, :241, :254 and :310 count the native panels and the renders as they were before Soft strokes was removed
+    (C3). Recount both from the revised T7.1 and T7.2 drafts, and put the command that derives each count in
+    `evidence`.
+  - T7.5:205-207: "as its fixed sentence there is replaced" can be read two ways.
+  - T7.5:1675: the tool's error message tells whoever runs it to run `make oracle`, which agents never run
+    (Micah's rule), and an agent may follow the message.
+
+Write `docs/handoff/findings/M7-xchk.json`: a list with one object per real issue, with exactly the keys `card` (the
+draft's file name), `line` (its line number in the draft), `issue`, `evidence` (file:line, or a command and its
+output) and `fix`. `fix` is `{"old": ..., "new": ...}`, where `old` is text that occurs exactly once in that draft, or
+`null` when the choice is Opus's (say why in `issue`). An empty list is a valid result. Change no draft.
+Outcome: the pinned verify prints `XCHK-OK <n>`. It checks that the JSON is a list, that every object has exactly the
+five keys, names one of the five drafts and a line inside it, and that every non-null `fix.old` occurs exactly once in
+that draft.
+verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;D='docs/handoff/drafts/M7-M9/';C=['T7.1-panels-and-overrides.md','T7.2-presets.md','T7.3-lane-stagger.md','T7.4-exp-animation.md','T7.5-artist-guide.md'];T={c:open(D+c).read() for c in C};d=json.load(open('docs/handoff/findings/M7-xchk.json'));assert isinstance(d,list),'not a list';K={'card','line','issue','evidence','fix'};bad=[o for o in d if not isinstance(o,dict) or set(o)!=K or o['card'] not in T or type(o['line']) is not int or not 1<=o['line']<=len(T[o['card']].splitlines()) or not (o['fix'] is None or (isinstance(o['fix'],dict) and set(o['fix'])=={'old','new'} and T[o['card']].count(o['fix']['old'])==1))];assert not bad,bad;print('XCHK-OK',len(d))"`
+allowedPaths: `docs/handoff/findings/M7-xchk.json`
+Depends on: REVISE-M7-c, REVISE-M7-d.
+
 ## DRAFT-M6b-B1: draft card B1, kernel globals and the build
 Why: the M6b brief (Opus, 2026-10-25) fixes M6b's cards; the queue runs nothing without a card.
 Do:
