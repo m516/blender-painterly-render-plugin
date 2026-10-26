@@ -375,9 +375,10 @@ TEST_CASE("painterly integrator: device_update fills every kernel-consumed field
    *   0x1.99999a0000000p-4 3fb99999a0000000 0x1.999999999999ap-4
    *
    * struct.pack("<f", 0.1) is the round-to-nearest-even binary32 of 0.1 (0x3dcccccd), so f is
-   * float32(0.1); widening a binary32 to binary64 is exact, and the 16 hex digits after "0x1." are
-   * the 52 bits of the binary64 significand. The second number is those bits as 16 hex digits; the
-   * third is decimal 0.1, a different binary64 value. */
+   * float32(0.1); widening a binary32 to binary64 is exact, and the 13 hex digits after "0x1." are
+   * the 52 bits of the binary64 significand (52 / 4 = 13). The second number is those bits as 16
+   * hex digits (they are the top 13 of them, the rest zero); the third is decimal 0.1, a different
+   * binary64 value. */
   constexpr float non_dyadic = 0.1f;
   constexpr double non_dyadic_widened = 0x1.99999a0000000p-4;
   /* The value is non-dyadic in the sense above: the nearest double to the decimal 0.1 differs. */
@@ -986,13 +987,24 @@ TEST_CASE("painterly scene: device_update keeps the device scene on every throwi
     }
   }
 
-  /* spiral_frame `object` with no spiral object. */
+  /* spiral_frame `object` with no spiral object. The scene changes too: the material's emission
+   * and the integrator's alpha, which device_update copies into the new arrays and the new kernel
+   * data before it reaches the spiral frame. So `unchanged()` below is a real comparison: a device
+   * scene that committed as it went, before the throw, would differ from the kept one (TQ.3 F16).
+   * A scene left unchanged would let such a rebuild pass, because the rebuilt bytes would equal
+   * the kept ones. */
+  scene.materials[size_t(material)].emission = make_double3(0.125, 0.25, 0.375);
+  scene.integrator.set_alpha(0.75f);
   scene.integrator.set_spiral_frame(SPIRAL_FRAME_OBJECT);
   CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
   unchanged();
   scene.integrator.set_spiral_frame(SPIRAL_FRAME_WORLD);
 
-  /* An unknown spiral_frame. */
+  /* An unknown spiral_frame, with the scene changed again: a different emission and a different
+   * alpha. Both are written before the throw, so this is the second case where a rebuild that
+   * committed early would be caught. */
+  scene.materials[size_t(material)].emission = make_double3(0.5, 0.5, 0.5);
+  scene.integrator.set_alpha(0.25f);
   scene.integrator.set_spiral_frame(99);
   CHECK_THROWS_AS(scene.device_update(ds), std::invalid_argument);
   unchanged();
@@ -1035,8 +1047,9 @@ TEST_CASE("painterly camera: device_update stores the jitter in the units of SPE
      *   0x1.767dce0000000p-10 3f5767dce0000000
      *
      * struct.pack("<f", ...) is the round-to-nearest-even binary32 of 1/1400, i.e.
-     * float32(1/1400); 2.0 * f is exact (a power of two), and the 16 hex digits after "0x1." are
-     * the 52 bits of the binary64 significand, so the literal below is those bits exactly. */
+     * float32(1/1400); 2.0 * f is exact (a power of two), and the 13 hex digits after "0x1." are
+     * the 52 bits of the binary64 significand (52 / 4 = 13), so the literal below is those bits
+     * exactly. */
     CHECK(same_bits(kernel.jitter, 0x1.767dce0000000p-10));
     /* The smallpaint camera stores M_s->cam^T with translation 0 (D19). */
     CHECK(std::memcmp(kernel.camera_to_world,

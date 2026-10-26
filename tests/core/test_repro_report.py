@@ -1,19 +1,40 @@
 """tools/repro_report.py: rebuild EXP-REPRO's REPRO.json and REPRO.md (TQ.2 F9).
 
-Every experiment here is synthetic and lives under tmp_path: a committed side
+Most experiments here are synthetic and live under tmp_path: a committed side
 ``tmp_path/experiments/<NNN>-<slug>/`` and an output side ``tmp_path/outputs/<NNN>/``, the two
 directories the tool compares. Nothing is measured and no tolerance is involved: a figure is
 compared byte for byte, and a results.json leaf by the exact equality of
 ``tools/compare_results.py``.
+
+The last test is the landing check of M3-FIX-TQ2-REPRO (TQ.3 F7): it runs the tool on this
+checkout's committed inputs - the committed figures of experiments 001-004 and 006, and this
+machine's ``docs/handoff/repro/host/<NNN>/results.json`` records (RULINGS K6) - and requires the
+two files it writes to be byte-identical to the committed ``docs/handoff/repro/REPRO.json`` and
+``REPRO.md``. Without it an edit to the tool or to ``compare_results.py`` would let the committed
+report drift, and nothing would notice.
 """
 
 import importlib.util
 import json
+import shutil
 import sys
 from pathlib import Path
 from types import ModuleType
 
-TOOL = Path(__file__).resolve().parents[2] / "tools" / "repro_report.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TOOL = REPO_ROOT / "tools" / "repro_report.py"
+
+# The committed inputs of the report and the committed report itself (TQ.3 F7). REPRO.md's columns
+# name the same sources: the figures are the committed ones under experiments/, and the
+# results.json records are this machine's, in docs/handoff/repro/host/ (RULINGS K6).
+EXPERIMENTS_DIR = REPO_ROOT / "experiments"
+HOST_RESULTS_DIR = REPO_ROOT / "docs" / "handoff" / "repro" / "host"
+COMMITTED_REPORT_DIR = REPO_ROOT / "docs" / "handoff" / "repro"
+# The experiments the report covers: 001-004 and 006 (experiment 005 renders in Blender, so it has
+# no analyze.py output of this kind). Both directories are keyed by these three-digit numbers.
+REPORT_NUMBERS = ("001", "002", "003", "004", "006")
+FIGURE_GLOB = "fig_*.png"
+RESULTS_NAME = "results.json"
 
 # The experiment every test builds: one committed directory on the committed side, one output
 # directory on the other.
@@ -257,3 +278,51 @@ def test_the_markdown_has_the_committed_layout(tmp_path: Path) -> None:
         "| 001 | 1 | 0.5 | /mean | 0.25 | /mean |\n"
     )
     assert _markdown(tmp_path) == expected
+
+
+def _committed_inputs(tmp_path: Path) -> Path:
+    """An ``--outputs`` tree holding the committed inputs of the report, under tmp_path.
+
+    Per experiment: its committed ``fig_*.png`` figures, and this machine's ``results.json`` from
+    docs/handoff/repro/host/ (RULINGS K6: every exact check against a 001-006 results.json uses
+    that file, because the committed one is the cloud run's). A missing input is a failure of the
+    test, not a skip: the files are committed.
+    """
+    outputs = tmp_path / "outputs"
+    for number in REPORT_NUMBERS:
+        target = outputs / number
+        target.mkdir(parents=True)
+        committed = [path for path in EXPERIMENTS_DIR.glob(f"{number}-*") if path.is_dir()]
+        assert len(committed) == 1, f"expected one committed directory {number}-*, got {committed}"
+        figures = sorted(committed[0].glob(FIGURE_GLOB))
+        assert figures, f"experiment {number} has no committed {FIGURE_GLOB} figures"
+        for figure in figures:
+            shutil.copyfile(figure, target / figure.name)
+        results = HOST_RESULTS_DIR / number / RESULTS_NAME
+        assert results.is_file(), f"the host record {results} is missing"
+        shutil.copyfile(results, target / RESULTS_NAME)
+    return outputs
+
+
+def test_the_committed_report_is_reproduced_byte_for_byte(tmp_path: Path) -> None:
+    """The tool rebuilds docs/handoff/repro/REPRO.json and REPRO.md byte for byte (TQ.3 F7).
+
+    The landing check of M3-FIX-TQ2-REPRO, as a test: the tool runs on the committed inputs, into
+    tmp_path, and the two files it writes are compared with ``==`` against the committed ones.
+    Any change to the tool's output - one character of the title, a table's padding, a number's
+    formatting, a leaf report's content - fails here instead of letting the committed report
+    drift. Mutation that fails this test: drop one character from the report's output (for
+    example the trailing LF of REPRO.md, or a digit of a maximum in the largest-difference
+    table).
+    """
+    outputs = _committed_inputs(tmp_path)
+    out = tmp_path / "out"
+    status = repro_report.main(["--outputs", str(outputs), "--out", str(out)])
+    assert status == repro_report.EXIT_OK
+    for name in (repro_report.REPORT_JSON, repro_report.REPORT_MARKDOWN):
+        committed = (COMMITTED_REPORT_DIR / name).read_bytes()
+        written = (out / name).read_bytes()
+        assert written == committed, (
+            f"{name} differs from the committed docs/handoff/repro/{name}: "
+            f"{len(written)} bytes written, {len(committed)} committed"
+        )

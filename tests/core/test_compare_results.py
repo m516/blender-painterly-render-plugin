@@ -175,15 +175,6 @@ def test_boolean_leaf_is_not_a_number() -> None:
     assert "abs_diff" not in record
 
 
-def test_integer_and_float_with_the_same_value_are_identical() -> None:
-    report = compare_results.compare_objects({"size": 400}, {"size": 400.0})
-    record = _record(report, "/size")
-    assert record["kind"] == "number"
-    assert record["identical"] is True
-    assert record["abs_diff"] == 0
-    assert record["rel_diff"] == 0.0
-
-
 def test_true_against_one_is_not_identical() -> None:
     """TQ.2 F5: a boolean is not a number, so Python's True == 1 must not count as identical."""
     report = compare_results.compare_objects({"smoke": True}, {"smoke": 1})

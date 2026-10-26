@@ -60,8 +60,10 @@ def test_embree_units_are_keyed_by_source_and_build_directories(tmp_path: Path) 
             f"/usr/bin/c++ -O3 -o kernels/CMakeFiles/embree_avx2.dir/x.o "
             f"-c {generated}/bvh.cpp.avx2.cpp",
         ),
-        # A translation unit of our own project, compiled in the same build directory: its object
-        # is not under the Embree build directory, so it is not an Embree unit.
+        # A translation unit of our own project, compiled in the same build directory, so its
+        # object IS under the Embree build directory and the object check does not drop it: its
+        # source is what drops it, being in neither the Embree source root nor the generated
+        # directory, so no key can be formed (TQ.3 F22). The object check has its own test below.
         _entry(
             str(build),
             f"/usr/bin/c++ -O3 -o src/painterly/CMakeFiles/x.dir/a.o -c {tmp_path}/src/a.cpp",
@@ -69,6 +71,28 @@ def test_embree_units_are_keyed_by_source_and_build_directories(tmp_path: Path) 
     ]
     units = embree_prebuilt.embree_units(entries, [source], build, build)
     assert sorted(units) == ["gen/geometry/bvh.cpp.avx2.cpp", "src/common/sys/sysinfo.cpp"]
+
+
+def test_an_entry_whose_object_is_outside_the_embree_build_is_not_a_unit(tmp_path: Path) -> None:
+    """An entry whose source is Embree's but whose object is elsewhere is not an Embree unit.
+
+    TQ.3 F22: the object check at tools/embree_prebuilt.py:270 is what makes a unit an Embree one
+    - the object is written into the directory Embree's targets are built in. Deleting that check
+    keeps this entry, because its source is under the Embree source root and so has a key, and the
+    test then fails with a unit it must not have. The build directory here holds no such object,
+    which is the normal case: a project's own build directory is not Embree's build directory.
+    """
+    source = tmp_path / "embree"
+    build = tmp_path / "build"
+    project = tmp_path / "project"
+    entries = [
+        _entry(
+            str(project),
+            f"/usr/bin/c++ -O3 -o {project}/sysinfo.cpp.o -c {source}/common/sys/sysinfo.cpp",
+        )
+    ]
+    units = embree_prebuilt.embree_units(entries, [source], build, build)
+    assert units == {}
 
 
 def test_embree_units_normalise_the_source_and_build_paths(tmp_path: Path) -> None:

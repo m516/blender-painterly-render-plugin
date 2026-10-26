@@ -149,22 +149,74 @@ def test_the_selection_covers_every_axis_of_both_reference_chains() -> None:
             )
 
 
-def test_the_oracle_is_the_binary_of_this_build() -> None:
-    """The oracle under test is the one this build made, not another tree's.
+# The oracle's sources: every .cpp and .h of src/app/, the directory of the standalone oracle
+# (src/app/CMakeLists.txt). They are what a rebuild of the oracle reads.
+ORACLE_SOURCE_DIR = REPO_ROOT / "src" / "app"
+ORACLE_SOURCE_SUFFIXES = (".cpp", ".h")
+# The CMake cache of a build tree, and the variable that records the source tree it was configured
+# from.
+CMAKE_CACHE = "CMakeCache.txt"
+CMAKE_HOME_DIRECTORY = "CMAKE_HOME_DIRECTORY"
 
-    The parity claim is about this build's core against this build's oracle, so the oracle
-    binary must be the one in the build directory the tests import the core from. A stale or
-    foreign oracle (for example the experiments' oracle of another checkout) would compare two
-    different programs.
+
+def test_the_oracle_is_the_fresh_binary_of_the_core_build() -> None:
+    """The oracle is this build tree's binary, configured from this checkout, and up to date.
+
+    TQ.3 F34: the test this replaces compared ``oracle_binary()`` with the path it builds itself,
+    so it could not fail. The three checks here can, and each names what it catches:
+
+    - the binary is in the build tree the imported ``_painterly`` belongs to, taken from the
+      module's own ``__file__`` rather than from ``PAINTERLY_BUILD_DIR``, so a core and an oracle
+      from two different build directories fail;
+    - that build tree was configured from this checkout: ``CMakeCache.txt``'s
+      ``CMAKE_HOME_DIRECTORY`` is the repository root, so the oracle of another checkout (the
+      experiments' ``.cache/oracle-build``, whose ``CMAKE_HOME_DIRECTORY`` is its own source
+      directory) fails;
+    - the binary is not older than any source of ``src/app/``, so an oracle that was not rebuilt
+      after a source edit fails. Modification times are the only build identity the binary
+      carries, and a build reads a source before it writes the binary, so
+      ``binary_mtime >= source_mtime`` holds for a fresh build.
+
+    An installed wheel has no build tree to compare with (``PAINTERLY_TEST_INSTALLED=1``, the
+    cibuildwheel test command), so the test skips there instead of inventing one.
     """
+    if os.environ.get("PAINTERLY_TEST_INSTALLED") == "1":
+        pytest.skip("PAINTERLY_TEST_INSTALLED=1: the wheel's module has no build tree")
     binary = oracle_module.oracle_binary()
     assert binary.is_file(), f"the oracle binary {binary} does not exist; run `make build` first"
-    build_dir = Path(os.environ.get("PAINTERLY_BUILD_DIR", "build/dev"))
-    if not build_dir.is_absolute():
-        build_dir = REPO_ROOT / build_dir
-    assert binary == build_dir / "src" / "app" / "smallpaint_oracle", (
-        f"the oracle binary {binary} is not the one of the build directory {build_dir}"
+
+    # <build>/src/blender/_painterly*.so is where the core was imported from, so parents[2] is
+    # the build tree it belongs to.
+    build_root = Path(_painterly.__file__).parents[2]
+    assert binary == build_root / "src" / "app" / "smallpaint_oracle", (
+        f"the oracle binary {binary} is not the one of the build tree {build_root} the core was "
+        f"imported from ({_painterly.__file__})"
     )
+
+    cache_path = build_root / CMAKE_CACHE
+    assert cache_path.is_file(), f"{cache_path} is missing: {build_root} is not a CMake build tree"
+    cache = cache_path.read_text(encoding="utf-8")
+    configured_from = [
+        line.split("=", 1)[1].strip()
+        for line in cache.splitlines()
+        if line.startswith(f"{CMAKE_HOME_DIRECTORY}:")
+    ]
+    assert configured_from, f"{build_root / CMAKE_CACHE} has no {CMAKE_HOME_DIRECTORY} entry"
+    assert Path(configured_from[0]).resolve() == REPO_ROOT, (
+        f"the build tree {build_root} was configured from {configured_from[0]}, not {REPO_ROOT}"
+    )
+
+    sources = sorted(
+        path
+        for path in ORACLE_SOURCE_DIR.iterdir()
+        if path.is_file() and path.suffix in ORACLE_SOURCE_SUFFIXES
+    )
+    assert sources, f"no oracle sources in {ORACLE_SOURCE_DIR}"
+    binary_mtime = binary.stat().st_mtime_ns
+    for source in sources:
+        assert binary_mtime >= source.stat().st_mtime_ns, (
+            f"the oracle binary {binary} is older than {source}: rebuild it (`make build`)"
+        )
 
 
 def _oracle_options(

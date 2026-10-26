@@ -24,6 +24,8 @@
 #include "painterly/kernel/geom/triangle.h"
 #include "painterly/util/math_double3.h"
 
+#include "test_ray.h"
+
 CCL_NAMESPACE_BEGIN
 
 namespace {
@@ -164,14 +166,8 @@ double3 to_world_direction(const float *tfm, const double3 d)
                       tfm[8] * d.x + tfm[9] * d.y + tfm[10] * d.z);
 }
 
-PainterlyRay make_ray(const double3 origin, const double3 direction)
-{
-  PainterlyRay ray;
-  ray.o = origin;
-  ray.d = direction;
-  return ray;
-}
-
+// Rays come from the shared make_ray of test_ray.h (TQ.2 F7), which takes Triples, so a double3
+// the test computes is passed as its three coordinates.
 double max_abs_coordinate(const double3 p)
 {
   return std::max({std::abs(p.x), std::abs(p.y), std::abs(p.z)});
@@ -250,8 +246,7 @@ TEST_CASE(
 
     // Object 0: from (0.25, 0.25, 6) along s (0.5, 0.25, -1). It meets z = 5 at t = 1/s, at (0.75,
     // 0.5, 5). In object space that is (0.5, 0.75): above the diagonal, so triangle 1.
-    const PainterlyRay ray0 = make_ray(make_double3(0.25, 0.25, 6.0),
-                                       make_double3(0.5 * s, 0.25 * s, -1.0 * s));
+    const PainterlyRay ray0 = make_ray({0.25, 0.25, 6.0}, {0.5 * s, 0.25 * s, -1.0 * s});
     PainterlyIntersection hit0;
     REQUIRE(painterly_embree_intersect_closest(scene.get(), ray0, 0.0, INFINITE_DISTANCE, &hit0));
     CHECK(hit0.prim == 1);
@@ -265,7 +260,7 @@ TEST_CASE(
 
     // Object 1: straight down from (2.5, 3, 10), so |d| = s. The hit is (2.5, 3, -2.625), at t
     // = 12.625 / s. In object space that is (0.75, 0.5): below the diagonal, so triangle 0.
-    const PainterlyRay ray1 = make_ray(make_double3(2.5, 3.0, 10.0), make_double3(0.0, 0.0, -s));
+    const PainterlyRay ray1 = make_ray({2.5, 3.0, 10.0}, {0.0, 0.0, -s});
     PainterlyIntersection hit1;
     REQUIRE(painterly_embree_intersect_closest(scene.get(), ray1, 0.0, INFINITE_DISTANCE, &hit1));
     CHECK(hit1.prim == 0);
@@ -288,7 +283,8 @@ TEST_CASE("painterly_embree: a ray through the shared diagonal of an instance hi
     CHECK(static_cast<double>(static_cast<float>(c)) == c);
   }
 
-  const PainterlyRay ray = make_ray(origin, direction);
+  const PainterlyRay ray = make_ray({origin.x, origin.y, origin.z},
+                                    {direction.x, direction.y, direction.z});
   PainterlyIntersection hit;
   REQUIRE(painterly_embree_intersect_closest(scene.get(), ray, 0.0, INFINITE_DISTANCE, &hit));
   CHECK(hit.index == 0);
@@ -305,9 +301,9 @@ TEST_CASE("painterly_embree: tnear excludes the surface a ray starts on, and tfa
   // A point on object 0's quad, off the diagonal and inside triangle 1: (0.75, 0.5, 5). A ray that
   // starts on the surface must not re-hit it (SPEC §6): with tnear = RAY_EPSILON, both directions
   // miss.
-  const double3 start = make_double3(0.75, 0.5, 5.0);
-  const PainterlyRay up = make_ray(start, make_double3(0.0, 0.0, 1.0));
-  const PainterlyRay down = make_ray(start, make_double3(0.0, 0.0, -1.0));
+  const Triple start = {0.75, 0.5, 5.0};
+  const PainterlyRay up = make_ray(start, {0.0, 0.0, 1.0});
+  const PainterlyRay down = make_ray(start, {0.0, 0.0, -1.0});
   PainterlyIntersection miss;
   miss.kind = HIT_TRIANGLE;
   CHECK_FALSE(
@@ -322,8 +318,7 @@ TEST_CASE("painterly_embree: tnear excludes the surface a ray starts on, and tfa
   // RAY_EPSILON. delta = 2^-20 is exact at z = 5 (the binary32 spacing there is 2^-21), and it is
   // far below RAY_EPSILON.
   const double delta = 0x1p-20;
-  const PainterlyRay below = make_ray(make_double3(0.75, 0.5, 5.0 - delta),
-                                      make_double3(0.0, 0.0, 1.0));
+  const PainterlyRay below = make_ray({0.75, 0.5, 5.0 - delta}, {0.0, 0.0, 1.0});
   PainterlyIntersection self;
   REQUIRE(painterly_embree_intersect_closest(scene.get(), below, 0.0, INFINITE_DISTANCE, &self));
   CHECK(self.index == 0);
@@ -334,8 +329,7 @@ TEST_CASE("painterly_embree: tnear excludes the surface a ray starts on, and tfa
 
   // tfar: the hit of the ray from (0.25, 0.25, 7) along (0, 0, -2) is at t = 1. tfar = 0.5 misses,
   // tfar = 2 hits.
-  const PainterlyRay down_far = make_ray(make_double3(0.25, 0.25, 7.0),
-                                         make_double3(0.0, 0.0, -2.0));
+  const PainterlyRay down_far = make_ray({0.25, 0.25, 7.0}, {0.0, 0.0, -2.0});
   CHECK_FALSE(painterly_embree_intersect_closest(scene.get(), down_far, 0.0, 0.5, &miss));
   REQUIRE(painterly_embree_intersect_closest(scene.get(), down_far, 0.0, 2.0, &self));
   CHECK(self.index == 0);
@@ -358,7 +352,7 @@ TEST_CASE("painterly_embree: the scene keeps no pointer into the caller's arrays
   std::fill(object0.begin(), object0.end(), std::numeric_limits<float>::quiet_NaN());
   std::fill(object1.begin(), object1.end(), std::numeric_limits<float>::quiet_NaN());
 
-  const PainterlyRay ray = make_ray(make_double3(0.25, 0.25, 7.0), make_double3(0.0, 0.0, -2.0));
+  const PainterlyRay ray = make_ray({0.25, 0.25, 7.0}, {0.0, 0.0, -2.0});
   PainterlyIntersection hit;
   REQUIRE(painterly_embree_intersect_closest(scene.get(), ray, 0.0, INFINITE_DISTANCE, &hit));
   check_hit(hit, ray, make_double3(0.25, 0.25, 5.0), 0, OBJECT0_TO_WORLD);
@@ -427,7 +421,7 @@ TEST_CASE("triangle normals: Ng and the corner normals of a flat triangle share 
 
   // Straight down onto the object-space point (0.75, 0.5) of triangle 0, the world point
   // (2.5, 1, -2.375).
-  const PainterlyRay ray = make_ray(make_double3(2.5, 1.0, 10.0), make_double3(0.0, 0.0, -1.0));
+  const PainterlyRay ray = make_ray({2.5, 1.0, 10.0}, {0.0, 0.0, -1.0});
   PainterlyIntersection hit;
   REQUIRE(painterly_embree_intersect_closest(scene.get(), ray, 0.0, INFINITE_DISTANCE, &hit));
   CHECK(hit.index == 0);
