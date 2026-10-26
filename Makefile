@@ -29,7 +29,7 @@ define PAINTERLY_STAGE_READONLY_SOURCES
 set -e; set --; for a in $(CMAKE_ARGS); do case "$$a" in -DFETCHCONTENT_SOURCE_DIR_*=*) n=$${a#-DFETCHCONTENT_SOURCE_DIR_}; n=$${n%%=*}; d=$${a#*=}; if [ -d "$$d" ] && [ ! -w "$$d" ]; then s="$(1)/_deps-src/$$n"; if [ ! -e "$$s" ]; then mkdir -p "$$(dirname "$$s")"; cp -a "$$d" "$$s"; chmod -R u+w "$$s"; fi; a="-DFETCHCONTENT_SOURCE_DIR_$$n=$$s"; fi;; esac; set -- "$$@" "$$a"; done
 endef
 
-.PHONY: env env-blender blender build oracle wheel test-cpp test-py test test-slow test-blender lint format audit vendor-check check clean
+.PHONY: env env-blender blender build oracle wheel extension blender-it test-cpp test-py test test-slow test-blender lint format audit vendor-check check clean
 
 env:
 	uv sync --locked --group dev --group analysis
@@ -72,6 +72,24 @@ test-slow: build
 # module that `build` provides.
 test-blender: build
 	$(VENV)/bin/python -m pytest tests/blender -q
+
+# The extension zip in dist/ (T4.4): stage src/blender/addon/ plus the painterly-core wheel, rewrite the staged
+# manifest, and run `blender --command extension build --split-platforms`. The zip path goes to
+# build/extension/zip_path.txt, which `blender-it` reads. The wheel is `make wheel`'s (`uv build`), or the project's
+# own build backend, scikit-build-core, when `uv` is absent; with neither, no zip is written and `blender-it` skips.
+#
+# The card's `extension: blender` fetches Blender first. That fetch needs the network, which is host-only (R1), and
+# $(BLENDER) defaults to the path it installs to, so it runs only when that executable is missing: an offline clone
+# passes BLENDER=<prepared install> and fetches nothing.
+extension:
+	@test -x $(BLENDER) || $(MAKE) blender
+	$(VENV)/bin/python tools/build_extension.py --blender $(BLENDER)
+
+# The end-to-end integration test of T4.4: install the zip into an isolated Blender profile, render the reference
+# scene through the installed extension, and compare with the oracle bit for bit. `build` provides the
+# smallpaint_oracle that the test runs. Without a zip (no wheel can be built) the test skips, so this target is green.
+blender-it: extension build
+	$(VENV)/bin/python -m pytest tests/blender_it -m slow -q
 
 lint:
 	$(VENV)/bin/ruff check .
