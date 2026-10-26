@@ -1096,6 +1096,67 @@ verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV
 allowedPaths: `src/painterly/session/session.cpp`, `src/painterly/session/session.h`, `src/test/test_session.cpp`
 Depends on: M3-FIX-TQ3a.
 
+## M3-FIX-TQ3e: the GIL tests fail for a call that holds the GIL on a loaded machine, and the effect tests' survivors
+Why (Opus's landing-6 review of M3-FIX-TQ3b, 2026-10-25): in `tests/core/test_api_contract.py`, the GIL tests assert
+`bumps > bound`, where `_gil_held_bound` is the most counting a GIL-holding call allows on an idle machine (two switch
+intervals). So the threshold is the held side's own value, with no margin below it. On a loaded machine the hand-offs
+stretch. A replica of the harness on this machine, with every CPU busy and a pure-C call that holds the GIL
+(`sum(range(6_000_000))`) in place of `start()`, passed in most of 40 runs. The queue's own machine is loaded, so it
+can pass a binding that has stopped releasing the GIL.
+The comment block calls the threshold "derived, never chosen", but `GIL_RELEASE_SHARE_FLOOR` and `GIL_RELEASE_MARGIN`
+are chosen. It also gives R10 as the floor's reason, and R10 says nothing about it.
+The review also found:
+- three mutations that the effect tests of TQ.3 F5 let through;
+- a wrong input in `SPIRAL_DIRECTION_BOUND`'s derivation;
+- docstrings that call squared radii radii (lines 250-251).
+Do:
+- Give the GIL tests a margin on both sides of the threshold. The threshold becomes `GIL_RELEASE_MARGIN` times
+  `_gil_held_bound(calibrated)`. The measured window must be long enough that, at `GIL_RELEASE_SHARE_FLOOR`, the
+  released running time is `GIL_RELEASE_MARGIN` times the threshold: `GIL_RELEASE_MARGIN**2 * GIL_HELD_HANDOFFS *
+  sys.getswitchinterval() / GIL_RELEASE_SHARE_FLOOR` seconds.
+  - `test_start_releases_the_gil` grows its mesh until `start()` reaches that window.
+  - `test_wait_releases_the_gil` waits for that window.
+  - Keep the four knobs' values.
+  - Rewrite the comment blocks (lines 1150-1163 and 1262-1273) so they say which numbers are derived and which are
+    chosen, and drop the R10 reason.
+- Show the GIL tests catching a GIL-holding binding, and passing an unmutated one, on the loaded machine:
+  - Remove the GIL release from `Session.start`'s binding in `src/blender/python.cpp`, rebuild, and run
+    `test_start_releases_the_gil` 10 times in a row; each run must fail.
+  - Do the same for `Session.wait` and `test_wait_releases_the_gil`.
+  - Restore `python.cpp`, rebuild, and run both unmutated tests 10 times in a row; each run must pass.
+  - Quote every run's bumps and threshold.
+  - If one mutated run passes or one unmutated run fails, change no knob and no formula. Call report_blocked with
+    those numbers.
+- Close the three F5 survivors. In each case build the expectation by hand from the scene's geometry, not with the
+  code under test, and show the mutation failing, then restore it:
+  - `Scene.clear`: set a background before `clear()`, and require a render after it to equal a new `Scene`'s render
+    with the same camera and integrator. Deleting the background reset in `src/painterly/scene/scene.cpp` (lines
+    21-33) must fail.
+  - Camera rotation: give `camera_to_world` and `object_to_world` a rotation that is not the identity, so that a
+    transposed 3x3 block fails each test.
+  - Fit: a non-square image with `fit="vertical"`, so that swapping the two fits in
+    `src/blender/python.cpp:579-583` fails.
+- Correct `SPIRAL_DIRECTION_BOUND`'s derivation (lines 440-448). Compute `SMALLPAINT_PI - pi` with a script (the
+  constant is in `src/painterly/kernel/smallpaint.h:15`), and quote the command and its output. Derive the bound
+  from that figure, and from `r = sqrt(3)/2` if the derivation uses it. Set the constant to the result, rounded up at
+  two significant figures.
+- Docstrings:
+  - Name nanobind's `keep_alive` mechanism in the keep_alive test's docstring (lines 1030-1043): nanobind 3.1.0
+    adds one reference, in `keep_alive_py`, `src/nb_type.cpp:2126-2176` of the venv's nanobind.
+  - Lines 250-251 call the values that `_pinhole_hit_radius` returns radii, but they are squared radii; correct
+    them. Check line 591's formula against the image the test builds, and correct it if it is wrong.
+Outcome: `CHECK` exits 0 (the pinned verify).
+Notes:
+- Show each mutation in your answer (command and output), then revert it with `git checkout -- <file>`; no mutation
+  may remain in the diff.
+- Scratch files go under /tmp or .ds-scratch/.
+- Run the Python targets with R12's PYTHONPATH prefix and R11's prebuilt Embree; use BUILD_DIR=build/q (K1, K5).
+- No test may become slower than about 10 s.
+- The threshold and the window come from the formulas above. Never search a knob's value until a run passes.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `tests/core/test_api_contract.py`
+Depends on: M3-FIX-TQ3b.
+
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
 - Re-pointed on 2026-10-22: T4.1 needs T3.17's triangle path and nothing from experiment X-throughput.
