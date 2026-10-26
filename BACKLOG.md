@@ -1157,6 +1157,46 @@ verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV
 allowedPaths: `tests/core/test_api_contract.py`
 Depends on: M3-FIX-TQ3b.
 
+## M3-FIX-TQ3f: TQ3c's landing leftovers: two wrong comments, a weak device-scene check, repro line endings
+Why (landing-7 review of M3-FIX-TQ3c, `docs/audits/TQ.5.md`, 2026-10-26; F48-F50, F52; line numbers are at f5d101e): the
+comment that TQ3c added at `src/test/test_scene.cpp:379-381` is itself wrong, the comment it added at
+`src/test/test_bvh.cpp:169-170` sits above an unrelated function, its F16 check changes the scene only where two of the
+device arrays can see it, and its byte-for-byte test of the committed repro files would fail on a Windows checkout with
+`core.autocrlf=true`, because `.gitattributes` does not protect them.
+Do:
+- TQ.5 F48, `src/test/test_scene.cpp:379-381`. The remark "(they are the top 13 of them, the rest zero)" is wrong:
+  `3fb99999a0000000` is `3fb`, the sign and the 11-bit exponent (the top 3 hex digits), then `99999a0000000`, the 52
+  fraction bits (the LOW 13 digits). Write "(the low 13 of them; the top 3 hold the sign and the exponent)". Run the
+  command quoted at `:372-374` and quote its output and the split in your answer. Comment only: no mutation.
+- TQ.5 F49, `src/test/test_bvh.cpp:169-170`. The comment about the shared `make_ray` sits above `max_abs_coordinate`
+  (`:171`), which has nothing to do with rays. Move it to the `#include "test_ray.h"` at `:27` or delete it.
+- TQ.5 F50, `src/test/test_scene.cpp:990-1010`. Before the two throwing `device_update` calls only `materials` (the
+  emission) and `data` (the alpha) differ between the changed scene and the kept device scene; `lobes`, `analytic`,
+  `meshes`, `tri_material`, `tri_corner_normals` and `objects` are rebuilt from unchanged input
+  (`src/painterly/scene/device_scene.cpp:112-205`, before the spiral-frame throws at `:246` and `:252`), so an early
+  commit of any one of them is not seen. Change, before each of the two calls, an input of each of those six arrays,
+  with different values the second time: a lobe's weight, a field of an analytic primitive, the mesh's triangle count, a
+  triangle's material index (this needs a second material), a corner normal, an object's id; choose the edits, name
+  them. Keep `unchanged()` as it is. Show a mutation per array: a temporary early commit of that one array into `ds` in
+  `PainterlyScene::device_update` before the spiral-frame throws (`device_scene.cpp`, not yours: undo with
+  `git checkout -- <file>`) must fail the case; quote the failing check each time. The two mutations TQ3c showed
+  (materials, data) must still fail.
+- TQ.5 F52, `.gitattributes`. Add `docs/handoff/repro/** -text`, in the file's style (two comment lines, then the
+  pattern), as for `third_party/**` and `tests/data/**`. The reason: `tests/core/test_repro_report.py:283-328` compares
+  REPRO.json and REPRO.md byte for byte with the tool's output, which is LF only (`tools/repro_report.py:86`,
+  `:205-210`), so an end-of-line conversion on a Windows checkout would fail it. Show `git check-attr text --
+  docs/handoff/repro/REPRO.md docs/handoff/repro/REPRO.json` before ("unspecified") and after ("unset"), and `git status
+  --porcelain` listing only `.gitattributes`.
+Outcome: `CHECK` exits 0. `git status --porcelain` lists only allowedPaths.
+Notes:
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- Show each mutation in your answer (command and output), then undo it with `git checkout -- <file>`; no mutation may
+  remain in the diff. Scratch files go under /tmp or .ds-scratch/. Where a bullet says "choose the edits", name your
+  choice in your answer.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/test/test_scene.cpp`, `src/test/test_bvh.cpp`, `.gitattributes`
+
 ## M4-T4.1: extension skeleton (manifest, engine class, facade)
 Card: `docs/tasks/M4/T4.1-extension-skeleton.md`. Depends on: M3-T3.17.
 - Re-pointed on 2026-10-22: T4.1 needs T3.17's triangle path and nothing from experiment X-throughput.
@@ -1221,6 +1261,589 @@ Outcome: the card's Acceptance, translated: the extension builds and installs in
 clone, and renders headless with the `BLENDER` binary. Also `CHECK` exits 0.
 - The verify adds the card's Blender targets to `CHECK`, whose `make check` runs no Blender test (`check: lint build test`).
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender blender-it VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender --command extension validate dist/*.zip`
+
+## M4-FIX-TQ5a: the engine registers its Combined pass, and the Film panel reaches the display settings and the presets
+Why (audit TQ.5, `docs/audits/TQ.5.md`, 2026-10-26; F1, F2, F11, F12, F18, F20, F23, F25-F27, F29, F30, F38; line
+numbers are at f5d101e): `engine.py:59-65` `register_passes` is only a docstring, so the engine tells Blender it has no
+render passes, while Cycles registers `Combined` (`intern/cycles/blender/addon/engine.py:184`, `:275-277`). The default
+output mode reproduces smallpaint only under the Standard view transform with dither 0 (SPEC §8:277-280), yet `ui.py`
+draws no operator and no header preset, so `PAINTERLY_OT_apply_display_settings` and `PAINTERLY_PT_render_presets`
+cannot be reached from a panel. The other bullets are Lows.
+Do:
+- TQ.5 F1, `engine.py:59-65`. `register_passes` registers nothing, and its docstring (:62-63) says Blender adds Combined
+  itself. Call `engine.register_pass(scene, view_layer, session.COMBINED_PASS, 4, "RGBA", "COLOR")`, as Cycles does for
+  `Combined` (Cycles' `engine.py:184`, `:275-277`), and fix the docstring; say in it that these are Blender's render
+  passes, not the sample passes of SPEC §0:12 (TQ.5 F27; the name stays, as in Cycles). Test, in the new file: for a
+  PAINTERLY scene add a
+  `CompositorNodeRLayers` node (`tree = bpy.data.node_groups.new(name, "CompositorNodeTree")`,
+  `scene.compositing_node_group = tree`, `tree.nodes.new(type="CompositorNodeRLayers")`, as Blender's
+  `bl_operators/clip.py:708-723` does) and require its `Image` and `Alpha` outputs enabled. The expected names come from
+  Blender, not from this code: the same node on a `BLENDER_EEVEE` scene, or the literals `Image` and `Alpha`; name
+  which. Remove the node group and restore `compositing_node_group` and `use_compositing` afterwards (the render tests
+  share the scene). Mutation: `register_passes` back to its docstring only. If the test then passes, call
+  `report_blocked` with the node's outputs and do not weaken it.
+- TQ.5 F2, `ui.py:96-107`. The Film panel draws its group and `reference_scene` only. Add (a)
+  `layout.operator(operators.PAINTERLY_OT_apply_display_settings.bl_idname)` after the properties (as the T7.1 draft
+  does, `docs/handoff/drafts/M7-M9/T7.1-panels-and-overrides.md:304-308`); (b) above it a warning row
+  (`row.alert = True`, a `label` that says why) while `output_mode == "display_referred"` and any setting the operator
+  would change differs from its target; (c) `draw_header_preset(self, context)` calling
+  `presets.PAINTERLY_PT_render_presets.draw_panel_header(self.layout)`, as Cycles does
+  (`intern/cycles/blender/addon/ui.py:219-220`). The row and `execute` call one function (F20 bullet), so the row cannot
+  disagree with the button. Tests, in the new file, with a recording layout of its own (`prop`, `row`, `column`,
+  `label`, `operator`, `popover`, `separator`; flags `active`, `alert`, `use_property_split`, `use_property_decorate`):
+  the Film panel draws the operator's idname; the warning is drawn under `display_referred` with the AgX view transform
+  or dither 1.0, and not after the operator ran or under `scene_linear`; `draw_header_preset` draws the popover of
+  `PAINTERLY_PT_render_presets`. Mutations: the operator call removed; the `display_referred` condition removed;
+  `draw_header_preset` removed.
+- TQ.5 F20, `operators.py:16-21`, `:50-68`. The operator's list is shorter than what Blender 5.2.2 applies to the
+  displayed bytes, so it can say "already match" while the output differs. Add `scene.display_settings.display_device =
+  "sRGB"` (`properties_render.py:74`; it is on `display_settings`, not `view_settings`),
+  `scene.view_settings.use_curve_mapping = False` (`:172`) and `use_white_balance = False` (`:209`). Sources: the sRGB
+  display with the Standard view is IEC 61966-2-1's compound encoding (`datafiles/colormanagement/config.ocio:59-60`,
+  `:132-145`) and Display P3 has a Standard view of its own (`:69-70`); Curves and White Balance change the displayed
+  pixels. Factor the comparison of `execute` (`operators.py:52-59`) into one function of the scene that returns the
+  settings that differ; `execute` and the warning row (F2) call it. Test, in the new file: set each of the three and
+  each existing setting to a non-matching value ("Display P3", True, True, ...), run `execute`, and require each
+  restored and named in the report; with all matching, "already match". Mutations: each of the three removed in turn.
+- TQ.5 F18, `ui.py:39-40`, `:69`, `:107`. Knobs with no effect in the current mode are drawn active. Keep one activity
+  table by property name and draw every property (the socket groups and `spiral_object`) through one helper that puts it
+  in a sub-layout with `active` from the table (a property not in the table is active). The entries, each with its
+  source, and no others: `diffuse_gain`, `emission_gain`, `ray_epsilon`, `max_depth` and `spiral_frame` are inactive
+  while `reference_scene` is on (`session.py:78-89`, `sync/reference.py:72-83` overwrite them); `lane_length` is active
+  only for `chain == "lane"` (`src/painterly/scene/integrator.cpp:135`, SPEC §8:287); `k0_phase_lock_bits` only for
+  `row` and `lane` (SPEC §3, `integrator.cpp:206`); `exposure` only for `scene_linear` (`integrator.cpp:313`);
+  `spiral_rotation` only when the effective frame is not `smallpaint` (`integrator.cpp:187`, SPEC §1); `spiral_object`
+  only when it is `object` (`properties.py:167`); the effective frame is `smallpaint` while `reference_scene` is on.
+  Test, in the new file: for each entry set its controlling setting both ways and require the recorded `active` flag.
+  Mutations: each entry's condition inverted in turn.
+- TQ.5 F12, `ui.py:50`, `:65`, `:79`, `:91`, `:103`. The draws set `use_property_split` only, so Blender draws an
+  animation decorator beside each knob; Cycles switches it off (`intern/cycles/blender/addon/ui.py:229`), as does
+  Blender's Color Management panel (`properties_render.py:66`). Set `layout.use_property_decorate = False` in the five
+  draws. Test, in the new file: each of the five `draw`s leaves it False. Mutation: removed from one draw.
+- TQ.5 F11, `presets.py:52-61` and the preset file. The preset sets `chain` and `reference_scene` and unsets
+  `output_mode` and `passes`; every other knob keeps what the user set (jitter 0.5 stays 0.5), against its comment
+  (`smallpaint_reference.py:3-7`); and it leaves the image size, so a default 1920x1080 scene fails
+  `session.py:122-130`. Give `PAINTERLY_PT_render_presets` a `reset_cb`, a static method of exactly two parameters
+  `(context, filepath)` (`bl_operators/presets.py:36-50` calls it so, `:299` before the file runs; it prints and
+  swallows any exception, so test the effect) that unsets every setting of `PRESET_VALUES` on `context.scene.painterly`
+  (the T7.2 draft plans it, `docs/handoff/drafts/M7-M9/T7.2-presets.md:64`, `:186-200`). Keep the preset file's two
+  `property_unset` lines: `test_properties.py:452-469` runs it with `exec`, without `reset_cb`. For the size choose one,
+  name it: say in the preset's comment that the size and the view settings are the user's (the T7.2 draft leaves them
+  so, `T7.2-presets.md:14-17`), or set 400x400 at 100 % (SPEC §9). Make the comment true. Tests, in the new file: set
+  several settings away from their defaults (jitter, seed, alpha, lane_length); run
+  `bpy.ops.script.execute_preset(filepath=<the shipped preset>, menu_idname="PAINTERLY_PT_render_presets")`; require
+  exactly `chain` and `reference_scene` set (`is_property_set`; `docs/tasks/M4/T4.2-properties-ui.md` states what the
+  preset sets), every other setting at its reflected default (`_painterly.integrator_sockets()`, not a literal), and the
+  size if you set it. Restore the menu class's `bl_label`, which the operator changes. Mutation: `reset_cb` a no-op.
+- TQ.5 F23, `engine.py:30-45`. The version check runs in `init()`, after `register()` imported `properties` (which calls
+  `_painterly.integrator_sockets()` at `properties.py:141`; `__init__.py:65-67`), and `session.py:19` imports
+  `_painterly` as soon as `engine` imports `session`: a native module without `integrator_sockets` fails with
+  AttributeError, not the ImportError of `docs/tasks/M4/T4.1-extension-skeleton.md:39-40`. Run the check when `engine`
+  is imported, before `from . import session` (`__init__.py:24` imports `engine` first), and keep `init()` calling the
+  same function. `make lint` must stay clean (ruff E402, I001): a `# noqa: E402` with its reason or another form; name
+  it. Test, in the new file: in a child Python that loads the package as `tests/blender/conftest.py` does, with
+  `_painterly.version_info` patched to report another version and `integrator_sockets` deleted from the module, loading
+  the package and calling `register()` raises ImportError naming both versions. Mutation: the check back in `init()`
+  only.
+- TQ.5 F25 (b, c, e). `engine.py:6-7` says the module "is the only place that knows about the native module";
+  `session.py:19` and `properties.py:19` import it too. `engine.py:7-8`, `:63-64` and `:69` say T4.3 will fill things in
+  ("T4.3 replaces that stub"); it landed in 93ff499 and `session.render` is the loop. `ui.py:119-124` calls
+  `RENDER_PT_simplify` Cycles' culling panel whose settings "do nothing"; it is Blender's generic Simplify panel
+  (`properties_render.py:1079-1140`: Max Subdivision, Max Child Particles, Volume Resolution, Normals), and what Blender
+  does with those settings for an engine is not shown. Correct the first two. Keep the exclusion
+  (`test_properties.py:329-330` asserts it) and write its comment as a decision ("Painterly has no simplification
+  stage"), not as a claim about the settings.
+- TQ.5 F26, `operators.py:24-36`. `display_settings_of` has no caller in `src`, tests or tools. Delete it; the function
+  of the F20 bullet takes its place.
+- TQ.5 F29, `presets/painterly/render/smallpaint_reference.py:1`. The file opens with `import bpy`; the other add-on
+  `.py` files open with the two SPDX lines (`film.py:1-2`). Add them (Blender runs presets with `execfile`; comments are
+  harmless). Test, in the new file: its first two lines equal `film.py`'s. Mutation: the header removed.
+- TQ.5 F30, `ui.py:119-124`. `DATA_PT_preview` is lent to the engine, which declares no previews (`__init__.py:35`), so
+  the Light tab gets a Preview panel it cannot fill (`properties_data_light.py:45-54` lists `BLENDER_RENDER`; Cycles
+  excludes it, `intern/cycles/blender/addon/ui.py:2557`). Add `"DATA_PT_preview"` to `EXCLUDE_PANELS` with that reason,
+  to go when material previews exist. Test, in the new file: `"PAINTERLY"` is not in
+  `bpy.types.DATA_PT_preview.COMPAT_ENGINES` and the name is in `ui.EXCLUDE_PANELS`, as a literal
+  (`test_properties.py:335-338` loops over the set and cannot see a removal). Mutation: the name removed.
+- TQ.5 F38, as tests in the new file, with the F11 preset test. The add-preset operator is never run: run
+  `bpy.ops.render.painterly_render_preset_add(name=...)` into a temporary preset directory (monkeypatch
+  `bpy.utils.user_resource`, which `AddPresetBase.execute` calls at `bl_operators/presets.py:149`; nothing may be
+  written under the developer's Blender profile), read the file it wrote, set other values, execute the file through
+  `script.execute_preset`, and require every setting of `PRESET_VALUES` equal to the saved one. Run the display-settings
+  operator once as `bpy.ops.render.painterly_apply_display_settings()` and require `{'FINISHED'}`. Mutations: a name
+  removed from `PRESET_VALUES`; `preset_defines` emptied.
+- TQ.5 F38, `tests/blender/test_properties.py:287-295`, `:305-320`. Its `RecordingLayout` has only `prop`, and
+  `test_drawing_a_panel_shows_its_group_in_socket_order` draws all five panels with it, so the draws of the F2 and
+  F18 bullets would fail it. Extend `RecordingLayout` with what your draws call (`row`, `column`, `label`,
+  `operator`, `popover`, `separator`; the flags `active`, `alert`, `use_property_decorate`), recording a `prop` drawn
+  through a sub-layout in drawing order as if drawn directly, so that the test asserts exactly what it asserts today.
+  Change no assertion and nothing else in the file; M4-FIX-TQ5c edits it after you. Mutation: two properties of one
+  group swapped in a draw fails the test.
+Outcome: `CHECK` and `make test-blender` exit 0. `git status --porcelain` lists only allowedPaths.
+Notes:
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- The new tests are in `tests/blender/test_ui_surface.py`, with a recording layout of their own (do not import from
+  `test_properties.py`); each requests the `addon` fixture itself (M4-FIX-TQ5c makes it autouse; do not rely on that)
+  and restores what it changes (scene and view settings, `COMPAT_ENGINES`, registered classes, `bl_label`). Expected
+  values come from the source each bullet names, never from the output of the code under test (AGENTS.md, "Expected
+  values are evidence").
+- In `tests/blender/test_properties.py` change only `RecordingLayout` (the F38 bullet). If a draw cannot pass the
+  unchanged assertions, say so in your answer with the output; do not bend the draws to the stand-in.
+- Show each mutation in your answer (command and output), then undo it: `git checkout -- <file>` for a file you did not
+  change; for one you changed, save your finished copy under `.ds-scratch/` first and copy it back (`git checkout` would
+  discard your work). No mutation may remain in the diff.
+- `intern/cycles/...` is under `MAIN/.cache/vendor/blender-v5.2.2/`. `properties_render.py` and
+  `properties_data_light.py` are Blender 5.2.2's `scripts/startup/bl_ui/` files and `datafiles/...` is next to them
+  under `5.2/` beside the `BLENDER` executable; the scripts are also in the bpy package
+  (`bl_operators.presets.__file__`).
+- Scratch files go under /tmp or .ds-scratch/. Run the Python targets with R12's PYTHONPATH prefix and R11's prebuilt
+  Embree; use BUILD_DIR=build/q (K1, K5). No test may become slower than about 10 s. Where a bullet says "choose one",
+  name your choice in your answer.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/blender/addon/engine.py`, `src/blender/addon/ui.py`, `src/blender/addon/operators.py`, `src/blender/addon/presets.py`, `src/blender/addon/presets/painterly/render/smallpaint_reference.py`, `tests/blender/test_ui_surface.py`, `tests/blender/test_properties.py`
+
+## M4-FIX-ENV: `make env` keeps the blender group's packages, so it never removes bpy
+Why (Opus, 2026-10-26): `make env` runs `uv sync --locked --group dev --group analysis` (`Makefile:34-35`), and `uv
+sync`
+is exact by default: it removes every package outside the groups it is given. On a venv that `make env-blender` made,
+it uninstalls bpy and its dependencies. On 2026-10-26 that happened to MAIN/.venv, which every queue verify uses:
+`tests/blender/conftest.py:32-33` then skips every bpy test without a word, so `make check` ran 543 tests instead of
+591, and `make test-blender` failed with "no tests ran".
+Do:
+- In `Makefile:34-35`, add `--inexact` to the `uv sync` of `env`. uv documents it as "Do not remove extraneous packages
+  present in the environment" (`uv sync --help`), so `make env` installs the dev and analysis groups and leaves the
+  blender group's packages in place. Leave `env-blender` as it is. Put a one-line comment above `env` that says why.
+- New `tests/core/test_make_env.py`: run `make -n env` and `make -n env-blender` (a dry run: nothing is installed and no
+  network is used) and require that the `uv sync` line of `env` has `--inexact` and that of `env-blender` is
+  `uv sync --locked --group dev --group analysis --group blender`. Mutation: `--inexact` removed from `env`; show the
+  test failing, then restore it.
+Outcome: `CHECK` exits 0. `make -n check` is byte-identical before and after. `git status --porcelain` lists only
+allowedPaths.
+Notes:
+- Do not run `make env` or `make env-blender` themselves: the shared venv is read-only in your sandbox, and syncing
+  needs the network. The dry run is the evidence.
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- Show each mutation in your answer (command and output), then undo it; no mutation may remain in the diff. Scratch
+  files go under /tmp or .ds-scratch/.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `Makefile`, `tests/core/test_make_env.py`
+
+## M4-FIX-TQ5b: the render loop reads the evaluated scene, pairs its result, writes once and reports its errors
+Why (audit TQ.5, `docs/audits/TQ.5.md`, 2026-10-26; F4, F9, F12-F16, F22, F25-F27, F39, F41; line numbers are at
+f5d101e): the loop re-reads `scene.painterly` from the original scene on every write (`session.py:101-102`, `:117-118`,
+`:196`), begins a result at `:152` that only two exits end, and finishes with a write that repeats the last; a negative
+frame raises a bare ValueError (`:73-74`) and Render Region is ignored. The scripted poll-loop tests never read what a
+partial render writes, and no test pins the four reference knobs that the oracle takes as flags, because every consumer
+derives them from `apply_reference_knobs()`.
+Do:
+- TQ.5 F12, `session.py:117-118`, `:101-102`, `:196`. The loop reads `scene.painterly` from `depsgraph.scene`, and
+  `_write_result` re-reads `output_mode` and `exposure` on every write, so an edit during the render changes the final
+  image while the core's knobs were fixed at `:141`. Cycles reads the evaluated scene
+  (`intern/cycles/blender/session.cpp:173`; `addon/__init__.py:94`, `depsgraph.scene_eval.cycles`). Either take
+  `depsgraph.scene_eval` for the settings and the frame, or read the two once before the loop and pass them down; choose
+  one, name it. Test, in `tests/core/test_session_loop.py` (F4 bullet): a scripted session whose `wait()` changes
+  `exposure` and `output_mode` after the first poll; every array written uses the values the render started with
+  (expected by hand from SPEC §8, as `test_render_reference.py:119-123` does). Mutation: `_write_result` reads
+  `settings.exposure` again.
+- TQ.5 F13, `session.py:36-52`, `:152`. Render Region and Crop are ignored, although the lent Format panel offers both
+  (`properties_output.py:126-129`): a full-frame result is begun. Until the Blender-scene camera exists (border support
+  is for the M5 review, not here), report an error and return before any scene is built while `scene.render.use_border`
+  is set: `engine.report({"ERROR"}, "Painterly: ...")` naming Render Region. Tests: a stand-in scene with
+  `render.use_border = True` gets the report and no `begin_result`; in `test_render_reference.py`,
+  `bpy.ops.render.render()` with it on raises RuntimeError with that message (restore it as `scene_settings` restores
+  the others). Mutation: the check deleted.
+- TQ.5 F14, `session.py:73-74`. `int(settings.seed) + int(scene.frame_current)` is negative at a negative frame, and
+  `set_integrator` (uint check, `src/blender/python.cpp:388-394`) raises a bare ValueError out of `render()`. Choose
+  one, name it: wrap the sum modulo 2**32 (`& 0xFFFFFFFF`) and say so in the docstring, or report the error through
+  `engine.report`. Test, in `test_session_loop.py`: seed 0, `seed_per_frame` on, frame -1: with the wrap the knob is
+  4294967295 (2**32 - 1, the stated rule); with the report, one error report and no result. Mutation: the wrap or the
+  report removed.
+- TQ.5 F15, `session.py:152-197`. A result is ended on the error path (`:186`) and at the end (`:197`) only;
+  `_write_result`, the `update_*` calls and `combined()` run between with no `try/finally`, so an exception (a
+  MemoryError at 3840x2160, say) leaves the result open and the Session running until the engine is freed. Cycles pairs
+  them in C++ (`intern/cycles/blender/session.cpp:362`, `:468`). Put everything after `begin_result` in a `try/finally`:
+  on an exception call `engine.end_result(result, cancel=True)` and `session.cancel()` and let it propagate; the two
+  existing exits keep `end_result(result)`. Test, in `test_session_loop.py`: a scripted session whose `combined()`
+  raises; the exception propagates, the stand-in engine saw `end_result(..., cancel=True)` once, the session was
+  cancelled. Mutation: the `try/finally` removed.
+- TQ.5 F16, `session.py:194-196`. The final write repeats the last in-loop write whenever the last poll wrote
+  (`:168-179`), so a finished render ends with two full-frame conversions. Write only `if final > written:`. The
+  assertion `len(written) == 2` at `test_render_reference.py:531` moves with its test (F4 bullet) and becomes 1; say so
+  in your answer. Tests, in `test_session_loop.py`: one write when the last poll's reads agree; and the final write
+  still happens when the loop skipped the last batch (a last poll with `p0 != p1` and `finished` true). Mutations:
+  `final >= 1` restored (the first fails); the final write deleted (the second fails).
+- TQ.5 F22, `session.py:101-104`. Any output mode but `scene_linear` takes the `else`, `display_referred`; a third core
+  enumerator (`src/painterly/scene/integrator.cpp:34-37` has two) would go through the sRGB curve without an error. Use
+  `elif settings.output_mode == "display_referred":` and `else: raise ValueError(...)` naming the mode. Test, in
+  `test_session_loop.py`: a stub settings with `output_mode = "bogus"` makes `_write_result` raise ValueError; the two
+  real modes still write. Mutation: `else:` restored.
+- TQ.5 F4, `tests/blender/test_render_reference.py:305-554`. The three scripted poll-loop tests never read the arrays
+  they record (`:531` asserts `len(written) == 2` only), and every `passes_done` in them equals `PASSES`, so `total` for
+  `passes_done` at `session.py:176` or `:196`, or the first read of `passes_done` (`:168`) for `p0` at `:176`, survives.
+  `session.py` needs no `bpy` (it imports `_painterly`, `numpy`, `film`, `sync`), so these tests belong in `tests/core`,
+  which CI runs. New `tests/core/test_session_loop.py`: load the add-on's modules under a stub parent package of a name
+  of its own (a `types.ModuleType` with `__path__ = [src/blender/addon]` in `sys.modules`, so `addon/__init__.py`, which
+  imports `bpy`, never runs) and use a `SimpleNamespace` scene. Move the three scripted tests and their stand-ins there
+  with assertions unchanged (F16 changes one), and delete them here. Add (a) a partial render, `passes_done = 1` of
+  `passes_total = 2`, every sum 255.0: the array written is the hand-built `scene_linear` of one pass, rows reversed,
+  colour 1.0 (255 / 1 / 255), not 0.5, alpha 1; (b) a poll whose first read of `passes_done` (`session.py:168`) is
+  smaller than `p0 == p1`: the array divides by `p0`. Expected values from SPEC §8 (`L/255 · exposure`) by hand, not
+  through `film`. Mutations: `total` for `p0` at `session.py:176`; `total` for `final` at `session.py:196`; the first
+  read for `p0`.
+- TQ.5 F41, `test_render_reference.py:355`, `:362`, `:404-407`, `:464`. The stand-ins record how the loop is wired and
+  nothing reads it: the session's `started` pair, `engine.session`, the size given to `begin_result`;
+  `Session(scene, threads)` ignores `threads`. Survivors: `start(total, 1)`, `Session(scene, 0)`,
+  `begin_result(0, 0, height, width)`, `engine.session = session` removed, `cancel()` then `break` at once, `written`
+  never updated. In `test_session_loop.py` assert `fake_session.started == (PASSES, settings.batch)` with a batch other
+  than 1; the `threads` given to `Session` is a non-zero `settings.threads`; `engine.result_size == (width, height)` for
+  a non-square size; `engine.session is fake_session`; after `test_break()` the loop polls until `wait()` reports
+  finished and then writes the passes done; an unchanged `passes_done` is not written again. Add `session.resolution`
+  for 7 by 5 px at 50 %: (3, 2), Blender's integer division (`intern/cycles/blender/util.h:296-304`,
+  `xsch * size / 100`; `session.py:44-45`). Mutations: each survivor above; `resolution` with float division and
+  rounding.
+- TQ.5 F9, new `tests/core/test_reference_knobs.py`. `apply_reference_knobs()` (`sync/reference.py:72-83`) is pinned
+  against no literal, and `ORACLE_EXACT_KNOBS` (`tests/core/scenes.py:67-78`) derives the oracle's flags from it, so
+  `max_depth` 20 to 10 or `emission_gain` 2 to 3 moves both sides of every parity test and of the IT. Load
+  `sync/reference.py` by path, as `scenes.py` does, and assert the four values as literals with their smallpaint lines
+  (`third_party/smallpaint/smallpaint_painterly/smallpaint_painterly.cpp`, CRLF): `diffuse_gain` float32(0.1) (`*0.1`,
+  :209-211), `emission_gain` 2 (`* 2`, :200), `ray_epsilon` float32(1e-4) (`const double eps = 1e-4;`, :39), `max_depth`
+  20 (`depth >= 20`, :190); float32 because a float socket stores its float32 value (T3.15; `reference.py:66-68`). Also
+  read the cited lines and require the literal on each, so a moved cite fails; require `spiral_frame == "smallpaint"`
+  (SPEC §1) and no other key. Mutations: each of the four values changed in `reference.py`; one cited line number
+  changed in the test.
+- TQ.5 F25 (a, d, f). `session.py:5-6` says the module mirrors Cycles' `intern/cycles/blender/sync.py`; Cycles has
+  `sync.cpp` and `session.cpp`, no `sync.py` (`ls intern/cycles/blender`): name `session.cpp` (the render loop) and
+  `sync.cpp`; `sync/__init__.py:5` makes the same claim: name `sync.cpp` there. `sync/reference.py:39-46`: the
+  comment and the annotation of `REFERENCE_SCENE` list four fields, the rows have five (kind, geometry, values, colour,
+  material kind; `:130` unpacks five): fix both. `session.py:45-46` says
+  `engine.resolution_x/_y` report the same values, which nothing here checks: delete the sentence.
+- TQ.5 F26, `sync/reference.py:37`, `:109`, `:143`; `session.py:86-88`. `GLASS_IOR = 1.5` is unused by its own module,
+  which repeats the literal as the default of `build_smallpaint_scene`'s `ior`: default it to `GLASS_IOR`. And
+  `build_smallpaint_scene` ends with `scene.set_integrator(**apply_reference_knobs())` while `_set_integrator` applies
+  the same dict again after the user's knobs. Keep or drop the first and say why in a comment; `tests/core/scenes.py`
+  re-exports the function to the parity tests, which may rely on it, so drop it only if every caller under `tests/` and
+  `experiments/` applies the knobs itself; choose one, name it. Test, in `test_reference_knobs.py`: `GLASS_IOR == 1.5`
+  (SPEC §9: "Glass IOR is 1.5") and the default of `ior` equals `GLASS_IOR`. Mutations: `GLASS_IOR = 1.6`; the default
+  changed to 1.6.
+- TQ.5 F27, `session.py:31-33`, `:105`, `:154`. Comment wording only. "pass" names a Blender render pass in the first
+  two (`COMBINED_PASS`) and the sample passes inside it in the third ("The passes already in the Combined pass"); SPEC
+  §0:12 reserves "pass" for the sample pass. Say "render pass" for the Combined pass and "sample passes" for the count.
+  Keep the name `COMBINED_PASS` (`engine.py` uses it, `test_render_reference.py:328` reads it).
+- TQ.5 F39, `tests/core/test_film.py:49-51`, `:97-99`, `:108-121`. Every function gets uniform-channel buffers and
+  `scene_linear` never sees a value above white, so a reversed channel order (`rgba[..., :3] = rgb[..., ::-1]`,
+  `film.py:80`) or a clip before the exposure (`np.minimum(mean, 1.0) * exposure`, `film.py:111`) passes; and
+  `test_film.py:97-99` promises a strict increase "in the linear segment" but asserts `mapped[-1] > mapped[0]`. Add:
+  distinct R, G and B sums checked per channel in both modes; `scene_linear(_sums(2 * FULL_BYTE_SUM), PASSES, 1.0)`
+  equals 2.0 in every colour channel (SPEC §8, unclipped); and a strict increase, `np.all(np.diff(mapped[:k], axis=0) >
+  0)`, over the sums below white, with `k` from the grid, not from the output. Mutations: the two above, in `film.py`.
+- The leftovers of 385cfb2 (FOLLOWUPS, landing 6; not audit findings). `test_film.py:69-70` and `:82` say the float32
+  cast is the only rounding on either side; both sides round every float64 operation and the cast is the one extra
+  rounding: say that. `test_film.py:185-186` says "seven orders of magnitude" inside the bound; about 1e-15 against
+  `rel=1e-12` is three. `test_render_reference.py` has no case with `exposure != 1.0`, so a literal 1.0 for the exposure
+  at `session.py:102` survives: add an end-to-end `scene_linear` case at `exposure = 2.0` (exact in float32) with
+  `_scene_linear_expectation(sum, 2.0)` by hand from SPEC §8; mutation: `film.scene_linear(sums, passes_done, 1.0)`. The
+  comments at `test_render_reference.py:64`, `:264` and the docstring at `session.py:65-66` cite SPEC §8 for seed +
+  frame, which SPEC §8 does not state; cite the cards that define it, `docs/tasks/M3/T3.13-scene.md:23` and
+  `docs/tasks/M4/T4.3-render-loop.md:55`.
+Outcome: `CHECK` and `make test-blender` exit 0; the new tests under `tests/core` run in `CHECK`.
+`git status --porcelain` lists only allowedPaths.
+Notes:
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- Expected values come from the source each bullet names, never from the output of the code under test (AGENTS.md,
+  "Expected values are evidence"). If one cannot be met honestly, call `report_blocked`.
+- Show each mutation in your answer (command and output), then undo it: `git checkout -- <file>` for a file you did not
+  change; for one you changed (`session.py`, `sync/reference.py`), save your finished copy under `.ds-scratch/` first
+  and copy it back (`git checkout` would discard your work); `film.py` is not yours, so `git checkout -- <file>` undoes
+  its mutations. No mutation may remain in the diff.
+- Moving the three scripted tests changes no assertion except the one in the F16 bullet; list that change in your
+  answer.
+- `intern/cycles/...` is under `MAIN/.cache/vendor/blender-v5.2.2/`; `properties_output.py` is Blender 5.2.2's
+  `scripts/startup/bl_ui/properties_output.py` (beside the `BLENDER` executable under `5.2/`, or in the bpy package).
+- Scratch files go under /tmp or .ds-scratch/. Run the Python targets with R12's PYTHONPATH prefix and R11's prebuilt
+  Embree; use BUILD_DIR=build/q (K1, K5). No test may become slower than about 10 s. Where a bullet says "choose one",
+  name your choice in your answer.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/blender/addon/session.py`, `src/blender/addon/sync/reference.py`, `tests/blender/test_render_reference.py`, `tests/core/test_film.py`, `tests/core/test_session_loop.py`, `tests/core/test_reference_knobs.py`, `src/blender/addon/sync/__init__.py`
+
+## M4-FIX-TQ5c: registration, versioning and the bpy tests' isolation
+Why (audit TQ.5, `docs/audits/TQ.5.md`, 2026-10-26; F5, F6, F18, F19, F21, F24-F26, F35-F38, F40, F42, F45; line
+numbers are at f5d101e): nothing asserts that `unregister()` unregisters, four tests pass only because an earlier test
+registered the add-on, and `tests/blender` sets no Blender user directory. `version_update.py:44-52` writes to linked
+scenes and never stamps a scene created after load, the reload block misses four modules, and the manifest, the version
+check and the engine flags are covered by no test. The other bullets are Lows.
+Do:
+- TQ.5 F5, `tests/blender/test_registration.py:24-30`. Nothing asserts that the add-on's `unregister()` unregisters, so
+  a leak passes and would break disable-then-enable in a user's Blender; and the first two tests hold once the class
+  statement runs (`__init__.py:27`; `RenderEngine.__subclasses__()` lists unregistered subclasses). Add one test that
+  calls `addon.unregister()` and requires: none of `PainterlyRender`, the names in `ui.classes`,
+  `PAINTERLY_OT_apply_display_settings`, `PAINTERLY_OT_render_preset_add`, `PAINTERLY_PT_render_presets` in `bpy.types`;
+  no `painterly` on `bpy.types.Scene`; `version_update.do_versions` and the save handler of the F19 bullet out of their
+  handler lists; `scene.render.engine = "PAINTERLY"` refused. Then `addon.register()` again, in a `finally`: the names
+  are back and `bpy.ops.render.painterly_apply_display_settings()` returns `{'FINISHED'}`. Make the first two tests fail
+  before registration (for example `getattr(bpy.types, "PainterlyRender", None) is addon.PainterlyRender`, as
+  `test_properties.py:259` does for panels). Mutations, each shown failing: `unregister_class(cls)` dropped
+  (`__init__.py:85-86`); `del bpy.types.Scene.painterly` dropped (`properties.py:215`); `operators.classes = ()`
+  (`operators.py:71`); `presets.classes = ()` (`presets.py:64-67`); the last two files are not yours: undo with
+  `git checkout -- <file>`.
+- TQ.5 F6, `tests/blender/conftest.py:62-74`. `test_properties.py:551` takes no fixture, and `fake_loop` and
+  `scene_settings` (`test_render_reference.py:131-132`, `:470-471`) never request `addon`, so the tests at
+  `test_render_reference.py:510`, `:537` and `:547` read `scene.painterly`, and `test_properties.py:551` reads the
+  handler list, before registration: alone, with `--lf` or in another order they fail. Make `addon` autouse
+  (`@pytest.fixture(scope="session", autouse=True)`). Show the four tests failing when run alone at f5d101e
+  (AttributeError for the three render tests, an assertion for the fourth) and passing alone now, with commands and
+  outputs. Mutation: `autouse=True` removed.
+- TQ.5 F35, `tests/blender/conftest.py:21-59`. The tests set no Blender user directory, so `import bpy` and whatever the
+  add-on or a preset writes may touch the developer's profile. Before the first `import bpy` (`_load_addon()` triggers
+  it at `:59`), set `BLENDER_USER_RESOURCES` to a fresh temporary directory, removed at exit, after dropping
+  `BLENDER_USER_CONFIG`, `BLENDER_USER_SCRIPTS`, `BLENDER_USER_EXTENSIONS` and `BLENDER_USER_DATAFILES` from the
+  environment (they may override it; not checked against 5.2.2). Test, in `test_registration.py`:
+  `bpy.utils.resource_path("USER")` lies under that directory, which shows that Blender honoured it; if it does not,
+  call `report_blocked` with what it returns. Mutation: the assignment deleted.
+- TQ.5 F36, `engine.py:30-57`, `__init__.py:35-40`, `blender_manifest.toml`. Nothing tests the version check, `free()`,
+  the engine-class flags or the manifest. (a) New `tests/core/test_manifest.py` (no `bpy`; CI runs it): parse
+  `src/blender/addon/blender_manifest.toml` with `tomllib`; `version` equals `[project] version` of `pyproject.toml`;
+  `tagline` is at most 64 characters and ends alphanumeric (`docs/tasks/M4/T4.1-extension-skeleton.md:18`); no top-level
+  `wheels` or `platforms` (`T4.1:22`; `tools/build_extension.py` writes them). Mutations: a bump of `pyproject.toml`
+  alone; a 65-character tagline; a tagline ending in "."; `platforms = ["linux-x64"]` added. (b) In
+  `test_registration.py`: with `_painterly.version_info` monkeypatched to another version, `engine.init()` raises
+  ImportError naming both versions; `PainterlyRender.bl_use_preview is False`, `bl_use_eevee_viewport is True` and
+  `bl_use_shading_nodes_custom is False` (`T4.1:28-30`); `engine.free(stand_in)` sets `stand_in.session` to None and
+  does not raise for an object without the attribute. Mutations: `if found != expected` to `if False` (`engine.py:40`);
+  `bl_use_preview = True`; `free` a no-op.
+- TQ.5 F37, `tests/blender/test_properties.py:495-499`, `:522-526`. The two operator tests set `view_settings` and
+  `render.dither_intensity` on the shared default scene and never restore them; the `settings` fixture only unsets
+  `scene.painterly`, and this file sorts before `test_render_reference.py`. Save and restore every value those tests
+  set, in a fixture, as `scene_settings` does (`test_render_reference.py:131-194`). Test: one that runs after both and
+  requires the values captured at import time. Mutation: the restore removed.
+- TQ.5 F40, `tests/blender/test_properties.py:135-153`, `:166-214`. The generated float limits are untested: `jitter`'s
+  minimum 0 (`src/painterly/scene/integrator.cpp:315`), the one float socket with a limit, and the soft-limit keys have
+  no assertion; `_int_property` has a builder test and `_float_property` (`properties.py:66-76`) has none. Check
+  `hard_min` and `hard_max` of every float socket that reports a limit against the reflection, and add a builder test
+  with a synthetic socket dict that carries soft limits, as `test_properties.py:166-214` does for ints. Mutations: `min`
+  dropped from the tuple at `properties.py:73`; `soft_min` dropped.
+- TQ.5 F42, `tests/blender/test_properties.py:556-589`, `version_update.py:49-52`. `upgrade()` is never shown to be
+  called: deleting `upgrade(settings, from_version)` survives. Monkeypatch `version_update.upgrade` with a recorder and
+  require one call `(settings, 0)` per outdated scene, the second scene included, and none for a scene at
+  `CURRENT_DATA_VERSION` or newer. `test_properties.py:553` reads the private `_bpy_persistent`: keep it and say in a
+  comment that it is the marker `bpy.app.handlers.persistent` sets. Mutation: the call deleted.
+- TQ.5 F45, `tests/blender/test_properties.py:294`, `:378`, `:381`, `:388`. The `# noqa: ARG002` comments are inert
+  (`pyproject.toml:50` selects no `ARG`). Remove them; keep "Blender's signature" as a plain comment where it helps.
+- TQ.5 F19, `version_update.py:44-52`, `properties.py:178-183`. A scene created after load keeps `data_version` 0 (an
+  unset value is not saved), so the next load runs `upgrade(settings, 0)` over settings in the current format: harmless
+  while `upgrade` is a no-op (`version_update.py:31`), wrong for the first real step. And the handler writes to every
+  scene, linked ones included; a linked scene is a read-only ID. Add a persistent `save_pre` handler that stamps
+  `CURRENT_DATA_VERSION` on every local scene, so every file written carries it, registered and removed in `register()`
+  and `unregister()` like the existing one, and skip `scene.library is not None` in both handlers (Cycles skips unsaved
+  files and filters by library, `intern/cycles/blender/addon/version_update.py:94`, `:98-112`). Put the loop in a
+  function of a list of scenes. Tests: a scene made with `bpy.data.scenes.new` is stamped by the handler; a stand-in
+  scene whose `library` is set is left at 0; the handler is in `bpy.app.handlers.save_pre` after `register()` and out of
+  it after `unregister()` (the F5 test). The handler's argument differs between handler lists: ignore it. Mutations: the
+  library skip dropped; the `save_pre` registration dropped.
+- TQ.5 F21, `__init__.py:15-20`. The reload block lists six of the package's modules;
+  `addon_utils.reset_all(reload_scripts=True)` reloads only the top-level module
+  (`scripts/modules/addon_utils.py:642-646`), so `importlib.reload(engine)` re-runs `from . import session`
+  (`engine.py:16`) and gets the cached module: after an edit to `session.py` the old code keeps running. Reload `film`,
+  `sync`, `sync.reference` and `session` before `engine`, each before the module that imports it, then the existing six
+  in their order (`sync.reference` is not a name of the package namespace: reload it through `sync`). Test, in
+  `test_registration.py`, without disturbing the registered add-on: in a child Python that loads the package as
+  `conftest.py` does, replace a module-level name in each of the four modules with a sentinel, reload the package, and
+  require the originals back (or do it in-process around `unregister()` and `register()`; choose one, name it).
+  Mutation: one module removed from the block.
+- TQ.5 F24, `properties.py:156-162`. `painterly.threads` duplicates Blender's `scene.render.threads_mode` and `threads`,
+  which Cycles draws (`intern/cycles/blender/addon/ui.py:853-871`). `docs/tasks/M4/T4.2-properties-ui.md:23` prescribes
+  the property: keep it and write the reason in its comment (the core's `Session` takes its own thread count, 0 for one
+  per hardware thread).
+- TQ.5 F18, `properties.py:171-176`. The description of `reference_scene` does not say that it overrides five knobs
+  (`session.py:78-89`). Keep the card's sentence (`T4.2-properties-ui.md:25`) and add the five, by their `ui_name`,
+  built from the keys of `apply_reference_knobs()` (`sync/reference.py:72-83`) and `SOCKETS`, or written out; choose
+  one, name it. Test, in `test_properties.py`: the description contains the `ui_name` of every key of
+  `apply_reference_knobs()` (names from `_painterly.integrator_sockets()`). Mutations: one name dropped; a sixth key
+  added to `apply_reference_knobs()`.
+- TQ.5 F26, `properties.py:218`. `classes` is never read; `register()` and `unregister()` name the class (`:225`,
+  `:232`), while Cycles iterates `classes`. Use `classes` in both. The F5 test shows it: mutation `classes = ()`.
+- TQ.5 F25 (c), `__init__.py:33-34`. The comment says material previews "arrive after the render loop (T4.3)"; T4.3
+  landed in 93ff499 with no preview session. Say what they wait for now: a preview session and the Blender-scene sync
+  (M5). Comment only: no mutation.
+- TQ.5 F38 (the restating assertions), `tests/blender/test_properties.py:220`, `:223`, `:330`, `:360`, `:361`. Each
+  compares a value with the code it was built from (`test_properties.py:220` and `:223` with
+  `properties.py:186-198`; `test_properties.py:330` with `ui.EXCLUDE_PANELS` itself; `test_properties.py:360-361`
+  with `presets.py`'s own constants), so it cannot fail. Compare each with an independent source instead: for
+  `test_properties.py:223`, the property names Blender registered
+  (`PainterlyRenderSettings.bl_rna.properties`, without `rna_type`); for the others, the literal names of the cards
+  (`docs/tasks/M4/T4.2-properties-ui.md`) or of the shipped preset's directory (`presets/painterly/render/`). Delete
+  a line only when no such source exists, and say why; name your choice per line. Mutation for each kept line: the
+  constant or construction it restated changed.
+Outcome: `CHECK` and `make test-blender` exit 0; the four tests of F6 each pass when run alone. `git status --porcelain`
+lists only allowedPaths.
+Notes:
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- Expected values come from the source each bullet names, never from the output of the code under test (AGENTS.md,
+  "Expected values are evidence"). If one cannot be met honestly, call `report_blocked`.
+- Show each mutation in your answer (command and output), then undo it: `git checkout -- <file>` for a file you did not
+  change; for one you changed, save your finished copy under `.ds-scratch/` first and copy it back (`git checkout` would
+  discard your work). No mutation may remain in the diff.
+- `engine.py`, `ui.py`, `operators.py` and `presets.py` are M4-FIX-TQ5a's, which is committed before this item and also
+  extends `RecordingLayout` in `test_properties.py`; `session.py` is M4-FIX-TQ5b's, which may run in parallel. Mutate
+  them only to show a mutation, and leave them as you found them. Line numbers are at f5d101e: where M4-FIX-TQ5a
+  moved a cited line, find it by its content.
+- `intern/cycles/...` is under `MAIN/.cache/vendor/blender-v5.2.2/`; `scripts/modules/addon_utils.py` is Blender 5.2.2's
+  (beside the `BLENDER` executable under `5.2/`, or in the bpy package).
+- Scratch files go under /tmp or .ds-scratch/. Run the Python targets with R12's PYTHONPATH prefix and R11's prebuilt
+  Embree; use BUILD_DIR=build/q (K1, K5). No test may become slower than about 10 s. Where a bullet says "choose one",
+  name your choice in your answer.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
+allowedPaths: `src/blender/addon/__init__.py`, `src/blender/addon/properties.py`, `src/blender/addon/version_update.py`, `tests/blender/conftest.py`, `tests/blender/test_registration.py`, `tests/blender/test_properties.py`, `tests/core/test_manifest.py`
+Depends on: M4-FIX-TQ5a.
+
+## M4-FIX-TQ5d: the extension build fails loudly, cleans dist/, is unit-tested, and CI runs the bpy tests
+Why (audit TQ.5, `docs/audits/TQ.5.md`, 2026-10-26; F3, F7-F10, F31-F35, F43, F44, F46, F47; line numbers are at
+f5d101e): CI runs none of the tests in `tests/blender` (`ci.yml:31-44` installs no `blender` group, so
+`tests/blender/conftest.py:32-33` drops them all). `build_extension.py` has no test of its own; `dist/` is never
+cleaned, so a second zip makes `validate dist/*.zip` exit 2 (R76); its "neither uv nor scikit-build-core" branch is
+dead, because `find_spec("scikit_build_core.build")` raises when the parent is absent (`:203`): the tool exits 1 with a
+traceback while four comments promise exit 0. The IT builds its expectation with the functions under test.
+Do:
+- TQ.5 F3, `.github/workflows/ci.yml:13-44`. CI runs none of the tests in `tests/blender`: `make env` installs no
+  `blender` group (`Makefile:34-38`). Add a Linux job that installs it (`make env-blender`, that is
+  `uv sync --locked --group dev --group analysis --group blender`; `bpy==5.2.2` is a pip wheel for CPython 3.13,
+  `pyproject.toml:23`, `:35`) and runs `make test-blender`, with the checkout, uv and cache steps of job `linux`: a new
+  job or steps appended to `linux` after "Symbol audit"; choose one, name it. The bpy module needs system libraries that
+  a CI image may lack: list what `ldd` reports for the bpy extension module in the venv and install by `apt-get` what a
+  stock ubuntu-24.04 image lacks; you cannot check the image, so name the packages and why. You cannot run CI either:
+  show that the YAML parses (`.venv/bin/python -c 'import yaml; yaml.safe_load(open(".github/workflows/ci.yml"))'`;
+  `pyyaml` is in the dev group) and that the job's commands run here (`make -n env-blender test-blender`, then the
+  verify itself), and write "host-only, not run" for the CI run. Opus watches the landing push's CI. A `blender-it` job
+  is not part of this item.
+- TQ.5 F7, new `tests/core/test_build_extension.py`. `extension_platform` (`tools/build_extension.py:96-137`),
+  `rewrite_manifest` (`:146-183`), `_is_key` (`:140-143`) and the wheel choice (`:186-193`) are pure and untested, and
+  the IT's wheel is the host's `linux_x86_64` while the wheels that ship are `manylinux_2_28_x86_64`, `win_amd64` and
+  `macosx_11_0_arm64` (`pyproject.toml:69-79`); a wrong platform string makes `--split-platforms` drop the wheel. Load
+  the tool by path. Tests: (a) `extension_platform` on `painterly_core-0.1.0-cp312-abi3-<tag>.whl`, expected from the
+  examples in the docstring of Blender 5.2.2's `blender_platforms_from_wheel_platform`
+  (`scripts/addons_core/bl_pkg/cli/blender_ext.py:2163-2169`): `linux_x86_64` to `linux-x64`, `manylinux_2_28_x86_64` to
+  `linux-x64`, `manylinux2014_aarch64` to `linux-arm64`, `win_amd64` to `windows-x64`, `macosx_11_0_arm64` to
+  `macos-arm64`, `manylinux2014_x86_64` to `linux-x64`; and BuildError for `macosx_10_9_universal2` (two platforms,
+  `:2169`; the manifest carries one), `any` (no native module) and `win32` (no machine part). (b) `rewrite_manifest` on
+  a temporary copy of the real manifest: `wheels` and `platforms` land at the top level, before `[build]`; `[build]` and
+  every other key are unchanged. (c) the wheel choice (F46 bullet). Mutations: `"manylinux": "linux"` changed; the
+  `amd64` entry of the machine table changed; `rewrite_manifest` appending at the end of the file; `_is_key` blind to
+  `platforms`.
+- TQ.5 F8, `tools/build_extension.py:263-293`, `Makefile:116-117`. Nothing removes a stale zip, so after a version bump
+  (or R76's `windows_x64`) `dist/` holds two and `blender --command extension validate dist/*.zip` exits 2. Blender
+  replaces a zip of the same name (`blender_ext.py:4872-4874`, unlink then rename) but not one of another name. Before
+  the Blender build, remove `dist/<id>-*.zip` for this extension's id (`dist/` is git-ignored) and say on stderr which
+  files went; `clean` also removes `dist`. Test: a temporary `dist` with a stale zip of an older version and one of
+  another platform, plus a wheel and a zip of another id: after the cleanup the first two are gone and the other two
+  stay. Mutations: no removal; every `*.zip` removed.
+- TQ.5 F10, `tools/build_extension.py:230-237`. The `uv` branch (`make wheel`) was never run by any check: the verify
+  sandbox has no `uv`, so it always takes the backend fallback, while a developer shell has `uv`. Test it with
+  `shutil.which` and `subprocess.run` monkeypatched: with `uv` found, the run is `["make", "wheel"]` with
+  `cwd=REPO_ROOT`, a non-zero status raises BuildError carrying stdout and stderr, and the wheel returned is the one the
+  stand-in run created; with `uv` absent the backend branch runs instead. Mutations: `["make", "extension"]`; the status
+  check removed; the two branches swapped.
+- TQ.5 F31, `tools/build_extension.py:203`, `:238-246`, `:317-318`.
+  `importlib.util.find_spec("scikit_build_core.build")` raises ModuleNotFoundError when `scikit_build_core` is absent,
+  so `return False`, the log line, the `unlink` of `zip_path.txt` and `return 0` never run: with neither tool the script
+  dies with a traceback and exit 1. Call `find_spec` on the parent package, or catch the error; choose one, name it.
+  Decide the contract: a missing wheel tool fails `make blender-it` with a clear message that names both tools, unless a
+  named option on the command line asks for the skip (then the script removes `zip_path.txt` and exits 0, as the
+  comments promise today); the Makefile's recipes do not pass it. Correct the four comments that describe the dead
+  branch: `build_extension.py:19-26`, `Makefile:78-79`, `Makefile:89-90` and
+  `tests/blender_it/test_extension_it.py:17-19` (and the skip text at `:91-95`). Test: with `WHEEL_TOOL` and
+  `WHEEL_BACKEND_MODULE` of the loaded module set to names that do not exist (so the real `find_spec` runs),
+  `main(["--blender", <an existing file>])` returns non-zero and its message names both tools; with the option it
+  returns 0 and leaves no `zip_path.txt` (point `ZIP_PATH_FILE` at a temporary path). Mutation: `find_spec` on the
+  dotted name again.
+- TQ.5 F46, `tools/build_extension.py:186-193`, `:213`, `:230-237`, `:246`. The wheel is "the newest
+  `painterly_core-*.whl` by mtime in `dist/`" and the name the backend's `build_wheel` returns (`:213`) is discarded, so
+  a newer foreign wheel in `dist/` (another platform or version, say a downloaded CI artefact) would be bundled. Use the
+  name `build_wheel` returns. For `make wheel`, take the wheel that run created: compare the `painterly_core-*.whl`
+  files of `dist/` (name and `st_mtime_ns`) before and after, or remove them before the run (not when `--wheel` names
+  one); fail when it made none or several. Choose one, name it. Test (in `test_build_extension.py`): a newer foreign
+  wheel in a temporary `dist` is not returned. Mutation: `_newest_wheel` back.
+- TQ.5 F32, `tests/blender_it/test_extension_it.py:205`. The IT builds its expectation with `film.scene_linear` and
+  `film.to_blender_rows`, the functions under test (the zip holds the same `film.py`), so a defect inside `film.py`
+  applies to both sides. Build `expected` by hand, as `tests/blender/test_render_reference.py:119-128` does: `sum /
+  PASSES / 255 * EXPOSURE` in float64, cast to float32, alpha 1, rows reversed with `[::-1]` (SPEC §8, §0); drop the
+  `film` load if nothing else needs it. Correct three comments: `test_extension_it.py:10-11` says the equality covers
+  "the sync, the film mapping, the row orientation", but `sync.build_scene` is not called in reference mode
+  (`session.py:122-133`); `test_extension_it.py:20-21` and `:203-204` say "the same core rendered both sides", but the
+  other side is the oracle, a separate program (`src/app/CMakeLists.txt:3-4`), and the exactness rests on the T3.16
+  parity result (the docstring of `tests/core/test_oracle_parity.py`). Mutations, after rebuilding the zip (`film.py` is
+  not yours: undo with `git checkout -- <file>`): `to_blender_rows` as the identity; `BYTE_MAX = 256`. Each must now
+  fail the IT.
+- TQ.5 F33, `test_extension_it.py:125-140`, `run_reference.py:44-47`, `:133-145`. The IT writes socket defaults a second
+  time (`alpha`, `u2`, `continue_after_emitter`, `seed`) and its render constants twice (`SIZE`, `PASSES`, `CHAIN`,
+  `EXPOSURE` there and at `test_extension_it.py:43-46`), while `blender.json` records only `jitter`; a socket-default
+  change fails the IT with a pixel mismatch that points at nothing. Have `run_reference.py` write every
+  `scene.painterly` socket (names from `_painterly.integrator_sockets()`; vectors as lists) into `blender.json`, and
+  build the oracle options from that dict (flag names differ: `u2_mode` is `u2`); `ghost` is not a socket, so it stays a
+  literal with a comment naming `build_smallpaint_scene`'s default. Pass the render constants to `run_reference.py`
+  (argv or a JSON file) and assert that `blender.json` echoes them. Mutations: set `settings.seed = 5` in `configure()`:
+  the IT must still pass (it failed before) and `blender.json` shows 5; a wrong constant written into the echo fails the
+  assertion.
+- TQ.5 F9, `test_extension_it.py:190-213`. Nothing guards against an all-equal or all-zero image on both sides, and
+  `blender.json` is checked for engine, shape and dtype only (`:192-194`). Require `expected[..., :3].max() > 0` (SPEC
+  §9: the light's emission is 120, so the oracle image is not black) and `rendered` not constant, and that
+  `blender.json` echoes `passes`, `chain`, `exposure` and `output_mode` equal to the test's constants. Mutations: both
+  arrays replaced by zeros after loading; `PASSES` changed in `run_reference.py` only.
+- TQ.5 F34, `test_extension_it.py:106`, `build_extension.py:232`, `:284`. No subprocess has a timeout, so one hung
+  Blender hangs `make blender-it` and the verify. Give each call a named `timeout=` (a constant with a comment: more
+  than the longest healthy run you measured, which you quote) and turn `subprocess.TimeoutExpired` into a failure that
+  names the command. Test (in `test_build_extension.py`): `subprocess.run` monkeypatched to raise `TimeoutExpired` gives
+  a BuildError that names the command. Mutation: the handler removed. For the IT's `_run`, show it once with a timeout
+  of a millisecond, then restore it.
+- TQ.5 F35, `test_extension_it.py:153-154`. `env = dict(os.environ)` forwards `PYTHONPATH`, `PYTHONHOME` and any
+  `BLENDER_*`, so a host with `_painterly` on `PYTHONPATH` could pass with a wheel-less zip. Build the child environment
+  without any `BLENDER_*` variable, `PYTHONPATH` and `PYTHONHOME`, set `PYTHONNOUSERSITE=1`, then add
+  `BLENDER_USER_RESOURCES`. Have `run_reference.py` write `_painterly.__file__` into `blender.json` and require that it
+  lies under the temporary profile (the installed wheel). Mutation: the wheel left out of the zip (in
+  `build_extension.py`) with `PYTHONPATH` set to the build directory's `src/blender` in the parent environment: the IT
+  must fail.
+- TQ.5 F43, `test_extension_it.py:88-101`, `build_extension.py:244`, `:322-327`. `make test-slow` runs the IT against
+  whatever zip `zip_path.txt` last named: the tool writes the file only after a successful build (`:326-327`) and
+  removes it only on the no-wheel branch (`:244`), so a failed build (`:322-324`; `make wheel` failing at `:234-236`,
+  say) leaves the previous run's path. Choose one, name it: compare the zip's mtime with the newest file under
+  `src/blender/addon` (ignoring `__pycache__`) and with the wheel the zip bundles, and fail as stale; or store a hash of
+  the staged sources in `zip_path.txt` and compare. Put the comparison in a function that `test_build_extension.py` can
+  call on a temporary tree. Mutation: the comparison inverted.
+- TQ.5 F44, `tools/build_extension.py:249-260`. `stage()` copies the working tree (`copytree`, ignoring only
+  `__pycache__`), and the manifest's `paths_exclude_pattern` (`blender_manifest.toml:38`) replaces Blender's default
+  exclusions (dot-files, `/*.zip`, `*.blend[1-9]`: `blender_ext.py:4659-4667`), so a `.DS_Store`, a swap file or an
+  untracked scratch file in `src/blender/addon` ships; and nothing checks that `wheels/<wheel>` is in the zip (on a
+  platform mismatch Blender drops it silently). Stage the tracked files only (`git ls-files` with a list argv) or an
+  explicit list; choose one, name it. Add `".*"` to the manifest's `paths_exclude_pattern`
+  (`blender_manifest.toml:38`), so a dot-file stays out as Blender's own defaults would keep it out. After the
+  Blender run, read the zip's member names with `zipfile` (extract nothing) and fail naming the difference unless
+  they equal the staged files plus `wheels/<wheel>`. Test (in `test_build_extension.py`): a synthetic zip with an
+  extra `.DS_Store` fails, one without the wheel fails, the exact set passes. Mutation: the check removed.
+- TQ.5 F47, `tools/build_extension.py:108`, `:19-20`, `:241`, `Makefile:81-82`. The literal 5 is PEP 427's minimum field
+  count (`{distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl`) and is unnamed: name it, with that
+  comment. The text "(BACKLOG, R1)" and "(R1)" cites R1, a queue ruling that is not in the repository: say the reason
+  itself (the host has no `uv`). Test (in `test_build_extension.py`): a four-field name
+  `painterly_core-0.1.0-cp312-abi3.whl` raises BuildError with "not a wheel filename". Mutation: the limit changed to 4.
+Outcome: `CHECK`, `make test-blender` and `make blender-it` exit 0; `dist/` holds one zip and
+`blender --command extension validate dist/*.zip` exits 0. For each of `check`, `test`, `lint`, `build` and `audit`,
+`make -n <target>` is byte-identical before and after (trailing spaces stripped; the "before" is
+`git show HEAD:Makefile > /tmp/Makefile.orig` and `make -n -f /tmp/Makefile.orig <target>`), and `make -n clean` differs
+by `dist` only. `git status --porcelain` lists only allowedPaths.
+Notes:
+- For each expected value you add or change, write a line `Provenance: <command and output, or source file:line>`
+  in your final answer (the queue's integrity check reads these lines; a value without one is escalated).
+- Expected values come from the source each bullet names, never from the output of the code under test (AGENTS.md,
+  "Expected values are evidence"). If one cannot be met honestly, call `report_blocked`.
+- Show each mutation in your answer (command and output), then undo it: `git checkout -- <file>` for a file you did not
+  change; for one you changed, save your finished copy under `.ds-scratch/` first and copy it back (`git checkout` would
+  discard your work). No mutation may remain in the diff.
+- `scripts/...` is under `5.2/` beside the `BLENDER` executable (`MAIN/.cache/blender/blender-5.2.2-linux-x64/`).
+- Scratch files go under /tmp or .ds-scratch/. Run the Python targets with R12's PYTHONPATH prefix and R11's prebuilt
+  Embree; use BUILD_DIR=build/q (K1, K5). No test may become slower than about 10 s. Where a bullet says "choose one",
+  name your choice in your answer.
+verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check test-blender blender-it VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1" && /run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender --command extension validate dist/*.zip`
+allowedPaths: `tools/build_extension.py`, `Makefile`, `tests/blender_it/test_extension_it.py`, `tests/blender_it/run_reference.py`, `tests/core/test_build_extension.py`, `.github/workflows/ci.yml`, `src/blender/addon/blender_manifest.toml`
 
 ## M5-T5.1: camera sync
 Card: `docs/tasks/M5/T5.1-sync-camera.md`. Depends on: M4-T4.4.
@@ -1406,7 +2029,6 @@ Outcome:
   pinned blobs give every recorded fragment hash and line range.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
 allowedPaths: `tools/vendor_sync.py`, `tests/core/test_vendor_fragments.py`, `tests/core/test_gen_fragment_units.py`, `tests/core/test_gen_svm_switch.py`, `tests/core/test_vendored.py`
-Depends on: M6a-T6.8.
 
 ## M6a-FIX-X011: experiment 011's probes record what they measured
 Why (readers A and B; Opus's Conclusion of 2026-10-25 in `experiments/011-2026-10-23-svm-probe/README.md`): three places
@@ -1473,7 +2095,6 @@ Outcome:
 - `git grep -n --untracked "/run/media" -- experiments/011-2026-10-23-svm-probe` prints nothing.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
 allowedPaths: `experiments/011-2026-10-23-svm-probe/probe.py`, `experiments/011-2026-10-23-svm-probe/probe_part2.py`, `experiments/011-2026-10-23-svm-probe/results.json`, `experiments/011-2026-10-23-svm-probe/results_part2.json`, `experiments/011-2026-10-23-svm-probe/README.md`, `experiments/011-2026-10-23-svm-probe/test_probes.py`
-Depends on: M6a-T6.8.
 
 ## M6a-FIX-SVMT: the SVM node doctests fail when the node they test changes
 Why (reader B, reader C and audit B): mutations of the code under the T6.5-T6.8 doctests that no test notices.
@@ -1482,7 +2103,7 @@ B2: the shader-manager checks of `src/test/test_cycles_svm_compiler.cpp` reach 2
 `default_shader_flags` (`:189-195`: SD_VOLUME_MIS and SD_USE_BUMP_MAP_CORRECTION; compared at `:319, 373, 420, 421`).
 `use_volumes` and `transparent_shadows` are compared with their zero-initialised values (`:374-375`), so deleting the
 writes at `shader_manager.h:119` and `:339` passes. `rgb_to_y` is compared with the manager's own member (`:378-383`),
-so nothing pins its value; and the value depends on the CPU, because `transform_inverse` runs a different function on
+so nothing pins its value; and the value varies with the CPU, because `transform_inverse` runs a different function on
 AVX2 CPUs (FMA in `transform_inverse_cross`, `third_party/cycles/util/transform.h:500-516`; dispatch `:572-584`).
 C6, as read from the tests. Textures `:515-517` and `:658-699`: the brick case has Mortar Smooth 0 and Squash 1, and the
 noise case samples only points whose fractional parts are all 0.5. Closures `:332-337`: the thin-film table is compared
@@ -1609,7 +2230,6 @@ Outcome:
   every mutation named above appears, or is listed as an equivalent mutant with the reason.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
 allowedPaths: `src/test/test_cycles_svm_compiler.cpp`, `src/test/test_cycles_svm_textures.cpp`, `src/test/test_cycles_svm_closures.cpp`, `src/test/test_cycles_svm_images.cpp`
-Depends on: M6a-T6.8.
 
 ## M8-FIX-NOTICES: THIRD_PARTY_NOTICES.md names every vendored source's licence
 Why (Opus's licence check, 2026-10-24): five files of `third_party/cycles/util/` state a licence other than Cycles' default,
@@ -1669,7 +2289,6 @@ Outcome:
 - `git diff --quiet HEAD -- LICENSES/BSD-3-Clause-osl.txt` exits 0, and `git status --porcelain` lists only allowedPaths.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
 allowedPaths: `THIRD_PARTY_NOTICES.md`, `LICENSES/BSD-3-Clause-oiio.txt`, `LICENSES/BSD-3-Clause-intel.txt`, `LICENSES/BSD-3-Clause-ilm.txt`, `LICENSES/Zlib-aladdin.txt`, `tests/core/test_third_party_notices.py`
-Depends on: M6a-T6.8.
 
 ## M6a-FIX-TQ4a: assertions run in the doctests, and an opcode the SVM cannot run is an error (TQ.4 F1, F2, F14)
 Why (audit TQ.4, `docs/audits/TQ.4.md`, 2026-10-25; line numbers are at 846f166, and the items before this one shift lines in
@@ -1818,12 +2437,20 @@ Do:
     0 and to `size() + 1`.
   - `log.h`: `LOG_ERROR` without the count.
   - `shader.cpp:140`: `6` changed to `7` (the build fails).
+- TQ.5 F51, the third false comment of TQ.3 F20 (`docs/audits/TQ.3.md:55`), which M3-FIX-TQ3c left because its
+  allowedPaths excluded the file. In `src/test/CMakeLists.txt`, the comment block above the `-mfma` canary says "MSVC
+  needs no flag: /fp:precise already forbids contraction, and there is no per-source /arch switch to pair with it." It
+  was at `:59` at f5d101e; the option this item adds after `painterly_target_warnings(painterly_tests)` moves it, so
+  find it by its text. The second clause is false: `src/cycles/CMakeLists.txt:67-72` sets `/arch:AVX2` on
+  `transform_avx2.cpp` alone for MSVC. Rewrite that clause so that it is true and says no more than you can cite: a
+  per-source `/arch:AVX2` exists (`src/cycles/CMakeLists.txt:67-72`) and `test_math_double3.cpp` takes none. Change the
+  comment only; add no flag.
 Outcome:
 - `CHECK` exits 0, with the option on for the whole of `painterly_tests`. Your answer says how many test cases and assertions `painterly_tests` ran before
   and after (drafting: 146 cases and 90,633 assertions before).
 - `build/q/src/test/painterly_tests --test-case='cycles svm unsupported:*,cycles svm binder:*'` passes, and the doctest filters of the verify lines of M6a-T6.1 to
   M6a-T6.8 still print their counts.
-- `git diff -U0 HEAD -- src/test tests | grep -E '^-[^-]'` lists only lines of `EXPECTED`, the sha256 literal and `tests/core/test_cycles_svm.py:140`;
+- `git diff -U0 HEAD -- src/test tests | grep -E '^-[^-]'` lists only lines of `EXPECTED`, the sha256 literal, `tests/core/test_cycles_svm.py:140` and the comment line of `src/test/CMakeLists.txt` that the last Do bullet rewrites;
   `git status --porcelain` lists only allowedPaths.
 - Host only, after landing (Opus): the Windows job builds `painterly_tests` with `/UNDEBUG` and compiles the table with MSVC.
 verify: `PYTHONPATH="$PWD/analysis" CMAKE_BUILD_PARALLEL_LEVEL=4 make check VENV=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv BUILD_DIR=build/q BLENDER=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/blender/blender-5.2.2-linux-x64/blender CMAKE_ARGS="-DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_EMBREE=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/embree -DFETCHCONTENT_SOURCE_DIR_DOCTEST=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/src/doctest -Dembree_DIR=/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/embree-prebuilt/install/lib/cmake/embree-4.4.1"`
