@@ -285,14 +285,43 @@ def test_the_panels_poll_for_our_engine(addon: ModuleType) -> None:
 
 
 class RecordingLayout:
-    """A stand-in for a panel layout that records the properties it is asked to draw."""
+    """A stand-in for a panel layout that records the properties it is asked to draw.
 
-    def __init__(self) -> None:
-        self.properties: list[str] = []
+    A sub-layout (``row()``, ``column()``) records into the same list as its parent, so a property
+    drawn through one is recorded in drawing order as if it had been drawn directly. The flags a
+    ``draw`` sets on a layout (``active``, ``alert``, ``use_property_split``,
+    ``use_property_decorate``) are plain attributes; the other calls record nothing.
+    """
+
+    def __init__(self, properties: list[str] | None = None) -> None:
+        self.properties: list[str] = [] if properties is None else properties
         self.use_property_split = False
+        self.use_property_decorate = True
+        self.active = True
+        self.alert = False
+        self.emboss = None
+        self.operator_context = None
 
     def prop(self, data, name: str, **kwargs) -> None:  # noqa: ARG002 - Blender's signature
         self.properties.append(name)
+
+    def row(self, **kwargs) -> RecordingLayout:  # noqa: ARG002 - Blender's signature
+        return RecordingLayout(self.properties)
+
+    def column(self, **kwargs) -> RecordingLayout:  # noqa: ARG002 - Blender's signature
+        return RecordingLayout(self.properties)
+
+    def label(self, text: str = "", **kwargs) -> None:  # noqa: ARG002 - Blender's signature
+        pass
+
+    def operator(self, idname: str, **kwargs) -> None:  # noqa: ARG002 - Blender's signature
+        pass
+
+    def popover(self, panel: str, **kwargs) -> None:  # noqa: ARG002 - Blender's signature
+        pass
+
+    def separator(self) -> None:
+        pass
 
 
 class FakePanel:

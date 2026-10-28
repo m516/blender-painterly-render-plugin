@@ -60,6 +60,25 @@ class PAINTERLY_PT_render_presets(PresetPanel, Panel):
     # `CyclesPresetPanel` sets the same value.
     preset_operator = "script.execute_preset"
 
+    @staticmethod
+    def reset_cb(context, filepath) -> None:
+        """Unset every preset setting before a preset file runs.
+
+        Blender's ``script.execute_preset`` calls ``reset_cb(context, filepath)`` of the class that
+        ``menu_idname`` names before it executes the file (Blender 5.2.2
+        ``scripts/startup/bl_operators/presets.py:299``), so a preset that does not name a setting
+        gives that setting its socket default instead of the value the user happened to have.
+        ``_call_preset_cb`` (``presets.py:36-57``) passes the file path only to a callback of
+        exactly two parameters, which is why the signature is fixed.
+
+        Args:
+            context: Blender's context; its scene holds the settings.
+            filepath: the preset file about to run. Unused.
+        """
+        settings = context.scene.painterly
+        for path in PRESET_VALUES:
+            settings.property_unset(path.removeprefix("painterly."))
+
 
 classes = (
     PAINTERLY_OT_render_preset_add,

@@ -8,32 +8,65 @@ one that sets up the colour management that the display-referred output mode nee
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from bpy.types import Operator
 
-# The colour-management state that the display-referred output mode of SPEC §8 assumes: the
-# Standard view transform, no look, no extra exposure or gamma, and dither 0 so that an 8-bit
-# write is the byte that smallpaint would have written (up to rounding).
-DISPLAY_SETTINGS = {
-    "view_transform": "Standard",
-    "look": "None",
-    "exposure": 0.0,
-    "gamma": 1.0,
-}
+
+class DisplaySetting(NamedTuple):
+    """One setting of smallpaint's display mapping.
+
+    Attributes:
+        owner: the attribute of ``bpy.types.Scene`` that holds the setting.
+        name: the RNA name of the setting.
+        value: the value that reproduces smallpaint's displayed bytes.
+    """
+
+    owner: str
+    name: str
+    value: object
 
 
-def display_settings_of(scene) -> dict[str, object]:
-    """The current values of the settings :data:`DISPLAY_SETTINGS` names, plus the dither.
+# The colour-management state that the display-referred output mode of SPEC §8 assumes: the sRGB
+# display device with the Standard view transform, no look, no extra exposure or gamma, no Curves
+# and no White Balance, and dither 0 so that an 8-bit write is the byte that smallpaint would have
+# written (up to rounding).
+#
+# `display_device` is on `scene.display_settings`, the others on `scene.view_settings`, and the
+# dither on `scene.render` (Blender 5.2.2 `scripts/startup/bl_ui/properties_render.py:74`, `:172`,
+# `:209`). With the Standard view transform, the sRGB display applies IEC 61966-2-1's compound
+# encoding (`datafiles/colormanagement/config.ocio:59-60`, `:132-145`); Display P3 has a Standard
+# view of its own (`:69-70`), a different display colour space, so it is not the same bytes.
+# Curves and White Balance change the displayed pixels.
+DISPLAY_SETTINGS = (
+    DisplaySetting("view_settings", "view_transform", "Standard"),
+    DisplaySetting("view_settings", "look", "None"),
+    DisplaySetting("view_settings", "exposure", 0.0),
+    DisplaySetting("view_settings", "gamma", 1.0),
+    DisplaySetting("render", "dither_intensity", 0.0),
+    DisplaySetting("display_settings", "display_device", "sRGB"),
+    DisplaySetting("view_settings", "use_curve_mapping", False),
+    DisplaySetting("view_settings", "use_white_balance", False),
+)
+
+
+def differing_display_settings(scene) -> tuple[DisplaySetting, ...]:
+    """The entries of :data:`DISPLAY_SETTINGS` whose current value differs from its target.
+
+    The operator and the Film panel's warning row both call this, so the row cannot disagree with
+    the button about whether a setting differs.
 
     Args:
         scene: the scene to read.
 
     Returns:
-        A dict from setting name to its current value; ``dither_intensity`` comes from
-        ``scene.render``, the others from ``scene.view_settings``.
+        The differing entries, in :data:`DISPLAY_SETTINGS` order.
     """
-    settings = {name: getattr(scene.view_settings, name) for name in DISPLAY_SETTINGS}
-    settings["dither_intensity"] = scene.render.dither_intensity
-    return settings
+    return tuple(
+        entry
+        for entry in DISPLAY_SETTINGS
+        if getattr(getattr(scene, entry.owner), entry.name) != entry.value
+    )
 
 
 class PAINTERLY_OT_apply_display_settings(Operator):
@@ -42,28 +75,26 @@ class PAINTERLY_OT_apply_display_settings(Operator):
     bl_idname = "render.painterly_apply_display_settings"
     bl_label = "Use smallpaint display settings"
     bl_description = (
-        "Set the Standard view transform, no look, exposure 0, gamma 1 and dither 0, which is "
-        "what the Display Referred output mode reproduces smallpaint's bytes with"
+        "Set the Standard view transform, no look, exposure 0, gamma 1 and dither 0, on the sRGB "
+        "display, without Curves or White Balance, which is what the Display Referred output mode "
+        "reproduces smallpaint's bytes with"
     )
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         scene = context.scene
-        changed = []
-        for name, value in DISPLAY_SETTINGS.items():
-            if getattr(scene.view_settings, name) != value:
-                setattr(scene.view_settings, name, value)
-                changed.append(name)
-        if scene.render.dither_intensity != 0.0:
-            scene.render.dither_intensity = 0.0
-            changed.append("dither_intensity")
+        differing = differing_display_settings(scene)
+        for entry in differing:
+            setattr(getattr(scene, entry.owner), entry.name, entry.value)
 
-        if not changed:
+        if not differing:
             self.report({"INFO"}, "Painterly: the display settings already match smallpaint")
         else:
             self.report(
                 {"INFO"},
-                "Painterly: set " + ", ".join(changed) + " for smallpaint's display settings",
+                "Painterly: set "
+                + ", ".join(entry.name for entry in differing)
+                + " for smallpaint's display settings",
             )
         return {"FINISHED"}
 
