@@ -31,8 +31,9 @@ endef
 
 .PHONY: env env-blender blender build oracle wheel extension blender-it test-cpp test-py test test-slow test-blender lint format audit vendor-check check clean
 
+# `uv sync` is exact by default and removes every package outside the groups it is given, so `make env` would uninstall the blender group's bpy that `make env-blender` installed; `--inexact` is uv's "Do not remove extraneous packages present in the environment" (`uv sync --help`).
 env:
-	uv sync --locked --group dev --group analysis
+	uv sync --locked --group dev --group analysis --inexact
 
 env-blender:
 	uv sync --locked --group dev --group analysis --group blender
