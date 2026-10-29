@@ -1108,7 +1108,15 @@ reader
 (2026-10-29) found that N1 says B9 is not drafted and invents `assert_golden`, while the committed B9 defines
 `GOLDEN_SCENES` and `meets_rule` (N1's precondition grep prints 0): check every batch card against B9 and give the
 fixes. N1's expected literals come from a scratch prototype that is not in the repository: each needs a quoted
-command that reproduces it. Every card's queue text (build/q, PYTHONPATH, host-only markers) belongs in BACKLOG.
+command that reproduces it. The audit of the five drafts (2026-10-29) found cited lines and counts that were not
+re-derived: N5's member counts 5/5/5 ("fifteen member fragments") where `list-anchors` gives 4/4/6 (14); N6's
+`VENDORED.toml:231-236` (that is `util/system.h`; TextureCoordinateNode's entries are at `:1916`, `:2062`, `:2212`,
+`:2495`, `:2504`, `:2513`) and `scene/shader_nodes.h:4026-4043` (the header has 1908 lines; the class is at
+`:1029`); N10's `grep` counts 9/8 where the anchors give 9/7; N11's `kernel/svm/closure.h` at `VENDORED.toml:1350`
+(it is `:1211-1212`) and "33 inputs" for Principled (32 sockets in Blender 5.2.2, and 32 `SOCKET_IN` in the
+vendored node, one of them the internal `SurfaceMixWeight`); N12's `:4012` as a MixClosureNode member (that is
+BackgroundNode's OSL compile; MixClosureNode's is `:4032`). Re-derive every cited line and count in all six cards,
+and give each fix. Every card's queue text (build/q, PYTHONPATH, host-only markers) belongs in BACKLOG.
 Do: review each of `N1-batch-01-value-rgb-math.md`, `N5-batch-05-ramp-curves.md`, `N6-batch-06-texcoord-mapping.md`,
 `N10-batch-10-image-texture.md`, `N11-batch-11-bsdfs.md`, `N12-batch-12-mix-add-background.md` (all in
 `docs/handoff/drafts/M6b/`) on two lenses, reading every file a finding cites at HEAD.
