@@ -36,10 +36,10 @@ So a locally edited, deleted or untracked file in a checkout, or end-of-line con
 `check --upstream` compares against the pinned bytes. Every subcommand that reads a checkout
 refuses one whose HEAD is not the pinned commit.
 
-Fragments (T6.2) are the exception: their source is the checkout's own file
-`<checkout>/<root>/<upstream_path>`, as the card specifies, because a fragment's anchor locates
-code in the file that the checkout holds. Each fragment's text is hashed in VENDORED.toml, so
-`check` and `sync` catch a changed or truncated extract.
+Fragments (T6.2) are read the same way: a fragment's text is the blob of `<commit>:<path>` in the
+pinned commit, so an edited, deleted or untracked checkout file, or end-of-line conversion at
+checkout, changes no fragment byte and no hash either. Each fragment's text is hashed in
+VENDORED.toml, so `check` and `sync` catch a changed or truncated extract.
 
 Exit status: 0 on success, 1 on a failed check or an error, 2 on a usage error. Only the standard
 library and the git CLI are used. Upstream checkouts are read as data and never executed (CLAUDE.md
@@ -79,6 +79,10 @@ SHORT_SHA_LEN = 8
 SHA1_HEX_LEN = 40  # git commit ids in the default SHA-1 object format
 # Shallow clones and fetches take one commit: the pinned one, with no history behind it.
 SHALLOW_DEPTH = "1"
+# The exit status of `git rev-parse --verify --quiet` for a revision it does not resolve: a path
+# that the commit does not have, or a commit that the object store does not have. Any other status
+# is a git failure (git.h, `rev-parse` exits 1 for an unresolvable revision and 128 for an error).
+MISSING_REVISION_STATUS = 1
 SHA256_HEX_LEN = 64  # hex digits of a SHA-256 digest (FIPS 180-4)
 CYCLES = "cycles"
 DEFAULT_UPSTREAM = CYCLES
@@ -318,9 +322,9 @@ def _fragment_keys(kind: str) -> tuple[frozenset[str], frozenset[str]]:
     if kind == "span":
         required = frozenset(base | {"id", "begin", "end"})
         return required, required
-    # `params` is present only when the anchor was selected with it (a member or function).
+    # `params` is present only when the anchor was selected with it: a member or a function.
     required = frozenset(base | {"anchor"})
-    return required, frozenset(required | {"params"})
+    return required, frozenset(required | ({"params"} if kind in PARAM_KINDS else set()))
 
 
 def _printable_ascii(value: str) -> bool:
@@ -542,6 +546,27 @@ def _git_bytes(args: list[str], cwd: Path | None = None) -> bytes:
     return result.stdout
 
 
+def _git_optional(args: list[str], cwd: Path | None = None) -> bytes | None:
+    """git's stdout, or None when git reports that the requested revision or path does not exist.
+
+    A missing entry is the exit status that `rev-parse --verify --quiet` gives for an unknown path
+    in a known commit, or for an unknown commit. Every other failure (a directory that is not a
+    repository, a corrupt or incomplete object store) raises VendorError carrying git's own error
+    text, so a broken checkout is never reported as a missing path (TQ.3 F27).
+    """
+    command = ["git", *args]
+    try:
+        result = subprocess.run(command, cwd=cwd, env=GIT_ENV, check=False, capture_output=True)
+    except OSError as err:
+        raise VendorError(f"cannot run git: {err}") from err
+    if result.returncode == 0:
+        return result.stdout
+    if result.returncode == MISSING_REVISION_STATUS:
+        return None
+    stderr = result.stderr.decode("utf-8", errors="replace").strip()
+    raise VendorError(f"{' '.join(command)} failed: {stderr}")
+
+
 def _git(args: list[str], cwd: Path | None = None) -> str:
     """Run git with args and return its stdout as UTF-8 text, stripped of surrounding whitespace.
 
@@ -565,6 +590,20 @@ def _git_head(repo: Path) -> str | None:
         return None
 
 
+def _require_pin(upstream: Upstream, checkout: Path) -> None:
+    """Raise VendorError unless the checkout's HEAD is upstream's pinned commit.
+
+    `ensure_checkout` and `_fragment_source` both read a checkout, and both refuse one that is not
+    at its pin with this message, so a reader never sees another commit's bytes.
+    """
+    head = _git_head(checkout)
+    if head != upstream.commit:
+        raise VendorError(
+            f"{checkout} is at {head or 'no git commit'}, not the pinned {upstream.commit}; "
+            "delete it and rerun fetch"
+        )
+
+
 def checkout_dir(upstream: Upstream) -> Path:
     """Checkout directory of upstream, e.g. .cache/vendor/blender-v5.2.2 for cycles."""
     suffix = upstream.tag or upstream.commit[:SHORT_SHA_LEN]
@@ -584,12 +623,18 @@ def _object_spec(upstream: Upstream, path: str = "") -> str:
 def _object_type(checkout: Path, spec: str) -> str | None:
     """Type ("blob", "tree", ...) of the object that the revision spec names, or None if none.
 
-    Only the object store of the checkout's own repository (its .git) is read.
+    Only the object store of the checkout's own repository (its .git) is read. A revision that
+    names no path in a known commit gives None. A git failure that is not a missing path — a
+    directory that is not a repository, a corrupt or incomplete object store — raises VendorError
+    carrying git's own error text, so it is never reported as a path that upstream lacks (TQ.3
+    F27): `rev-parse --verify` tells a missing path (its status MISSING_REVISION_STATUS) from such
+    a failure, and the object itself is then read from the object store.
     """
-    try:
-        return _git(["--git-dir", str(checkout / ".git"), "cat-file", "-t", spec])
-    except VendorError:
+    git_dir = str(checkout / ".git")
+    oid = _git_optional(["--git-dir", git_dir, "rev-parse", "--verify", "--quiet", spec])
+    if oid is None:
         return None
+    return _git(["--git-dir", git_dir, "cat-file", "-t", oid.decode("utf-8").strip()])
 
 
 def _missing_file(upstream: Upstream, path: str) -> VendorError:
@@ -670,12 +715,7 @@ def ensure_checkout(upstream: Upstream) -> Path:
     """
     target = checkout_dir(upstream)
     if target.exists():
-        head = _git_head(target)
-        if head != upstream.commit:
-            raise VendorError(
-                f"{target} is at {head or 'no git commit'}, not the pinned {upstream.commit}; "
-                "delete it and rerun fetch"
-            )
+        _require_pin(upstream, target)
         _report(f"{upstream.name}: {target.name} already at {upstream.commit}")
     else:
         CHECKOUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -899,7 +939,7 @@ class _Lexed:
 
 
 class _Sources:
-    """Lexed upstream files, read from their checkouts and lexed once each per command."""
+    """Lexed upstream files, read from their pinned commits and lexed once each per command."""
 
     def __init__(self, manifest: Manifest, checkouts: Mapping[str, Path]) -> None:
         self.manifest = manifest
@@ -907,7 +947,7 @@ class _Sources:
         self.lexed: dict[tuple[str, str], _Lexed] = {}
 
     def get(self, upstream: str, upstream_path: str) -> _Lexed:
-        """The lexed file `<checkout>/<root>/<upstream_path>`."""
+        """The lexed blob of `<upstream's pinned commit>:<root>/<upstream_path>`."""
         key = (upstream, upstream_path)
         if key not in self.lexed:
             text = _fragment_source(self.manifest, self.checkouts, upstream, upstream_path)
@@ -1405,25 +1445,37 @@ def fragment_name(
 def _fragment_source(
     manifest: Manifest, checkouts: Mapping[str, Path], upstream: str, upstream_path: str
 ) -> str:
-    """The text of `<checkout>/<root>/<upstream_path>` in the checkout of upstream."""
+    """The UTF-8 text of upstream_path in upstream's pinned commit.
+
+    The bytes are the commit's blob (`upstream_blob`), never the checkout's working-tree file, so
+    an edited, deleted or untracked checkout file, or end-of-line conversion at checkout, changes
+    no fragment. Raises FragmentError when the upstream is not pinned, has no checkout, or has no
+    readable UTF-8 file at that path; a checkout whose HEAD is not the pin is refused by
+    `_require_pin` with `ensure_checkout`'s message.
+    """
     if upstream not in manifest.upstreams:
         raise FragmentError(f"upstream {upstream!r} is not pinned in VENDORED.toml")
     if upstream not in checkouts:
         raise FragmentError(
             f"upstream {upstream!r} has no checkout; run tools/vendor_sync.py fetch"
         )
-    root = manifest.upstreams[upstream].root
-    path = (
-        checkouts[upstream] / root / upstream_path if root else checkouts[upstream] / upstream_path
-    )
+    pinned = manifest.upstreams[upstream]
+    checkout = checkouts[upstream]
+    # The same refusal, and the same text, that ensure_checkout gives a checkout off its pin.
     try:
-        data = path.read_bytes()
-    except OSError as err:
-        raise FragmentError(f"cannot read {path}: {err}") from err
+        _require_pin(pinned, checkout)
+    except VendorError as err:
+        raise FragmentError(str(err)) from err
+    try:
+        data = upstream_blob(pinned, checkout, upstream_path)
+    except VendorError as err:
+        raise FragmentError(f"{upstream}:{upstream_path} at {pinned.commit}: {err}") from err
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError as err:
-        raise FragmentError(f"{path} is not UTF-8: {err}") from err
+        raise FragmentError(
+            f"{upstream}:{upstream_path} at {pinned.commit} is not UTF-8: {err}"
+        ) from err
 
 
 def _load_fragments_manifest(manifest: Path) -> Manifest:
@@ -1914,10 +1966,12 @@ def cmd_extract(
         raise FragmentError(str(err)) from err
     lexed = _Sources(current, checkouts).get(upstream, upstream_path)
     fragment = _extract(lexed, kind, anchor, params=params, begin=begin, end=end)
-    sys.stdout.write(fragment.text)
-    sys.stdout.flush()
-    digest = _sha256(fragment.text.encode("utf-8"))
-    _report(f"{upstream_path}:{fragment.first_line}-{fragment.last_line} sha256={digest}")
+    # The bytes on stdout are the bytes whose sha256 goes to stderr, on every platform: writing
+    # text to sys.stdout would translate "\n" to os.linesep (CRLF under Windows text mode).
+    data = fragment.text.encode("utf-8")
+    sys.stdout.buffer.write(data)
+    sys.stdout.buffer.flush()
+    _report(f"{upstream_path}:{fragment.first_line}-{fragment.last_line} sha256={_sha256(data)}")
     return 0
 
 

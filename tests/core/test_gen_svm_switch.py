@@ -35,12 +35,42 @@ gen = _load(GEN_TOOL, "gen_svm_switch")
 vs = _load(VENDOR_TOOL, "vendor_sync_gen")
 
 # The [upstream.cycles] table of test_vendor_fragments.py's TEST_MANIFEST, and nothing else.
+# `commit` is filled in by _build_tree, which commits the fixture checkout and pins that commit,
+# because the tool reads a fragment from the pinned commit's blob.
 TEST_UPSTREAM = r"""[upstream.cycles]
 repo = "https://github.com/blender/blender.git"
 tag = "v5.2.2"
-commit = "d13f752e3b9c4f8c261cda552b1021f8bcc0382c"
+commit = "{commit}"
 root = "intern/cycles"
 """
+
+# The fixture's own git commands, exactly as tests/core/test_vendored.py runs them: no GIT_*
+# variable of the caller, no user or system git configuration (so no commit signing and no
+# core.autocrlf), and a fixed identity and date, so every run makes the same commit.
+FIXTURE_GIT_ENV = {
+    **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Painterly tests",
+    "GIT_AUTHOR_EMAIL": "tests@painterly.invalid",
+    "GIT_AUTHOR_DATE": "2026-01-01T00:00:00+00:00",
+    "GIT_COMMITTER_NAME": "Painterly tests",
+    "GIT_COMMITTER_EMAIL": "tests@painterly.invalid",
+    "GIT_COMMITTER_DATE": "2026-01-01T00:00:00+00:00",
+}
+
+
+def _fixture_git(repo: Path, *args: str) -> str:
+    """Run git in the fixture repository repo; return its stdout without surrounding whitespace."""
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        env=FIXTURE_GIT_ENV,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
 
 GEN = r"""/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -188,9 +218,13 @@ def _build_tree(root: Path) -> tuple[Path, Path]:
     source = checkout / "intern" / "cycles" / "kernel" / "svm" / "svm.h"
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_bytes(GEN.encode("utf-8"))
+    _fixture_git(checkout, "init", "--quiet")
+    _fixture_git(checkout, "add", "--all")
+    _fixture_git(checkout, "commit", "--quiet", "--message", "fixture upstream")
+    commit = _fixture_git(checkout, "rev-parse", "HEAD")
     vendored = root / "tp" / "VENDORED.toml"
     vendored.parent.mkdir(parents=True)
-    vendored.write_bytes(TEST_UPSTREAM.encode("utf-8"))
+    vendored.write_bytes(TEST_UPSTREAM.format(commit=commit).encode("utf-8"))
     checkouts = {"cycles": checkout}
     vs.add_fragments(
         vendored,
@@ -212,20 +246,20 @@ def _build_tree(root: Path) -> tuple[Path, Path]:
             end=end,
         )
     manifest = root / "svm_nodes.toml"
-    manifest.write_text(
-        'includes = ["kernel/svm/util.h", "kernel/svm/math.h"]\n'
-        'cases = ["NODE_MATH", "NODE_CLAMP", "NODE_END"]\n',
-        encoding="utf-8",
+    manifest.write_bytes(
+        b'includes = ["kernel/svm/util.h", "kernel/svm/math.h"]\n'
+        b'cases = ["NODE_MATH", "NODE_CLAMP", "NODE_END"]\n'
     )
     return manifest, vendored
 
 
 def _set_cases(manifest: Path, cases: str) -> None:
     """Rewrite the `cases` line of manifest."""
-    lines = manifest.read_text(encoding="utf-8").splitlines(keepends=True)
-    manifest.write_text(
-        "".join(f"cases = {cases}\n" if line.startswith("cases = ") else line for line in lines),
-        encoding="utf-8",
+    lines = manifest.read_bytes().decode("utf-8").splitlines(keepends=True)
+    manifest.write_bytes(
+        "".join(
+            f"cases = {cases}\n" if line.startswith("cases = ") else line for line in lines
+        ).encode("utf-8")
     )
 
 
@@ -292,7 +326,7 @@ def test_main_rejects_each_bad_input(tmp_path: Path, capsys: pytest.CaptureFixtu
 
     manifest, vendored = _build_tree(tmp_path / "check")
     out = tmp_path / "check" / "svm_eval_nodes.h"
-    out.write_text(gen.generate(manifest, vendored) + "x", encoding="utf-8")
+    out.write_bytes((gen.generate(manifest, vendored) + "x").encode("utf-8"))
     assert (
         gen.main(["--manifest", str(manifest), "--vendored", str(vendored), "--check", str(out)])
         == 1
@@ -345,7 +379,7 @@ def test_committed_inputs(tmp_path: Path) -> None:
     assert str(tmp_path) not in text
     assert str(REPO_ROOT) not in text
     # `cases` is a one-line array here (the card's test 5), so its entries are the quoted names.
-    cases = tomllib.loads(manifest.read_text(encoding="utf-8"))["cases"]
+    cases = tomllib.loads(manifest.read_bytes().decode("utf-8"))["cases"]
     assert text.count("SVM_CASE(") == len(cases) + 2
     firsts = [
         int(line.split(":")[1].split("-")[0])

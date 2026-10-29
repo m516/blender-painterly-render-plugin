@@ -7,6 +7,7 @@ manifest against the committed fragments.
 
 import hashlib
 import importlib.util
+import os
 import re
 import subprocess
 import sys
@@ -19,13 +20,53 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GEN_TOOL = REPO_ROOT / "tools" / "gen_fragment_units.py"
 VENDOR_TOOL = REPO_ROOT / "tools" / "vendor_sync.py"
 # The pinned [upstream.cycles] of the temporary manifests, as TEST_MANIFEST in
-# test_vendor_fragments.py uses it.
+# test_vendor_fragments.py uses it. `commit` is filled in by _checkout, which commits the fixture
+# checkout and pins that commit, because the tool reads a fragment from the pinned commit's blob.
 UPSTREAM_TABLE = """[upstream.cycles]
 repo = "https://github.com/blender/blender.git"
 tag = "v5.2.2"
-commit = "d13f752e3b9c4f8c261cda552b1021f8bcc0382c"
+commit = "{commit}"
 root = "intern/cycles"
 """
+
+# The fixture's own git commands, exactly as tests/core/test_vendored.py runs them: no GIT_*
+# variable of the caller, no user or system git configuration (so no commit signing and no
+# core.autocrlf), and a fixed identity and date, so every run makes the same commit.
+FIXTURE_GIT_ENV = {
+    **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Painterly tests",
+    "GIT_AUTHOR_EMAIL": "tests@painterly.invalid",
+    "GIT_AUTHOR_DATE": "2026-01-01T00:00:00+00:00",
+    "GIT_COMMITTER_NAME": "Painterly tests",
+    "GIT_COMMITTER_EMAIL": "tests@painterly.invalid",
+    "GIT_COMMITTER_DATE": "2026-01-01T00:00:00+00:00",
+}
+
+
+def _fixture_git(repo: Path, *args: str) -> str:
+    """Run git in the fixture repository repo; return its stdout without surrounding whitespace."""
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        env=FIXTURE_GIT_ENV,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def _checkout(root: Path) -> tuple[Path, str]:
+    """A one-commit checkout of TOY at root / "co", and that commit's id."""
+    checkout = root / "co"
+    source = checkout / "intern" / "cycles" / "scene" / "toy_nodes.cpp"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(TOY.encode("utf-8"))
+    _fixture_git(checkout, "init", "--quiet")
+    _fixture_git(checkout, "add", "--all")
+    _fixture_git(checkout, "commit", "--quiet", "--message", "fixture upstream")
+    return checkout, _fixture_git(checkout, "rev-parse", "HEAD")
 
 
 def _load(path: Path, name: str) -> ModuleType:
@@ -158,13 +199,10 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     Returns (units, vendored, manifest). The four add_fragments calls are the card's; the
     node_define call passes OtherNode first, so the manifest order differs from upstream's.
     """
-    checkout = tmp_path / "co"
-    source = checkout / "intern" / "cycles" / "scene" / "toy_nodes.cpp"
-    source.parent.mkdir(parents=True)
-    source.write_bytes(TOY.encode("utf-8"))
+    checkout, commit = _checkout(tmp_path)
     vendored = tmp_path / "tp" / "VENDORED.toml"
     vendored.parent.mkdir(parents=True)
-    vendored.write_bytes(UPSTREAM_TABLE.encode("utf-8"))
+    vendored.write_bytes(UPSTREAM_TABLE.format(commit=commit).encode("utf-8"))
     checkouts = {"cycles": checkout}
     vs.add_fragments(
         vendored,
@@ -347,13 +385,10 @@ def test_manifest_rules_are_rejected(tmp_path: Path) -> None:
 
 def test_registry_needs_a_node_define(tmp_path: Path) -> None:
     """node_registry = true on a unit whose only fragment is a function fails."""
-    checkout = tmp_path / "co"
-    source = checkout / "intern" / "cycles" / "scene" / "toy_nodes.cpp"
-    source.parent.mkdir(parents=True)
-    source.write_bytes(TOY.encode("utf-8"))
+    checkout, commit = _checkout(tmp_path)
     vendored = tmp_path / "tp2" / "VENDORED.toml"
     vendored.parent.mkdir(parents=True)
-    vendored.write_bytes(UPSTREAM_TABLE.encode("utf-8"))
+    vendored.write_bytes(UPSTREAM_TABLE.format(commit=commit).encode("utf-8"))
     vs.add_fragments(
         vendored, {"cycles": checkout}, "cycles", "scene/toy_nodes.cpp", "function", ["toy_helper"]
     )
@@ -445,7 +480,10 @@ def test_committed_units(tmp_path: Path, unit: str) -> None:
             capture_output=True,
             text=True,
             check=False,
-            env={"PYTHONHASHSEED": seed, "PATH": "/usr/bin:/bin"},
+            # The whole environment with PYTHONHASHSEED set, as test_gen_svm_switch.py does: the
+            # generator runs no subprocess and reads no PATH, and replacing the environment would
+            # drop SYSTEMROOT on Windows.
+            env={**os.environ, "PYTHONHASHSEED": seed},
         )
         assert result.returncode == 0, result.stderr
         outputs.append(out.read_bytes())

@@ -9,6 +9,7 @@ upstream bytes come from the pinned commit's git objects, never from the checkou
 
 import hashlib
 import importlib.util
+import io
 import os
 import subprocess
 import sys
@@ -236,8 +237,18 @@ def test_closure_follows_the_pinned_commit(tree: Tree, capsys: pytest.CaptureFix
 
 @pytest.mark.parametrize(
     "command",
-    [["sync"], ["check", "--upstream"], ["add", "util/c.h"], ["closure", "util/a.h"]],
-    ids=["sync", "check-upstream", "add", "closure"],
+    [
+        ["sync"],
+        ["check", "--upstream"],
+        ["add", "util/c.h"],
+        ["closure", "util/a.h"],
+        # The fragment subcommands read a file of the checkout, so they refuse a checkout off its
+        # pin as well (M6a-FIX-VS1).
+        ["add-fragment", "util/a.h", "define", "A"],
+        ["extract", "util/a.h", "define", "A"],
+        ["list-anchors", "util/a.h"],
+    ],
+    ids=["sync", "check-upstream", "add", "closure", "add-fragment", "extract", "list-anchors"],
 )
 def test_a_checkout_off_its_pin_is_refused(
     tree: Tree, capsys: pytest.CaptureFixture[str], command: list[str]
@@ -256,6 +267,26 @@ def test_a_checkout_off_its_pin_is_refused(
     )
     assert vs.MANIFEST.read_bytes() == manifest_before
     assert not (tree.vendor_dir / "util" / "c.h").exists()
+
+
+def test_extract_writes_the_bytes_it_hashes(
+    tree: Tree, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """extract writes the fragment's LF bytes to stdout.buffer, whatever the text mode would do.
+
+    A text-mode stdout with newline="\r\n" is what Windows does to "\n". The bytes behind it are
+    the fragment's own LF bytes, and their sha256 is the one extract prints on stderr (A7).
+    """
+    del tree
+    buffer = io.BytesIO()
+    stdout = io.TextIOWrapper(buffer, encoding="utf-8", newline="\r\n")
+    monkeypatch.setattr(sys, "stdout", stdout)
+    assert vs.main(["extract", "util/a.h", "define", "A"]) == 0
+    stdout.flush()
+    # `#define A 1\n` is the whole of util/a.h's define A.
+    expected = b"#define A 1\n"
+    assert buffer.getvalue() == expected
+    assert capsys.readouterr().err.splitlines() == [f"util/a.h:2-2 sha256={_sha256(expected)}"]
 
 
 def test_object_paths_with_a_root_and_at_the_repository_top(tree: Tree) -> None:
