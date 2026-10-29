@@ -1069,6 +1069,113 @@ verify: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-pa
 allowedPaths: `docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md`, `docs/handoff/drafts/M6b/N6-batch-06-texcoord-mapping.md`, `docs/handoff/drafts/M6b/N10-batch-10-image-texture.md`, `docs/handoff/drafts/M6b/N11-batch-11-bsdfs.md`, `docs/handoff/drafts/M6b/N12-batch-12-mix-add-background.md`
 Depends on: DRAFT-M6b-N1.
 
+## REVIEW-M6b-a: report-only review of the 11 node-material infrastructure cards
+Why: Micah kept M6b's card review in v1.0 (decision D8's exception, 2026-10-26): the cards are reviewed before
+Opus approves them. Two drafts were accepted at their revise cap with known defects; confirm each with
+evidence and give its exact fix: B2's Acceptance 7 says 53 passed where tests/core/test_shims.py collects 64
+(1 + 19 + 19 + 1 + 12 + 12), and its ## Modify and step 12 disagree on which declarations change; B3's "Open for
+Opus 6" figures (0 of 64, 36 of 64) have no command or inputs, and its Acceptance 8 says thirteen files where the
+diff has 16. Landing 8's reader (2026-10-29) also found, to confirm and fix: B6's step 3 accepts STRING and omits
+NORMAL among the socket types that take a default, though its step 1 lists NORMAL, B8 exports Normal (0, 0, 0)
+for every BSDF and B11 expects it; every card carries queue text (the "queue translates them with BACKLOG.md's
+table" sentence, host-only markers, ruling numbers) that belongs in BACKLOG items, not cards; B7, B8 and B11 take
+expected literals from scratch prototypes that are not in the repository, so each needs a quoted command that
+reproduces it.
+Do: review each of `B1-kernel-globals.md`, `B2-shader-manager.md`, `B3-shader-data.md`, `B4-svm-trace-pixel.md`,
+`B5-world-shader.md`, `B6-shader-graph-api.md`, `B7-flatten.md`, `B8-node-table-export.md`, `B9-golden-harness.md`,
+`B10-image-export-x-colour.md`, `B11-node-material-parity.md` (all in `docs/handoff/drafts/M6b/`) on two lenses, reading
+every file a finding cites at HEAD.
+- **Executability.** Every file, target, binding, socket and test the card uses must be created by it or by an
+  earlier card (B1-B11 in order; the node batches after B9). Every acceptance step must be runnable and
+  deterministic, with no hand-picked tolerance, and every expected value must be derived from SPEC, from upstream
+  code with file:line, or from a quoted script command (BRIEF.md:317-319).
+- **Design.** The card must serve M6b's goal (Blender node materials render in Painterly and pass the golden tests
+  against Cycles) and respect SPEC, the brief's section 1 decisions, the vendored-code rule (`third_party/` only via
+  `tools/vendor_sync.py`), and Cycles' layout and naming (CLAUDE.md rule 3).
+Write `docs/handoff/findings/M6b-review-a.json`: a JSON object whose keys are `review <card> <lens>` (card as in the
+list:
+B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11; lens `executability` or `design`), each a list of
+`{severity, issue, evidence, fix}` where evidence cites file:line or a command and its output, and fix is the
+edit to the draft as exact old and new text where you can give one, else null. An empty list is valid. Change no card.
+Outcome: this command prints `REVIEW-OK 22`: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d=json.load(open('docs/handoff/findings/M6b-review-a.json'));C=['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11'];K={'review '+c+' '+l for c in C for l in ('executability','design')};assert set(d)==K,sorted(set(d)^K);assert all(isinstance(v,list) and all(isinstance(f,dict) and {'severity','issue','evidence','fix'}<=set(f) for f in v) for v in d.values());print('REVIEW-OK',len(d))"`. `git status --porcelain` lists only that file.
+allowedPaths: `docs/handoff/findings/M6b-review-a.json`
+Depends on: DRAFT-M6b-B3.
+
+## REVIEW-M6b-b: report-only review of the six core node-batch cards
+Why: Micah kept M6b's card review in v1.0 (decision D8's exception, 2026-10-26): the cards are reviewed before
+Opus approves them. The five batch cards were drafted from N1's template; also check that each follows it. Landing 8's
+reader
+(2026-10-29) found that N1 says B9 is not drafted and invents `assert_golden`, while the committed B9 defines
+`GOLDEN_SCENES` and `meets_rule` (N1's precondition grep prints 0): check every batch card against B9 and give the
+fixes. N1's expected literals come from a scratch prototype that is not in the repository: each needs a quoted
+command that reproduces it. Every card's queue text (build/q, PYTHONPATH, host-only markers) belongs in BACKLOG.
+Do: review each of `N1-batch-01-value-rgb-math.md`, `N5-batch-05-ramp-curves.md`, `N6-batch-06-texcoord-mapping.md`,
+`N10-batch-10-image-texture.md`, `N11-batch-11-bsdfs.md`, `N12-batch-12-mix-add-background.md` (all in
+`docs/handoff/drafts/M6b/`) on two lenses, reading every file a finding cites at HEAD.
+- **Executability.** Every file, target, binding, socket and test the card uses must be created by it or by an
+  earlier card (B1-B11 in order; the node batches after B9). Every acceptance step must be runnable and
+  deterministic, with no hand-picked tolerance, and every expected value must be derived from SPEC, from upstream
+  code with file:line, or from a quoted script command (BRIEF.md:317-319).
+- **Design.** The card must serve M6b's goal (Blender node materials render in Painterly and pass the golden tests
+  against Cycles) and respect SPEC, the brief's section 1 decisions, the vendored-code rule (`third_party/` only via
+  `tools/vendor_sync.py`), and Cycles' layout and naming (CLAUDE.md rule 3).
+Write `docs/handoff/findings/M6b-review-b.json`: a JSON object whose keys are `review <card> <lens>` (card as in the
+list:
+N1, N5, N6, N10, N11, N12; lens `executability` or `design`), each a list of
+`{severity, issue, evidence, fix}` where evidence cites file:line or a command and its output, and fix is the
+edit to the draft as exact old and new text where you can give one, else null. An empty list is valid. Change no card.
+Outcome: this command prints `REVIEW-OK 12`: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d=json.load(open('docs/handoff/findings/M6b-review-b.json'));C=['N1', 'N5', 'N6', 'N10', 'N11', 'N12'];K={'review '+c+' '+l for c in C for l in ('executability','design')};assert set(d)==K,sorted(set(d)^K);assert all(isinstance(v,list) and all(isinstance(f,dict) and {'severity','issue','evidence','fix'}<=set(f) for f in v) for v in d.values());print('REVIEW-OK',len(d))"`. `git status --porcelain` lists only that file.
+allowedPaths: `docs/handoff/findings/M6b-review-b.json`
+Depends on: DRAFT-M6b-N5.
+
+## PANEL-M6b-a: check the review findings on the 11 infrastructure cards (report only)
+Why: a review finding is a claim to test, not evidence. Opus reads this panel, rules wherever the verdict is not
+`confirmed`, and then plans the revision of the drafts in `docs/handoff/drafts/M6b/`.
+Do:
+- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-a.json`. Open every file it cites, at HEAD,
+  and
+  read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md,
+  FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour,
+  the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
+- Write `docs/handoff/findings/M6b-panel-a.json`: a JSON list with one object per finding, in the source's key order,
+  then
+  index. Fields: `source` (`M6b-review-a.json`), `key`, `index` (0-based in that key's list); `verdict`: `confirmed`
+  (real as
+  stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong as `note` states), `disputed`
+  (not a defect) or `unknown` (the tree cannot decide it); `evidence` (the spans you read and every command you ran,
+  with its output quoted); `duplicate_of` (`{source, key, index}` of an earlier object stating the same defect, else
+  null); `fix` (the edit to the draft as exact old and new text, the old text occurring exactly once in that draft;
+  required for `confirmed`; else your corrected edit or null; do not apply it); `note` (one or two sentences).
+- Change no other file.
+Outcome: this command prints `PANEL-OK` and the number of objects: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'B5', 'B11', 'B2', 'B6', 'B1', 'B3', 'B9', 'B8', 'B4', 'B7', 'B10'};w={('M6b-review-a.json',k,i) for k,v in json.load(open(d+'M6b-review-a.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-a.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`. `git status --porcelain`
+lists only that file.
+allowedPaths: `docs/handoff/findings/M6b-panel-a.json`
+Depends on: REVIEW-M6b-a.
+
+## PANEL-M6b-b: check the review findings on the six core node-batch cards (report only)
+Why: a review finding is a claim to test, not evidence. Opus reads this panel, rules wherever the verdict is not
+`confirmed`, and then plans the revision of the drafts in `docs/handoff/drafts/M6b/`.
+Do:
+- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-b.json`. Open every file it cites, at HEAD,
+  and
+  read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md,
+  FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour,
+  the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
+- Write `docs/handoff/findings/M6b-panel-b.json`: a JSON list with one object per finding, in the source's key order,
+  then
+  index. Fields: `source` (`M6b-review-b.json`), `key`, `index` (0-based in that key's list); `verdict`: `confirmed`
+  (real as
+  stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong as `note` states), `disputed`
+  (not a defect) or `unknown` (the tree cannot decide it); `evidence` (the spans you read and every command you ran,
+  with its output quoted); `duplicate_of` (`{source, key, index}` of an earlier object stating the same defect, else
+  null); `fix` (the edit to the draft as exact old and new text, the old text occurring exactly once in that draft;
+  required for `confirmed`; else your corrected edit or null; do not apply it); `note` (one or two sentences).
+- Change no other file.
+Outcome: this command prints `PANEL-OK` and the number of objects: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'N11', 'N1', 'N6', 'N5', 'N10', 'N12'};w={('M6b-review-b.json',k,i) for k,v in json.load(open(d+'M6b-review-b.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-b.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`. `git status --porcelain`
+lists only that file.
+allowedPaths: `docs/handoff/findings/M6b-panel-b.json`
+Depends on: REVIEW-M6b-b.
+
 ## M3-FIX-TQ3d: a session's wait never overflows the clock, and its rollback wakes waiters (landing-5 review)
 Why (Sonnet reader E, landing-5 review of M3-FIX-TQ3a, 2026-10-25): `src/painterly/session/session.cpp:122-130` caps a
 timeout at `max_seconds = floor(duration<double>(steady_clock::duration::max()))`, 9223372036 s, and calls it always
