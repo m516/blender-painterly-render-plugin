@@ -1129,52 +1129,128 @@ allowedPaths: `docs/handoff/findings/M6b-review-b.json`
 Depends on: DRAFT-M6b-N5.
 
 ## PANEL-M6b-a: check the review findings on the 11 infrastructure cards (report only)
-Why: a review finding is a claim to test, not evidence. Opus reads this panel, rules wherever the verdict is not
-`confirmed`, and then plans the revision of the drafts in `docs/handoff/drafts/M6b/`.
+Why: a review finding is a claim to test, not evidence. The revision items (REVISE-M6b-a1, -a2 and -b) apply the fixes
+this panel gives for real defects, and Opus rules at approval on what it does not confirm.
 Do:
-- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-a.json`. Open every file it cites, at HEAD,
-  and
-  read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md,
-  FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour,
-  the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
+- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-a.json`. Open every file it cites, at HEAD, and read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md, FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour, the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
 - Write `docs/handoff/findings/M6b-panel-a.json`: a JSON list with one object per finding, in the source's key order,
-  then
-  index. Fields: `source` (`M6b-review-a.json`), `key`, `index` (0-based in that key's list); `verdict`: `confirmed`
-  (real as
-  stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong as `note` states), `disputed`
-  (not a defect) or `unknown` (the tree cannot decide it); `evidence` (the spans you read and every command you ran,
-  with its output quoted); `duplicate_of` (`{source, key, index}` of an earlier object stating the same defect, else
-  null); `fix` (the edit to the draft as exact old and new text, the old text occurring exactly once in that draft;
-  required for `confirmed`; else your corrected edit or null; do not apply it); `note` (one or two sentences).
+  then index. Fields:
+  - `source` (`M6b-review-a.json`), `key`, `index` (0-based in that key's list);
+  - `verdict`: `confirmed` (real as stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong
+  as `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object stating the same defect, else null;
+  - `fix`: a list of edits `{"file": "docs/handoff/drafts/M6b/<draft>.md", "old": "<exact text>", "new":
+  "<replacement>"}`, where `old` is copied from that draft at HEAD and occurs in it exactly once (widen it until it
+  does), and an edit may touch any draft in `docs/handoff/drafts/M6b/` that exists at HEAD, so one finding can fix every
+  card it involves. Required for `confirmed`; for `partly`, your corrected edits, or null if you cannot give them; null
+  for `disputed` and `unknown`. Do not apply them;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
 - Change no other file.
-Outcome: this command prints `PANEL-OK` and the number of objects: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'B5', 'B11', 'B2', 'B6', 'B1', 'B3', 'B9', 'B8', 'B4', 'B7', 'B10'};w={('M6b-review-a.json',k,i) for k,v in json.load(open(d+'M6b-review-a.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-a.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`. `git status --porcelain`
-lists only that file.
+Outcome: this command prints `PANEL-OK`, the number of objects and the number of edits: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json,os;d='docs/handoff/findings/';D='docs/handoff/drafts/M6b/';c={'B9', 'B2', 'B5', 'B8', 'B11', 'B10', 'B6', 'B1', 'B4', 'B3', 'B7'};w={('M6b-review-a.json',k,i) for k,v in json.load(open(d+'M6b-review-a.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-a.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and 'duplicate_of' in o for o in p),'fields';assert all((o['fix'] is None and o['verdict']!='confirmed') or (isinstance(o['fix'],list) and o['fix'] and o['verdict'] in ('confirmed','partly')) for o in p),'fix vs verdict';E=[e for o in p for e in (o['fix'] or [])];b=[str(e)[:90] for e in E if not (isinstance(e,dict) and set(e)=={'file','old','new'} and str(e['file']).startswith(D) and os.path.isfile(e['file']) and e['old'] and e['old']!=e['new'] and open(e['file']).read().count(e['old'])==1)];assert not b,b;print('PANEL-OK',len(p),len(E))"`. `git status --porcelain` lists only that file.
 allowedPaths: `docs/handoff/findings/M6b-panel-a.json`
 Depends on: REVIEW-M6b-a.
 
 ## PANEL-M6b-b: check the review findings on the six core node-batch cards (report only)
-Why: a review finding is a claim to test, not evidence. Opus reads this panel, rules wherever the verdict is not
-`confirmed`, and then plans the revision of the drafts in `docs/handoff/drafts/M6b/`.
+Why: a review finding is a claim to test, not evidence. The revision items (REVISE-M6b-a1, -a2 and -b) apply the fixes
+this panel gives for real defects, and Opus rules at approval on what it does not confirm.
 Do:
-- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-b.json`. Open every file it cites, at HEAD,
-  and
-  read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md,
-  FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour,
-  the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
+- Check, each on its own, every finding in `docs/handoff/findings/M6b-review-b.json`. Open every file it cites, at HEAD, and read the cited lines; never take its quotes or line numbers as read. Re-derive the claim from the drafts, BRIEF.md, FACTS.md, `docs/spec.md`, `docs/plan.md`, `docs/architecture.md`, the committed code and, for Cycles' behaviour, the read-only upstream checkout `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.cache/vendor/blender-v5.2.2/intern/cycles/` (search only there outside your clone).
 - Write `docs/handoff/findings/M6b-panel-b.json`: a JSON list with one object per finding, in the source's key order,
-  then
-  index. Fields: `source` (`M6b-review-b.json`), `key`, `index` (0-based in that key's list); `verdict`: `confirmed`
-  (real as
-  stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong as `note` states), `disputed`
-  (not a defect) or `unknown` (the tree cannot decide it); `evidence` (the spans you read and every command you ran,
-  with its output quoted); `duplicate_of` (`{source, key, index}` of an earlier object stating the same defect, else
-  null); `fix` (the edit to the draft as exact old and new text, the old text occurring exactly once in that draft;
-  required for `confirmed`; else your corrected edit or null; do not apply it); `note` (one or two sentences).
+  then index. Fields:
+  - `source` (`M6b-review-b.json`), `key`, `index` (0-based in that key's list);
+  - `verdict`: `confirmed` (real as stated, and its fix removes it), `partly` (real, but the issue or the fix is wrong
+  as `note` states), `disputed` (not a defect) or `unknown` (the tree cannot decide it);
+  - `evidence`: the spans you read and every command you ran, with its output quoted;
+  - `duplicate_of`: `{source, key, index}` of an earlier object stating the same defect, else null;
+  - `fix`: a list of edits `{"file": "docs/handoff/drafts/M6b/<draft>.md", "old": "<exact text>", "new":
+  "<replacement>"}`, where `old` is copied from that draft at HEAD and occurs in it exactly once (widen it until it
+  does), and an edit may touch any draft in `docs/handoff/drafts/M6b/` that exists at HEAD, so one finding can fix every
+  card it involves. Required for `confirmed`; for `partly`, your corrected edits, or null if you cannot give them; null
+  for `disputed` and `unknown`. Do not apply them;
+  - `note`: one or two sentences. For `disputed` it says why; for `unknown` it names what is missing.
 - Change no other file.
-Outcome: this command prints `PANEL-OK` and the number of objects: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;d='docs/handoff/findings/';c={'N11', 'N1', 'N6', 'N5', 'N10', 'N12'};w={('M6b-review-b.json',k,i) for k,v in json.load(open(d+'M6b-review-b.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-b.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and (o['verdict']!='confirmed' or o['fix']) for o in p);print('PANEL-OK',len(p))"`. `git status --porcelain`
-lists only that file.
+Outcome: this command prints `PANEL-OK`, the number of objects and the number of edits: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json,os;d='docs/handoff/findings/';D='docs/handoff/drafts/M6b/';c={'N10', 'N5', 'N1', 'N11', 'N12', 'N6'};w={('M6b-review-b.json',k,i) for k,v in json.load(open(d+'M6b-review-b.json')).items() if k.split()[1] in c for i in range(len(v))};p=json.load(open(d+'M6b-panel-b.json'));g=[(o['source'],o['key'],o['index']) for o in p];assert len(g)==len(set(g)) and set(g)==w,sorted(set(g)^w);assert all(o['verdict'] in ('confirmed','partly','disputed','unknown') and o['evidence'] and o['note'] and 'duplicate_of' in o for o in p),'fields';assert all((o['fix'] is None and o['verdict']!='confirmed') or (isinstance(o['fix'],list) and o['fix'] and o['verdict'] in ('confirmed','partly')) for o in p),'fix vs verdict';E=[e for o in p for e in (o['fix'] or [])];b=[str(e)[:90] for e in E if not (isinstance(e,dict) and set(e)=={'file','old','new'} and str(e['file']).startswith(D) and os.path.isfile(e['file']) and e['old'] and e['old']!=e['new'] and open(e['file']).read().count(e['old'])==1)];assert not b,b;print('PANEL-OK',len(p),len(E))"`. `git status --porcelain` lists only that file.
 allowedPaths: `docs/handoff/findings/M6b-panel-b.json`
 Depends on: REVIEW-M6b-b.
+
+## REVISE-M6b-a1: apply the checked review findings to the engine cards B1-B6
+Why: Micah kept the node-material card review in v1.0 (decision D8's exception, 2026-10-26). The panels (PANEL-M6b-a and
+-b) checked every review finding and gave exact edits for the real ones; this item applies them to the engine cards
+B1-B6 so Opus approves revised cards. Opus rules at approval on what the panels did not confirm.
+Do:
+- Read `docs/handoff/findings/M6b-panel-a.json` and `docs/handoff/findings/M6b-panel-b.json`. An edit is eligible when
+  its object's `verdict` is `confirmed` or `partly`, its `duplicate_of` is null, its `fix` is not null, and the edit's
+  `file` is one of this item's drafts: `B1-kernel-globals.md`, `B2-shader-manager.md`, `B3-shader-data.md`,
+  `B4-svm-trace-pixel.md`, `B5-world-shader.md`, `B6-shader-graph-api.md` (all in `docs/handoff/drafts/M6b/`).
+- Apply the eligible edits in order (panel-a first, then each panel's list order, then each `fix` list's order), each by
+  replacing its `old` text with its `new` text. Where an earlier edit already changed an edit's `old` text, edit the
+  draft so both defects are removed.
+- Change nothing else in the drafts, and keep their structure and style.
+- Write `docs/handoff/findings/M6b-revise-a1.json`: a JSON list with one object per eligible edit: `panel` (the panel's
+  file name), `key`, `index`, `entry` (the edit's 0-based position in its `fix` list), `file`, `applied` and `note`.
+  `applied` is `verbatim` when the finished draft holds the edit's `new` text and no longer holds its `old` text (unless
+  `new` contains `old`), else `adapted`; `note` says, for `adapted`, what you changed instead and why, else it is empty.
+- In your answer, list every panel object about one of this item's cards whose verdict is `disputed` or `unknown`, or
+  `partly` with a null `fix`, with its note, for Opus's ruling at approval.
+Outcome: this command prints `REVISE-OK`, the number of edits and how many were adapted: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';S=['docs/handoff/drafts/M6b/B1-kernel-globals.md', 'docs/handoff/drafts/M6b/B2-shader-manager.md', 'docs/handoff/drafts/M6b/B3-shader-data.md', 'docs/handoff/drafts/M6b/B4-svm-trace-pixel.md', 'docs/handoff/drafts/M6b/B5-world-shader.md', 'docs/handoff/drafts/M6b/B6-shader-graph-api.md'];n=lambda s:' '.join(s.split());W=[(s,o['key'],o['index'],j,e) for s in ('M6b-panel-a.json','M6b-panel-b.json') for o in json.load(open(F+s)) if o['verdict'] in ('confirmed','partly') and o['duplicate_of'] is None and o['fix'] for j,e in enumerate(o['fix']) if e['file'] in S];L=json.load(open(F+'M6b-revise-a1.json'));K=[(x['panel'],x['key'],x['index'],x['entry']) for x in L];assert len(K)==len(set(K)) and sorted(K)==sorted(w[:4] for w in W),sorted(set(K)^set(w[:4] for w in W));assert all(x['file'] in S and x['applied'] in ('verbatim','adapted') and (x['applied']=='verbatim' or x['note']) for x in L),'ledger fields';A={k:x['applied'] for k,x in zip(K,L)};T={f:open(f).read() for f in S};b=[w[:4] for w in W if A[w[:4]]=='verbatim' and (n(w[4]['new']) not in n(T[w[4]['file']]) or (w[4]['old'] not in w[4]['new'] and w[4]['old'] in T[w[4]['file']]))];assert not b,b;print('REVISE-OK',len(L),sum(a=='adapted' for a in A.values()))"`. `git status --porcelain` lists only this item's drafts and the ledger.
+allowedPaths: `docs/handoff/drafts/M6b/B1-kernel-globals.md`, `docs/handoff/drafts/M6b/B2-shader-manager.md`,
+`docs/handoff/drafts/M6b/B3-shader-data.md`, `docs/handoff/drafts/M6b/B4-svm-trace-pixel.md`,
+`docs/handoff/drafts/M6b/B5-world-shader.md`, `docs/handoff/drafts/M6b/B6-shader-graph-api.md`,
+`docs/handoff/findings/M6b-revise-a1.json`
+Depends on: PANEL-M6b-a, PANEL-M6b-b.
+
+## REVISE-M6b-a2: apply the checked review findings to the sync, harness and parity cards B7-B11
+Why: Micah kept the node-material card review in v1.0 (decision D8's exception, 2026-10-26). The panels (PANEL-M6b-a and
+-b) checked every review finding and gave exact edits for the real ones; this item applies them to the sync, harness and
+parity cards B7-B11 so Opus approves revised cards. Opus rules at approval on what the panels did not confirm.
+Do:
+- Read `docs/handoff/findings/M6b-panel-a.json` and `docs/handoff/findings/M6b-panel-b.json`. An edit is eligible when
+  its object's `verdict` is `confirmed` or `partly`, its `duplicate_of` is null, its `fix` is not null, and the edit's
+  `file` is one of this item's drafts: `B7-flatten.md`, `B8-node-table-export.md`, `B9-golden-harness.md`,
+  `B10-image-export-x-colour.md`, `B11-node-material-parity.md` (all in `docs/handoff/drafts/M6b/`).
+- Apply the eligible edits in order (panel-a first, then each panel's list order, then each `fix` list's order), each by
+  replacing its `old` text with its `new` text. Where an earlier edit already changed an edit's `old` text, edit the
+  draft so both defects are removed.
+- Change nothing else in the drafts, and keep their structure and style.
+- Write `docs/handoff/findings/M6b-revise-a2.json`: a JSON list with one object per eligible edit: `panel` (the panel's
+  file name), `key`, `index`, `entry` (the edit's 0-based position in its `fix` list), `file`, `applied` and `note`.
+  `applied` is `verbatim` when the finished draft holds the edit's `new` text and no longer holds its `old` text (unless
+  `new` contains `old`), else `adapted`; `note` says, for `adapted`, what you changed instead and why, else it is empty.
+- In your answer, list every panel object about one of this item's cards whose verdict is `disputed` or `unknown`, or
+  `partly` with a null `fix`, with its note, for Opus's ruling at approval.
+Outcome: this command prints `REVISE-OK`, the number of edits and how many were adapted: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';S=['docs/handoff/drafts/M6b/B7-flatten.md', 'docs/handoff/drafts/M6b/B8-node-table-export.md', 'docs/handoff/drafts/M6b/B9-golden-harness.md', 'docs/handoff/drafts/M6b/B10-image-export-x-colour.md', 'docs/handoff/drafts/M6b/B11-node-material-parity.md'];n=lambda s:' '.join(s.split());W=[(s,o['key'],o['index'],j,e) for s in ('M6b-panel-a.json','M6b-panel-b.json') for o in json.load(open(F+s)) if o['verdict'] in ('confirmed','partly') and o['duplicate_of'] is None and o['fix'] for j,e in enumerate(o['fix']) if e['file'] in S];L=json.load(open(F+'M6b-revise-a2.json'));K=[(x['panel'],x['key'],x['index'],x['entry']) for x in L];assert len(K)==len(set(K)) and sorted(K)==sorted(w[:4] for w in W),sorted(set(K)^set(w[:4] for w in W));assert all(x['file'] in S and x['applied'] in ('verbatim','adapted') and (x['applied']=='verbatim' or x['note']) for x in L),'ledger fields';A={k:x['applied'] for k,x in zip(K,L)};T={f:open(f).read() for f in S};b=[w[:4] for w in W if A[w[:4]]=='verbatim' and (n(w[4]['new']) not in n(T[w[4]['file']]) or (w[4]['old'] not in w[4]['new'] and w[4]['old'] in T[w[4]['file']]))];assert not b,b;print('REVISE-OK',len(L),sum(a=='adapted' for a in A.values()))"`. `git status --porcelain` lists only this item's drafts and the ledger.
+allowedPaths: `docs/handoff/drafts/M6b/B7-flatten.md`, `docs/handoff/drafts/M6b/B8-node-table-export.md`,
+`docs/handoff/drafts/M6b/B9-golden-harness.md`, `docs/handoff/drafts/M6b/B10-image-export-x-colour.md`,
+`docs/handoff/drafts/M6b/B11-node-material-parity.md`, `docs/handoff/findings/M6b-revise-a2.json`
+Depends on: PANEL-M6b-a, PANEL-M6b-b.
+
+## REVISE-M6b-b: apply the checked review findings to the six core node-batch cards
+Why: Micah kept the node-material card review in v1.0 (decision D8's exception, 2026-10-26). The panels (PANEL-M6b-a and
+-b) checked every review finding and gave exact edits for the real ones; this item applies them to the six core
+node-batch cards so Opus approves revised cards. Opus rules at approval on what the panels did not confirm.
+Do:
+- Read `docs/handoff/findings/M6b-panel-a.json` and `docs/handoff/findings/M6b-panel-b.json`. An edit is eligible when
+  its object's `verdict` is `confirmed` or `partly`, its `duplicate_of` is null, its `fix` is not null, and the edit's
+  `file` is one of this item's drafts: `N1-batch-01-value-rgb-math.md`, `N5-batch-05-ramp-curves.md`,
+  `N6-batch-06-texcoord-mapping.md`, `N10-batch-10-image-texture.md`, `N11-batch-11-bsdfs.md`,
+  `N12-batch-12-mix-add-background.md` (all in `docs/handoff/drafts/M6b/`).
+- Apply the eligible edits in order (panel-a first, then each panel's list order, then each `fix` list's order), each by
+  replacing its `old` text with its `new` text. Where an earlier edit already changed an edit's `old` text, edit the
+  draft so both defects are removed.
+- Change nothing else in the drafts, and keep their structure and style.
+- Write `docs/handoff/findings/M6b-revise-b.json`: a JSON list with one object per eligible edit: `panel` (the panel's
+  file name), `key`, `index`, `entry` (the edit's 0-based position in its `fix` list), `file`, `applied` and `note`.
+  `applied` is `verbatim` when the finished draft holds the edit's `new` text and no longer holds its `old` text (unless
+  `new` contains `old`), else `adapted`; `note` says, for `adapted`, what you changed instead and why, else it is empty.
+- In your answer, list every panel object about one of this item's cards whose verdict is `disputed` or `unknown`, or
+  `partly` with a null `fix`, with its note, for Opus's ruling at approval.
+Outcome: this command prints `REVISE-OK`, the number of edits and how many were adapted: `/run/media/zeta/scratch/little-puzzles/43-blender-smallpaint/blender-painterly-render-plugin/.venv/bin/python -I -c "import json;F='docs/handoff/findings/';S=['docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md', 'docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md', 'docs/handoff/drafts/M6b/N6-batch-06-texcoord-mapping.md', 'docs/handoff/drafts/M6b/N10-batch-10-image-texture.md', 'docs/handoff/drafts/M6b/N11-batch-11-bsdfs.md', 'docs/handoff/drafts/M6b/N12-batch-12-mix-add-background.md'];n=lambda s:' '.join(s.split());W=[(s,o['key'],o['index'],j,e) for s in ('M6b-panel-a.json','M6b-panel-b.json') for o in json.load(open(F+s)) if o['verdict'] in ('confirmed','partly') and o['duplicate_of'] is None and o['fix'] for j,e in enumerate(o['fix']) if e['file'] in S];L=json.load(open(F+'M6b-revise-b.json'));K=[(x['panel'],x['key'],x['index'],x['entry']) for x in L];assert len(K)==len(set(K)) and sorted(K)==sorted(w[:4] for w in W),sorted(set(K)^set(w[:4] for w in W));assert all(x['file'] in S and x['applied'] in ('verbatim','adapted') and (x['applied']=='verbatim' or x['note']) for x in L),'ledger fields';A={k:x['applied'] for k,x in zip(K,L)};T={f:open(f).read() for f in S};b=[w[:4] for w in W if A[w[:4]]=='verbatim' and (n(w[4]['new']) not in n(T[w[4]['file']]) or (w[4]['old'] not in w[4]['new'] and w[4]['old'] in T[w[4]['file']]))];assert not b,b;print('REVISE-OK',len(L),sum(a=='adapted' for a in A.values()))"`. `git status --porcelain` lists only this item's drafts and the ledger.
+allowedPaths: `docs/handoff/drafts/M6b/N1-batch-01-value-rgb-math.md`,
+`docs/handoff/drafts/M6b/N5-batch-05-ramp-curves.md`, `docs/handoff/drafts/M6b/N6-batch-06-texcoord-mapping.md`,
+`docs/handoff/drafts/M6b/N10-batch-10-image-texture.md`, `docs/handoff/drafts/M6b/N11-batch-11-bsdfs.md`,
+`docs/handoff/drafts/M6b/N12-batch-12-mix-add-background.md`, `docs/handoff/findings/M6b-revise-b.json`
+Depends on: PANEL-M6b-a, PANEL-M6b-b.
 
 ## M3-FIX-TQ3d: a session's wait never overflows the clock, and its rollback wakes waiters (landing-5 review)
 Why (Sonnet reader E, landing-5 review of M3-FIX-TQ3a, 2026-10-25): `src/painterly/session/session.cpp:122-130` caps a
