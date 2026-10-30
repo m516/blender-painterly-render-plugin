@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""Build the Painterly Blender extension zip (card T4.4).
+"""Build the Painterly Blender extension zips: `make extension` (T4.4) and a release (T8.1).
 
-Steps, each one a function below:
+Two entry points share the functions below:
 
-1. Get the painterly-core wheel: `--wheel PATH`, or else `make wheel` (Makefile), which leaves it in
-   ``dist/``. The wheel bundles ``_painterly``, so the extension ships the native module.
-2. Stage ``src/blender/addon/`` into ``build/extension/painterly/`` and the wheel into
-   ``build/extension/painterly/wheels/``. ``build/`` is git-ignored.
-3. Rewrite the staged ``blender_manifest.toml``: ``wheels = ["./wheels/<wheel>"]`` and
-   ``platforms = [<platform of the wheel's platform tag>]``. The source manifest writes neither,
-   because both depend on the wheel that is built.
-4. ``<blender> --command extension build --source-dir build/extension/painterly --output-dir dist/
-   --split-platforms``. ``--split-platforms`` names the zip after the one platform the wheel is for:
-   ``dist/<id>-<version>-<platform with underscores>.zip``.
-5. Print the zip path (stdout, alone on its line) and write it, alone on one line, to
-   ``build/extension/zip_path.txt``, where ``tests/blender_it`` reads it.
+- ``main()`` is ``make extension``: get the painterly-core wheel (``--wheel PATH``, or else
+  ``make wheel``), stage ``src/blender/addon/`` with that one wheel, let Blender write the zip into
+  ``dist/``, print its path and write it to ``build/extension/zip_path.txt``.
+- ``build_extension()`` is ``tools/release.py package``: stage one wheel per platform, let Blender
+  write one zip per platform with ``--split-platforms``, and return their paths.
+
+Staging, in both cases:
+
+1. Empty the staging directory. Blender packs every file under the source directory that the
+   manifest does not exclude into **every** zip (``blender_ext.py`` v5.2.2,
+   ``subcmd_author.build``), so a wheel left by an earlier run would ship in all of them.
+2. Copy the add-on directory (``__pycache__`` excepted, as the manifest excludes it).
+3. Copy the licence texts: ``LICENSE`` and ``THIRD_PARTY_NOTICES.md``, and every file of
+   ``LICENSES/``. The zip carries the add-on's own GPL licence, and the Apache-2.0 texts that
+   ``get_panels()`` (copied from Cycles, T4.2) and the statically linked Embree require.
+4. Copy each wheel to ``<staging>/wheels/``.
+5. Rewrite the staged ``blender_manifest.toml``: ``platforms = [...]`` and ``wheels = [...]``. Both
+   depend on the wheels that were built, so the source manifest writes neither. They are top-level
+   TOML keys, so they go before the first table header.
+
+Blender then writes ``<id>-<version>-<platform with "-" -> "_">.zip`` per platform under
+``--split-platforms`` (``blender_ext.py``, the ``split_platforms`` branch of
+``subcmd_author.build``).
 
 The wheel step is `make wheel`, which runs `uv build --wheel` (BACKLOG, R1: host-only, because this
 host has no `uv`). So that the acceptance can still run here, the fallback when `uv` is not on
@@ -34,11 +45,14 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tomllib
+from collections.abc import Sequence
 from pathlib import Path
+from typing import NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # The add-on package that becomes the extension (the manifest's `id` names it "painterly").
@@ -51,6 +65,10 @@ ZIP_PATH_FILE = STAGE_ROOT / "zip_path.txt"
 # Where the wheel and the zip are written: `make wheel` builds into dist/, and so does step 4.
 DIST_DIR = REPO_ROOT / "dist"
 WHEEL_DIR_NAME = "wheels"
+# The two top-level notices of the repository. Every regular file of LICENSES/ is staged as well
+# (the SPDX spelling); only these constant names keep the British "LICENCE" spelling.
+LICENCE_FILES: tuple[str, ...] = ("LICENSE", "THIRD_PARTY_NOTICES.md")
+LICENCE_DIR = "LICENSES"
 # The wheel's distribution name (pyproject.toml [project] name = "painterly-core"), as the wheel
 # filename spells it (PEP 427/491: runs of "-" and "_" are normalised to "_").
 WHEEL_DISTRIBUTION = "painterly_core"
@@ -59,29 +77,37 @@ WHEEL_DISTRIBUTION = "painterly_core"
 WHEEL_TOOL = "uv"
 WHEEL_BACKEND_MODULE = "scikit_build_core.build"
 WHEEL_BACKEND_FUNCTION = "build_wheel"
+# PEP 427: `{distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl`, so
+# a name without a build tag has five dash-separated fields and one with it has six.
+WHEEL_SUFFIX = ".whl"
+WHEEL_FIELDS_WITHOUT_BUILD = 5
+WHEEL_FIELDS_WITH_BUILD = 6
 
-# Blender's own wheel-platform -> extension-platform rule, copied from
-# blender-5.2.2/5.2/scripts/addons_core/bl_pkg/cli/blender_ext.py, functions
-# `blender_platforms_from_wheel_platform`, `platform_system_replace_for_wheels` and
-# `platform_machine_replace`: "manylinux_2_28_x86_64" -> "linux-x64", "win_amd64" -> "windows-x64",
-# "macosx_11_0_arm64" -> "macos-arm64". The manifest must carry the name Blender itself derives,
-# because `--split-platforms` filters the bundled wheels by it.
-WHEEL_PLATFORM_SYSTEM = {
-    "macosx": "macos",
-    "manylinux": "linux",
-    "musllinux": "linux",
-    "win": "windows",
-}
-WHEEL_PLATFORM_MACHINE = {
-    "x86_64": "x64",
-    "amd64": "x64",
-    "aarch64": "arm64",
-    "aarch32": "arm32",
-}
-# A wheel for "any" platform bundles no native module, and a macOS universal2 wheel is for two
-# platforms; the card's manifest carries exactly one platform, so neither can be staged.
-WHEEL_PLATFORM_ANY = "any"
-WHEEL_PLATFORM_UNIVERSAL2 = "universal2"
+# Blender platform of each element of a PEP 425 platform tag set. Blender's own, wider rule is
+# blender_platforms_from_wheel_platform() in scripts/addons_core/bl_pkg/cli/blender_ext.py (v5.2.2).
+# This table admits only the three v1 platforms (docs/plan.md, Owner decisions: Platforms) and the
+# tags our wheels carry: linux_x86_64 from a local `uv build` (T2.4), manylinux_X_Y_x86_64 and the
+# PEP 600 legacy aliases from auditwheel, macosx_X_Y_arm64 (T2.4: deployment target 11.0) and
+# win_amd64.
+WHEEL_PLATFORM_TAGS = (
+    (
+        re.compile(r"linux_x86_64|manylinux_[0-9]+_[0-9]+_x86_64|manylinux(?:1|2010|2014)_x86_64"),
+        "linux-x64",
+    ),
+    (re.compile(r"macosx_[0-9]+_[0-9]+_arm64"), "macos-arm64"),
+    (re.compile(r"win_amd64"), "windows-x64"),
+)
+
+
+class WheelName(NamedTuple):
+    """The fields of a wheel filename, PEP 427."""
+
+    distribution: str
+    version: str
+    build: str | None
+    python: str
+    abi: str
+    platform: str  # the whole tag set, e.g. "manylinux_2_27_x86_64.manylinux_2_28_x86_64"
 
 
 class BuildError(RuntimeError):
@@ -89,52 +115,80 @@ class BuildError(RuntimeError):
 
 
 def _log(message: str) -> None:
-    """Report progress on stderr, so stdout carries only the zip path."""
+    """Report progress on stderr, so stdout carries only the zip paths."""
     print(message, file=sys.stderr, flush=True)
 
 
-def extension_platform(wheel: Path) -> str:
+def parse_wheel_filename(name: str) -> WheelName:
+    """Split a wheel filename into its PEP 427 fields.
+
+    Args:
+        name: the wheel's file name, ``.whl`` included.
+
+    Returns:
+        Its fields; ``build`` is ``None`` when the name has no build tag.
+
+    Raises:
+        ValueError: if ``name`` does not end in ``.whl``, or has neither five nor six dash-separated
+            fields.
+    """
+    if not name.endswith(WHEEL_SUFFIX):
+        raise ValueError(f"{name} is not a wheel filename (it does not end in {WHEEL_SUFFIX})")
+    fields = name.removesuffix(WHEEL_SUFFIX).split("-")
+    if len(fields) == WHEEL_FIELDS_WITHOUT_BUILD:
+        distribution, version, python, abi, platform = fields
+        build = None
+    elif len(fields) == WHEEL_FIELDS_WITH_BUILD:
+        distribution, version, build, python, abi, platform = fields
+    else:
+        raise ValueError(
+            f"{name} is not a wheel filename: expected "
+            f"{WHEEL_FIELDS_WITHOUT_BUILD} or {WHEEL_FIELDS_WITH_BUILD} dash-separated fields, "
+            f"found {len(fields)}"
+        )
+    return WheelName(distribution, version, build, python, abi, platform)
+
+
+def blender_platform_from_wheel(wheel: Path) -> str:
     """The Blender platform of a wheel, e.g. ``linux-x64``.
 
     Args:
-        wheel: the wheel file; its name is read as PEP 427
-            ``{distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl``.
+        wheel: the wheel file; its name is read as PEP 427.
 
     Returns:
-        Blender's platform name for the wheel's platform tag, as
-        ``blender_platforms_from_wheel_platform`` derives it.
+        The Blender platform of its platform tag set, from ``WHEEL_PLATFORM_TAGS``.
+
+    Raises:
+        ValueError: if an element of the tag set matches no row of the table, or the elements name
+            different platforms.
     """
-    parts = wheel.name.removesuffix(".whl").split("-")
-    if len(parts) < 5:
-        raise BuildError(f"{wheel.name} is not a wheel filename (expected at least 5 fields)")
-    platform_tag = parts[-1]
-    if platform_tag == WHEEL_PLATFORM_ANY:
-        raise BuildError(
-            f"{wheel.name} is a pure-Python wheel; the extension needs the platform tag"
+    parsed = parse_wheel_filename(wheel.name)
+    platforms = set()
+    for element in parsed.platform.split("."):
+        matched = [
+            platform for pattern, platform in WHEEL_PLATFORM_TAGS if pattern.fullmatch(element)
+        ]
+        if len(matched) != 1:
+            raise ValueError(
+                f"{wheel.name}: the platform tag element {element!r} is none of the platforms this "
+                "tool knows (see WHEEL_PLATFORM_TAGS)"
+            )
+        platforms.add(matched[0])
+    if len(platforms) != 1:
+        raise ValueError(
+            f"{wheel.name}: the platform tag {parsed.platform!r} names several platforms "
+            f"({sorted(platforms)}), but a wheel serves one"
         )
-    head, _, tail = platform_tag.partition("_")
-    if not tail:
-        raise BuildError(f"{wheel.name}: the platform tag {platform_tag!r} has no machine part")
-    system = head
-    for wheel_system, blender_system in WHEEL_PLATFORM_SYSTEM.items():
-        # "manylinux2014" -> "linux", as Blender's own loop does for a numbered system prefix.
-        numbered = head.startswith(wheel_system) and head[len(wheel_system) :].isdigit()
-        if head == wheel_system or numbered:
-            system = blender_system
-            break
-    # The machine is the tag's known machine suffix, so a GLIBC or macOS version in front of it is
-    # dropped ("2_28_x86_64" -> "x64"); an unknown tag keeps its last component.
-    machine = tail.rpartition("_")[2]
-    for wheel_machine, blender_machine in WHEEL_PLATFORM_MACHINE.items():
-        if tail == wheel_machine or tail.endswith(f"_{wheel_machine}"):
-            machine = blender_machine
-            break
-    if machine == WHEEL_PLATFORM_UNIVERSAL2:
-        raise BuildError(
-            f"{wheel.name} is a universal2 wheel: it serves macos-x64 and macos-arm64, but the "
-            "extension manifest carries one platform"
-        )
-    return f"{system}-{machine}"
+    return platforms.pop()
+
+
+def extension_zip_name(extension_id: str, version: str, platform: str) -> str:
+    """The zip name of one platform, as Blender's ``--split-platforms`` writes it.
+
+    ``blender_ext.py`` v5.2.2, ``subcmd_author.build``: ``<id>-<version>-<platform>.zip`` with
+    "-" in the platform replaced by "_".
+    """
+    return f"{extension_id}-{version}-{platform.replace('-', '_')}.zip"
 
 
 def _is_key(line: str, keys: tuple[str, ...]) -> bool:
@@ -143,44 +197,191 @@ def _is_key(line: str, keys: tuple[str, ...]) -> bool:
     return any(text.startswith(f"{key} ") or text.startswith(f"{key}=") for key in keys)
 
 
-def rewrite_manifest(stage: Path, wheel_name: str, platform: str) -> dict[str, object]:
-    """Write ``wheels`` and ``platforms`` into the staged manifest and check the result.
+def _write_manifest_platforms(
+    manifest: Path, platforms: Sequence[str], wheel_names: Sequence[str]
+) -> dict[str, object]:
+    """Write ``platforms`` and ``wheels`` into the staged manifest and check the result.
 
     The two keys are top-level TOML keys, so they go before the first table header (the source
     manifest's ``[build]``); appending them at the end of the file would put them inside that
-    table. The rewritten file is parsed again, and the two keys must be where they belong.
+    table. ``json.dumps`` of a list of ASCII strings is a valid TOML array. The rewritten file is
+    parsed again, and the two keys must be where they belong.
 
     Args:
-        stage: the staging directory that holds the copied manifest.
-        wheel_name: the wheel's filename inside ``<stage>/wheels/``.
-        platform: the Blender platform of that wheel, e.g. ``linux-x64``.
+        manifest: the staged ``blender_manifest.toml``.
+        platforms: the Blender platforms, in the order the wheels are listed.
+        wheel_names: the wheel file names inside ``<staging>/wheels/``, same order.
 
     Returns:
-        The parsed manifest, for the id, the version and the zip name.
+        The parsed manifest, for the id and the version.
+
+    Raises:
+        ValueError: if the source manifest already sets ``platforms`` or ``wheels`` (a duplicate
+            TOML key), or the rewrite does not land at the top level.
     """
-    manifest = stage / MANIFEST_NAME
     lines = manifest.read_text(encoding="utf-8").splitlines()
-    kept = [line for line in lines if not _is_key(line, ("wheels", "platforms"))]
+    for key in ("platforms", "wheels"):
+        if any(_is_key(line, (key,)) for line in lines):
+            raise ValueError(
+                f"{manifest}: the source manifest already sets {key}; tools/build_extension.py "
+                "writes it from the wheels that were built"
+            )
     first_table = next(
-        (index for index, line in enumerate(kept) if line.lstrip().startswith("[")), len(kept)
+        (index for index, line in enumerate(lines) if line.lstrip().startswith("[")), len(lines)
     )
     written = [
-        "# Written by tools/build_extension.py (T4.4) from the wheel that was built.",
-        f"wheels = [{json.dumps(f'./{WHEEL_DIR_NAME}/{wheel_name}')}]",
-        f"platforms = [{json.dumps(platform)}]",
+        f"platforms = {json.dumps(list(platforms))}",
+        f"wheels = {json.dumps([f'./{WHEEL_DIR_NAME}/{name}' for name in wheel_names])}",
         "",
     ]
-    text = "\n".join([*kept[:first_table], *written, *kept[first_table:]]) + "\n"
+    text = "\n".join([*lines[:first_table], *written, *lines[first_table:]]) + "\n"
     manifest.write_text(text, encoding="utf-8")
 
     parsed = tomllib.loads(text)
-    expected_wheels = [f"./{WHEEL_DIR_NAME}/{wheel_name}"]
-    if parsed.get("wheels") != expected_wheels or parsed.get("platforms") != [platform]:
+    expected_wheels = [f"./{WHEEL_DIR_NAME}/{name}" for name in wheel_names]
+    if parsed.get("wheels") != expected_wheels or parsed.get("platforms") != list(platforms):
         raise BuildError(
             f"{manifest}: the rewrite did not land at the top level (wheels "
             f"{parsed.get('wheels')!r}, platforms {parsed.get('platforms')!r})"
         )
     return parsed
+
+
+def _stage_licence(source: Path, staged: Path) -> None:
+    """Copy one licence text to ``staged``, never over an add-on file.
+
+    Raises:
+        FileExistsError: if the add-on copy already put a file at ``staged``.
+    """
+    if staged.exists():
+        raise FileExistsError(
+            f"{staged} already exists; the licence text {source} never overwrites an add-on file"
+        )
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, staged)
+
+
+def stage_extension(
+    wheels: Sequence[Path],
+    staging_dir: Path,
+    *,
+    addon_dir: Path = ADDON_DIR,
+    root: Path = REPO_ROOT,
+) -> list[str]:
+    """Stage the add-on, the licence texts and one wheel per platform into ``staging_dir``.
+
+    The staging directory is emptied first: Blender packs every file under the source directory
+    that the manifest does not exclude into every zip (fact 3 of T8.1), so a stale wheel would ship
+    in all of them.
+
+    Args:
+        wheels: the wheels to bundle, one per platform, in any order.
+        staging_dir: the directory to stage into; it is replaced.
+        addon_dir: the add-on package, ``src/blender/addon/`` by default.
+        root: the repository root that holds ``LICENSE``, ``THIRD_PARTY_NOTICES.md`` and
+            ``LICENSES/``.
+
+    Returns:
+        The platforms, sorted. The wheels are listed in that same order.
+
+    Raises:
+        ValueError: for no wheel, for two wheels of one platform, or for a wheel whose name is not
+            a supported wheel name.
+        FileExistsError: if a licence text would overwrite an add-on file.
+    """
+    if not wheels:
+        raise ValueError("no wheel to stage: the extension needs one wheel per platform")
+    by_platform: dict[str, Path] = {}
+    for wheel in wheels:
+        platform = blender_platform_from_wheel(wheel)
+        if platform in by_platform:
+            raise ValueError(
+                f"{by_platform[platform].name} and {wheel.name} are both wheels for {platform}"
+            )
+        by_platform[platform] = wheel
+    platforms = sorted(by_platform)
+
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir)
+    shutil.copytree(addon_dir, staging_dir, ignore=shutil.ignore_patterns("__pycache__"))
+
+    for name in LICENCE_FILES:
+        _stage_licence(root / name, staging_dir / name)
+    licence_dir = root / LICENCE_DIR
+    for licence in sorted(entry for entry in licence_dir.iterdir() if entry.is_file()):
+        _stage_licence(licence, staging_dir / LICENCE_DIR / licence.name)
+
+    wheels_dir = staging_dir / WHEEL_DIR_NAME
+    wheels_dir.mkdir()
+    for platform in platforms:
+        wheel = by_platform[platform]
+        shutil.copyfile(wheel, wheels_dir / wheel.name)
+
+    _write_manifest_platforms(
+        staging_dir / MANIFEST_NAME, platforms, [by_platform[p].name for p in platforms]
+    )
+    return platforms
+
+
+def build_extension(
+    blender: Path,
+    wheels: Sequence[Path],
+    staging_dir: Path,
+    output_dir: Path,
+    *,
+    addon_dir: Path = ADDON_DIR,
+    root: Path = REPO_ROOT,
+) -> list[Path]:
+    """Stage the extension, build one zip per platform, and return their paths.
+
+    Blender's progress lines go to stderr, so the stdout of ``tools/release.py package`` carries
+    only asset paths. Blender prints ``created: "<path>"`` for the last zip only, so the paths are
+    derived from the staged manifest instead of parsed.
+
+    Args:
+        blender: the Blender executable.
+        wheels: the wheels to bundle, one per platform, in any order.
+        staging_dir: the directory to stage into; it is replaced.
+        output_dir: where Blender writes the zips; it is created if missing.
+        addon_dir: the add-on package, ``src/blender/addon/`` by default.
+        root: the repository root of the licence texts.
+
+    Returns:
+        The zips, in platform order.
+
+    Raises:
+        ValueError: see ``stage_extension``.
+        FileNotFoundError: if Blender wrote no zip for one of the platforms.
+    """
+    platforms = stage_extension(wheels, staging_dir, addon_dir=addon_dir, root=root)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            str(blender),
+            "--command",
+            "extension",
+            "build",
+            "--source-dir",
+            str(staging_dir),
+            "--output-dir",
+            str(output_dir),
+            "--split-platforms",
+        ],
+        check=True,
+        stdout=sys.stderr,
+    )
+    manifest = tomllib.loads((staging_dir / MANIFEST_NAME).read_text(encoding="utf-8"))
+    zips = [
+        output_dir / extension_zip_name(str(manifest["id"]), str(manifest["version"]), platform)
+        for platform in platforms
+    ]
+    missing = [zip_path for zip_path in zips if not zip_path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "`blender --command extension build` wrote no "
+            + ", ".join(zip_path.name for zip_path in missing)
+        )
+    return zips
 
 
 def _newest_wheel(directory: Path) -> Path:
@@ -246,53 +447,6 @@ def build_wheel(explicit: Path | None) -> Path | None:
     return _newest_wheel(DIST_DIR)
 
 
-def stage(wheel: Path) -> Path:
-    """Copy the add-on and the wheel into ``STAGE_DIR``; return the staging directory.
-
-    ``__pycache__`` directories are not copied: the manifest excludes them from the zip anyway.
-    """
-    if STAGE_ROOT.exists():
-        shutil.rmtree(STAGE_ROOT)
-    shutil.copytree(ADDON_DIR, STAGE_DIR, ignore=shutil.ignore_patterns("__pycache__"))
-    wheels = STAGE_DIR / WHEEL_DIR_NAME
-    wheels.mkdir()
-    shutil.copy2(wheel, wheels / wheel.name)
-    return STAGE_DIR
-
-
-def run_blender_build(blender: Path, stage_dir: Path, manifest: dict[str, object]) -> Path:
-    """Run ``blender --command extension build --split-platforms`` and return the zip it wrote.
-
-    With ``--split-platforms`` Blender names the zip ``<id>-<version>-<platform>.zip``, with "-"
-    in the platform replaced by "_" (``blender_ext.py``, the ``split_platforms`` branch of the
-    package build).
-    """
-    DIST_DIR.mkdir(parents=True, exist_ok=True)
-    platform = str(manifest["platforms"][0])  # type: ignore[index]
-    expected = DIST_DIR / f"{manifest['id']}-{manifest['version']}-{platform.replace('-', '_')}.zip"
-    cmd = [
-        str(blender),
-        "--command",
-        "extension",
-        "build",
-        "--source-dir",
-        str(stage_dir),
-        "--output-dir",
-        str(DIST_DIR),
-        "--split-platforms",
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise BuildError(
-            f"{' '.join(cmd)} exited with status {proc.returncode}\n{proc.stdout}\n{proc.stderr}"
-        )
-    if not expected.is_file():
-        raise BuildError(
-            f"`blender --command extension build` wrote no {expected.name}\n{proc.stdout}"
-        )
-    return expected
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
@@ -316,13 +470,12 @@ def main(argv: list[str] | None = None) -> int:
         wheel = build_wheel(args.wheel)
         if wheel is None:
             return 0
-        stage_dir = stage(wheel)
-        manifest = rewrite_manifest(stage_dir, wheel.name, extension_platform(wheel))
-        zip_path = run_blender_build(blender, stage_dir, manifest)
-    except BuildError as error:
+        zip_paths = build_extension(blender, [wheel], STAGE_DIR, DIST_DIR)
+    except (BuildError, ValueError, FileNotFoundError, subprocess.CalledProcessError) as error:
         print(f"build_extension: {error}", file=sys.stderr)
         return 1
 
+    zip_path = zip_paths[0]
     ZIP_PATH_FILE.parent.mkdir(parents=True, exist_ok=True)
     ZIP_PATH_FILE.write_text(f"{zip_path}\n", encoding="utf-8")
     _log(f"build_extension: {zip_path} ({zip_path.stat().st_size} bytes)")

@@ -1,0 +1,206 @@
+# Release (T8.1). A tag v<version> builds the three wheels (wheels.yml, with its coexistence runs), packs one extension zip
+# per platform with `blender --command extension build --split-platforms`, writes the GPL source tarball, installs and
+# renders each zip in Blender on Linux and Windows, and publishes the assets as a GitHub Release. A tag v<version>-dryrun.<n>, or a
+# manual dispatch, runs every job except publish. tools/release.py decides the mode and builds and verifies every asset.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BLENDER_VERSION: "5.2.2"
+
+jobs:
+  # Fails within seconds on a tag that is neither v<version> nor v<version>-dryrun.<n>, or when the three version sources
+  # disagree, before any wheel is built.
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Classify the run
+        id: plan
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            python -I tools/release.py plan --tag "$GITHUB_REF_NAME" | tee plan.txt
+          else
+            python -I tools/release.py plan --dispatch | tee plan.txt
+          fi
+          cat plan.txt >> "$GITHUB_OUTPUT"
+
+  # The wheels and coexist jobs of wheels.yml run inside this workflow run, so their wheel-<os> artifacts belong to it.
+  wheels:
+    needs: plan
+    permissions:
+      contents: read
+    uses: ./.github/workflows/wheels.yml
+
+  package:
+    needs: [plan, wheels]
+    runs-on: ubuntu-24.04
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # `blender --command` still loads the executable, which needs these system libraries (tools/blender_system_deps.txt).
+      - name: Install Blender's system libraries
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y $(grep -v '^#' tools/blender_system_deps.txt)
+
+      - name: Fetch Blender
+        shell: bash
+        run: |
+          python -I tools/fetch_blender.py --version "$BLENDER_VERSION" --platform linux-x64 2>&1 | tee fetch.log
+          blender_exe=$(sed -n "s/^Blender $BLENDER_VERSION executable: //p" fetch.log | tr -d '\r')
+          echo "BLENDER_EXE=$blender_exe" >> "$GITHUB_ENV"
+
+      - name: Download the wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Build and verify the release assets
+        shell: bash
+        run: |
+          python -I tools/release.py package --blender "$BLENDER_EXE" --wheel-dir wheelhouse \
+            --out-dir dist/release --notes dist/release-notes.md --work-dir build/release
+
+      # Two paths whose common ancestor is dist/: the artifact holds release/<assets> and release-notes.md.
+      - name: Upload the release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            dist/release/
+            dist/release-notes.md
+          if-no-files-found: error
+
+      - name: Summarize
+        shell: bash
+        run: |
+          if [ "$MODE" = dry-run ]; then
+            echo "Dry run ($GITHUB_REF_NAME): every asset was built and verified; no GitHub Release is created." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          cat dist/release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+  # Each of INSTALL_PLATFORMS installs the zip that a user of that platform downloads, then renders the built-in
+  # reference scene through it. macOS has no leg: D39 allows no macOS CI test job, and the macOS zip is built and
+  # byte-verified in package.
+  # `extension install-file` exits 0 even when it refuses a zip, so the registration assert of run_reference.py decides.
+  install:
+    name: install (${{ matrix.os }})
+    needs: package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: windows-2022
+            platform: windows-x64
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download the release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      - name: Install Blender's system libraries (Linux)
+        if: matrix.platform == 'linux-x64'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y $(grep -v '^#' tools/blender_system_deps.txt)
+
+      - name: Fetch Blender
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          python -I tools/fetch_blender.py --version "$BLENDER_VERSION" --platform "$PLATFORM" 2>&1 | tee fetch.log
+          blender_exe=$(sed -n "s/^Blender $BLENDER_VERSION executable: //p" fetch.log | tr -d '\r')
+          echo "BLENDER_EXE=$blender_exe" >> "$GITHUB_ENV"
+
+      - name: Check Blender's shared libraries (Linux)
+        if: matrix.platform == 'linux-x64'
+        shell: bash
+        run: |
+          test -x "$BLENDER_EXE" || exit 1; deps=$(ldd "$BLENDER_EXE") || exit 1; if grep 'not found' <<<"$deps"; then exit 1; fi
+
+      - name: Install the extension and render the reference scene
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          zip="dist/release/$(python -I tools/release.py zip-name --platform "$PLATFORM" | tr -d '\r')"
+          out="$RUNNER_TEMP/install-smoke"
+          mkdir -p "$out"
+          export BLENDER_USER_RESOURCES="$RUNNER_TEMP/blender-user"
+          "$BLENDER_EXE" --command extension install-file -r user_default -e "$zip"
+          "$BLENDER_EXE" -b --factory-startup --python-exit-code 1 --python tests/blender_it/run_reference.py -- "$out"
+          test -f "$out/blender.npy"
+          test -f "$out/blender.json"
+
+  # Only a v<version> tag publishes. GH_REPO names the repository, so no checkout is needed.
+  publish:
+    needs: [plan, package, install]
+    if: needs.plan.outputs.mode == 'release'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download the release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      - name: Check the asset checksums
+        shell: bash
+        working-directory: dist/release
+        run: sha256sum -c SHA256SUMS
+
+      - name: Create the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Painterly $VERSION" \
+            --notes-file dist/release-notes.md dist/release/*

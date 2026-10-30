@@ -1,10 +1,10 @@
 # Stable-ABI wheels (T2.4). The wheels job builds, audits and smoke-tests one wheel per platform with cibuildwheel. The
 # coexist job then runs the native-coexistence experiment (005) in Blender 5.2.2 on the same OS, which is the input to gate G1.
+# Release (T8.1) calls this workflow through workflow_call on every tag v*, so a tag builds the wheels once, inside the Release run.
 name: Wheels
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
   workflow_dispatch:
   pull_request:
     # third_party/: the vendored Cycles sources compiled into the module. tools/symbol_audit.py: the audit that the
