@@ -17,11 +17,12 @@ end to end, one for each branch the render loop takes:
 Row order is SPEC §0's: our row 0 is the top row and Blender's buffer row 0 is the bottom row, so
 the expectation is reversed by hand.
 
-Two further tests cover the two paths on which the render loop reports an error instead of
-rendering: a non-square image in reference mode, and the Blender-scene sync, which is the M5 stub.
-Three more drive the poll loop's own decisions (a write skipped when the pass count moves between
-the loop's two reads, a break that cancels the session, an error state that becomes a report) with
-a scripted stand-in for the session, because a real render finishes too quickly to force them.
+Two further tests cover the two other paths of the render loop: a non-square image in reference
+mode, which it reports an error for, and the Blender-scene sync, whose core scene it builds
+through ``sync_camera``. Three more drive the poll loop's own decisions (a write skipped when the
+pass count moves between the loop's two reads, a break that cancels the session, an error state
+that becomes a report) with a scripted stand-in for the session, because a real render finishes
+too quickly to force them.
 
 The scene settings are restored after each test, because the ``addon`` fixture registers the
 add-on once per session and every test shares ``bpy.context.scene``.
@@ -287,19 +288,37 @@ def test_a_non_square_reference_render_reports_an_error(
         bpy.ops.render.render()
 
 
-def test_the_blender_scene_path_reports_the_m5_stub(
-    scene_settings: dict[str, object], addon: ModuleType
+def test_the_blender_scene_path_builds_the_core_scene_through_sync_camera(
+    scene_settings: dict[str, object], addon: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Step 2: the Blender-scene sync's NotImplementedError becomes an ``engine.report``."""
+    """Step 2: the Blender-scene path syncs the camera instead of reporting the M5 stub.
+
+    ``sync_camera`` is wrapped so that the core scene and the depsgraph it receives are visible
+    here, and the render then runs for real: the camera of the Blender scene must reach the core
+    scene, and the render must finish instead of reporting an error. The depsgraph is only valid
+    during the render, so the wrapper records what it reads from it there and the test compares
+    that record afterwards.
+    """
     scene = bpy.context.scene
     scene.painterly.reference_scene = False
+    sync_camera = sync.sync_camera
+    recorded: list[tuple[object, bool, int, int]] = []
 
-    with pytest.raises(RuntimeError, match="Blender scene sync arrives in M5"):
-        bpy.ops.render.render()
+    def recording_sync_camera(scene_core, depsgraph, settings, width, height) -> None:
+        recorded.append((scene_core, depsgraph.scene is scene, width, height))
+        sync_camera(scene_core, depsgraph, settings, width, height)
 
-    # The message is the stub's own, so the two cannot drift apart.
-    with pytest.raises(NotImplementedError, match="Blender scene sync arrives in M5"):
-        sync.build_scene(None, None, SIZE, SIZE)
+    monkeypatch.setattr(sync, "sync_camera", recording_sync_camera)
+
+    # A render that reaches the stub would raise RuntimeError with the stub's message; the render
+    # loop reports an engine error as an exception, so a plain call is the check that it is gone.
+    bpy.ops.render.render()
+
+    assert len(recorded) == 1
+    core_scene, same_scene, width, height = recorded[0]
+    assert isinstance(core_scene, _painterly.Scene)
+    assert same_scene
+    assert (width, height) == (SIZE, SIZE)
 
 
 # --- Steps 6-8: the poll loop, with a stand-in session and engine -----------------------------
